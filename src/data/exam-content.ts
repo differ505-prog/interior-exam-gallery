@@ -1,0 +1,103 @@
+import { ArchiveSection, UploadEntry } from "@/types/exam";
+
+export const examSections: ArchiveSection[] = [
+  {
+    slug: "plan",
+    eyebrow: "Plan Archive",
+    title: "平面圖 201-206",
+    summary: "以題號為主軸整理 A-E 版本，搭配作圖順序、常錯位置與應考節奏。",
+    visualNote: "像畫冊一樣閱讀平面配置，先看格局節奏，再看尺寸與動線。",
+    items: [
+      { code: "201", title: "住宅基礎題", variants: ["A", "B", "C", "D", "E"], focus: "入口、客餐廳關係與家具尺度", notes: "適合當作暖身題，先練速度再練細節。" },
+      { code: "202", title: "格局轉折題", variants: ["A", "B", "C", "D", "E"], focus: "畸零角處理與視線收束", notes: "容易在轉角和通道尺度失分。" },
+      { code: "203", title: "收納整合題", variants: ["A", "B", "C", "D", "E"], focus: "櫃體比例與空間壓迫感", notes: "需同步對照立面圖，避免平面與立面矛盾。" },
+      { code: "204", title: "動線修正題", variants: ["A", "B", "C", "D", "E"], focus: "通行寬度與家具轉身半徑", notes: "建議搭配紅線標註常錯軸線。" },
+      { code: "205", title: "複合機能題", variants: ["A", "B", "C", "D", "E"], focus: "客餐廳與書房交界處理", notes: "適合放進比對模式練習。" },
+      { code: "206", title: "考前總整理題", variants: ["A", "B", "C", "D", "E"], focus: "整體配置平衡與圖面完整度", notes: "可作為模擬考總複盤入口。" },
+    ],
+  },
+  {
+    slug: "ceiling-elevation",
+    eyebrow: "Ceiling & Elevation",
+    title: "天花板圖與立面圖",
+    summary: "把天花板圖與客廳、主臥、餐廳立面串成一條視覺檢核路徑。",
+    visualNote: "從上視圖到立面，像策展牆一樣閱讀照明、櫃體、線板與材質。",
+    items: [
+      { code: "CL", title: "天花板圖", variants: ["燈具", "迴路", "線型"], focus: "燈具配置、天花層次與出風口協調", notes: "先確認照明邏輯，再回頭修飾線型。" },
+      { code: "EL-L", title: "客廳立面", variants: ["主牆", "櫃體", "材質"], focus: "主視覺牆、層板與比例節奏", notes: "檢查與平面圖家具位置是否一致。" },
+      { code: "EL-M", title: "主臥立面", variants: ["床頭", "衣櫃", "化妝台"], focus: "床頭尺度、櫃體深度與機能整合", notes: "容易忽略插座與檯面高度。" },
+      { code: "EL-D", title: "餐廳立面", variants: ["餐邊櫃", "吊燈", "端景"], focus: "餐邊櫃比例與吊燈中線", notes: "建議搭配大樣圖一起看材質交接。" },
+    ],
+  },
+  {
+    slug: "perspective",
+    eyebrow: "Perspective Studies",
+    title: "透視圖 207-212",
+    summary: "每題收錄甲乙丙三向，強調視點、構圖層次與色彩節奏。",
+    visualNote: "把透視練習做成藝術展牆，快速橫向比較不同視角的空間敘事。",
+    items: [
+      { code: "207", title: "入口視角", variants: ["甲", "乙", "丙"], focus: "近中遠景深與光源方向", notes: "優先建立地坪與天花的消失點。" },
+      { code: "208", title: "客廳主視角", variants: ["甲", "乙", "丙"], focus: "主牆、沙發與端景平衡", notes: "色塊太重會壓縮空間感。" },
+      { code: "209", title: "餐廳展示視角", variants: ["甲", "乙", "丙"], focus: "餐桌尺度與吊燈垂直性", notes: "注意人物比例與留白。" },
+      { code: "210", title: "主臥氛圍視角", variants: ["甲", "乙", "丙"], focus: "床頭背景與布面陰影", notes: "需避免線條過亂導致畫面髒。" },
+      { code: "211", title: "複合角度視角", variants: ["甲", "乙", "丙"], focus: "轉角收邊與櫃體消失點", notes: "建議拆成三層上色，避免一次塗死。" },
+      { code: "212", title: "模擬考視角", variants: ["甲", "乙", "丙"], focus: "整體表現與時間控管", notes: "考前用來練完整節奏最好。" },
+    ],
+  },
+  {
+    slug: "detail",
+    eyebrow: "Detail Collection",
+    title: "大樣圖 213-224",
+    summary: "以節點卡牆呈現收邊、接縫、櫃體、燈槽與材料交接的大樣整理。",
+    visualNote: "讓大樣圖像美術館藏品一樣被放大觀看，專注細部扣分點。",
+    items: Array.from({ length: 12 }, (_, index) => {
+      const code = String(213 + index);
+      return {
+        code,
+        title: `大樣節點 ${code}`,
+        variants: ["尺度", "材質", "做法"],
+        focus: "節點關係、材料厚度與尺寸標註",
+        notes: "建議搭配扣分點清單一起做考前複盤。",
+      };
+    }),
+  },
+];
+
+export const sampleUploads: UploadEntry[] = [
+  {
+    id: "demo-1",
+    title: "201A 客餐廳平面練習",
+    category: "平面圖 201-206",
+    sheetCode: "201A",
+    imageUrl: "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80",
+    kind: "我的練習圖",
+    authorName: "你",
+    scoreNote: "玄關櫃比例不夠穩，餐桌與走道淨寬偏窄，預估扣 6-8 分。",
+    weaknesses: ["入口收納深度不足", "餐桌邊距太小", "尺寸標註密度不平均"],
+    createdAt: "2026-06-20T10:30:00.000Z",
+  },
+  {
+    id: "demo-2",
+    title: "208 乙向透視參考",
+    category: "透視圖 207-212",
+    sheetCode: "208乙",
+    imageUrl: "https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=1200&q=80",
+    kind: "他人範例圖",
+    authorName: "範例收藏",
+    scoreNote: "配色節奏穩，主牆與吊燈構圖清楚，適合當作上色參考。",
+    weaknesses: ["人物比例略高", "桌面陰影邊界偏硬"],
+    createdAt: "2026-06-18T08:10:00.000Z",
+  },
+  {
+    id: "demo-3",
+    title: "216 大樣收邊複盤",
+    category: "大樣圖 213-224",
+    sheetCode: "216",
+    imageUrl: "https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=1200&q=80",
+    kind: "我的練習圖",
+    authorName: "你",
+    scoreNote: "材料層次對，但尺寸箭頭與節點標示順序還不夠乾淨。",
+    weaknesses: ["箭頭方向不一致", "節點說明字太擠", "材料厚度未完全對齊"],
+    createdAt: "2026-06-14T12:00:00.000Z",
+  },
+];
