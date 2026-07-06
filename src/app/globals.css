@@ -1374,18 +1374,66 @@ main {
 .lightbox-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(14, 13, 11, 0.92);
+  background: rgba(14, 13, 11, 0.94);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 2000;
-  padding: var(--space-4);
+  padding: var(--space-6);
   cursor: zoom-out;
   animation: fadeIn var(--duration-fast) var(--ease-out);
+  overflow: hidden;
 }
 
+/* When zoomed, allow overlay to scroll */
+.lightbox-overlay--zoomed {
+  display: block;
+  overflow: auto;
+  cursor: zoom-out;
+}
+
+.lightbox-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  width: 100%;
+}
+
+.lightbox-overlay--zoomed .lightbox-content {
+  display: block;
+  min-height: auto;
+  width: max-content;
+  margin: 0 auto;
+  padding: var(--space-12) 0;
+}
+
+.img-zoomed-fit {
+  max-width: 92vw;
+  max-height: 85vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 24px 72px rgba(0, 0, 0, 0.6);
+  cursor: zoom-in;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.img-zoomed-large {
+  width: auto;
+  max-width: 1600px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 24px 72px rgba(0, 0, 0, 0.7);
+  cursor: zoom-out;
+}
+
+/* Fixed controls when overlay is scrolled */
 .lightbox-close {
-  position: absolute;
+  position: fixed;
   top: var(--space-5);
   right: var(--space-5);
   width: 44px;
@@ -1397,46 +1445,15 @@ main {
   align-items: center;
   justify-content: center;
   transition: background var(--duration-fast) var(--ease-out);
+  z-index: 2020;
 }
 
 .lightbox-close:hover {
   background: rgba(255, 255, 255, 0.28);
 }
 
-.lightbox-content {
-  max-width: 95vw;
-  max-height: 90vh;
-}
-
-.lightbox-content img {
-  max-width: 100%;
-  max-height: 90vh;
-  object-fit: contain;
-  border-radius: var(--radius-sm);
-  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-}
-
-/* Responsive Modal Styling */
-@media (max-width: 768px) {
-  .modal-info-section,
-  .question-grid,
-  .modal-uploads-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .modal-container {
-    max-height: 95vh;
-  }
-
-  .modal-content {
-    padding: var(--space-4);
-    gap: var(--space-5);
-  }
-}
-
-/* Lightbox Navigation Buttons */
 .lightbox-nav-btn {
-  position: absolute;
+  position: fixed;
   top: 50%;
   transform: translateY(-50%);
   width: 56px;
@@ -1466,6 +1483,24 @@ main {
 
 .lightbox-nav-btn--right {
   right: var(--space-6);
+}
+
+/* Responsive Modal Styling */
+@media (max-width: 768px) {
+  .modal-info-section,
+  .question-grid,
+  .modal-uploads-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-container {
+    max-height: 95vh;
+  }
+
+  .modal-content {
+    padding: var(--space-4);
+    gap: var(--space-5);
+  }
 }
 
 @media (max-width: 680px) {

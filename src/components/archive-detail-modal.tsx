@@ -13,6 +13,7 @@ type ArchiveDetailModalProps = {
 
 export function ArchiveDetailModal({ item, uploads, onClose }: ArchiveDetailModalProps) {
   const [activeImage, setActiveImage] = useState<string | null>(null);
+  const [isLargeZoom, setIsLargeZoom] = useState(false);
 
   const is208 = item.code.startsWith("208");
   const planUrl = is208 ? "/images/208/2021021722093353239 (1).jpg" : null;
@@ -34,6 +35,7 @@ export function ArchiveDetailModal({ item, uploads, onClose }: ArchiveDetailModa
       if (e.key === "Escape") {
         if (activeImage) {
           setActiveImage(null);
+          setIsLargeZoom(false);
         } else {
           onClose();
         }
@@ -43,12 +45,14 @@ export function ArchiveDetailModal({ item, uploads, onClose }: ArchiveDetailModa
           if (currentIndex !== -1) {
             const nextIndex = (currentIndex + 1) % zoomableImages.length;
             setActiveImage(zoomableImages[nextIndex]);
+            setIsLargeZoom(false);
           }
         } else if (e.key === "ArrowLeft" || e.key === "Left") {
           const currentIndex = zoomableImages.indexOf(activeImage);
           if (currentIndex !== -1) {
             const prevIndex = (currentIndex - 1 + zoomableImages.length) % zoomableImages.length;
             setActiveImage(zoomableImages[prevIndex]);
+            setIsLargeZoom(false);
           }
         }
       }
@@ -181,8 +185,21 @@ export function ArchiveDetailModal({ item, uploads, onClose }: ArchiveDetailModa
 
       {/* Lightbox for Zoomed Image */}
       {activeImage && (
-        <div className="lightbox-overlay" onClick={() => setActiveImage(null)}>
-          <button className="lightbox-close" onClick={() => setActiveImage(null)} aria-label="關閉放大圖">
+        <div 
+          className={`lightbox-overlay ${isLargeZoom ? "lightbox-overlay--zoomed" : ""}`}
+          onClick={() => {
+            setActiveImage(null);
+            setIsLargeZoom(false);
+          }}
+        >
+          <button 
+            className="lightbox-close" 
+            onClick={() => {
+              setActiveImage(null);
+              setIsLargeZoom(false);
+            }} 
+            aria-label="關閉放大圖"
+          >
             <X size={24} />
           </button>
           
@@ -195,6 +212,7 @@ export function ArchiveDetailModal({ item, uploads, onClose }: ArchiveDetailModa
                   const currentIndex = zoomableImages.indexOf(activeImage);
                   const prevIndex = (currentIndex - 1 + zoomableImages.length) % zoomableImages.length;
                   setActiveImage(zoomableImages[prevIndex]);
+                  setIsLargeZoom(false);
                 }}
                 aria-label="上一張"
               >
@@ -207,6 +225,7 @@ export function ArchiveDetailModal({ item, uploads, onClose }: ArchiveDetailModa
                   const currentIndex = zoomableImages.indexOf(activeImage);
                   const nextIndex = (currentIndex + 1) % zoomableImages.length;
                   setActiveImage(zoomableImages[nextIndex]);
+                  setIsLargeZoom(false);
                 }}
                 aria-label="下一張"
               >
@@ -216,7 +235,12 @@ export function ArchiveDetailModal({ item, uploads, onClose }: ArchiveDetailModa
           )}
 
           <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
-            <img src={activeImage} alt="放大圖面" />
+            <img 
+              src={activeImage} 
+              alt="放大圖面" 
+              className={isLargeZoom ? "img-zoomed-large" : "img-zoomed-fit"}
+              onClick={() => setIsLargeZoom(!isLargeZoom)}
+            />
           </div>
         </div>
       )}
