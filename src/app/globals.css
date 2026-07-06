@@ -499,11 +499,28 @@ main {
 /* =========================================================================
    Archive block
    ========================================================================= */
+.archive-heading-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: var(--space-5);
+}
+
+@media (min-width: 768px) {
+  .archive-heading-container {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-6);
+  }
+}
+
 .archive-heading {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-5);
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 .archive-heading > div {
@@ -1591,4 +1608,59 @@ main {
   border-radius: var(--radius-md);
   color: var(--muted);
   font-size: var(--text-base);
+}
+
+/* Dashboard Section Stats Badges */
+.section-stats {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  margin-top: var(--space-2);
+}
+
+@media (min-width: 768px) {
+  .section-stats {
+    margin-top: 0;
+  }
+}
+
+.stat-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  min-width: 76px;
+}
+
+.stat-val {
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--text-strong);
+  line-height: 1.2;
+}
+
+.stat-lbl {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 2px;
+}
+
+.stat-badge--accent {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.stat-badge--accent .stat-val {
+  color: var(--accent-strong);
+}
+
+.stat-badge--accent .stat-lbl {
+  color: var(--accent);
 }

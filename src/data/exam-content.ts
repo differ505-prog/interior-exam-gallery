@@ -5,38 +5,14 @@ const ceilingElevationItems: ArchiveSection["items"] = [];
 const questions = ["201", "202", "203", "204", "205", "206"];
 const variants = ["A", "B", "C", "D", "E"];
 
-const getPlanFocus = (q: string) => {
-  switch (q) {
-    case "201": return "入口、客餐廳關係與家具尺度";
-    case "202": return "畸零角處理與視線收束";
-    case "203": return "櫃體比例與空間壓迫感";
-    case "204": return "通行寬度與家具轉身半徑";
-    case "205": return "客餐廳與書房交界處理";
-    case "206": return "整體配置平衡與圖面完整度";
-    default: return "平面配置、動線與尺寸分析";
-  }
-};
-
-const getPlanTitle = (q: string) => {
-  switch (q) {
-    case "201": return "住宅基礎配置";
-    case "202": return "格局轉折配置";
-    case "203": return "收納整合配置";
-    case "204": return "動線修正配置";
-    case "205": return "複合機能配置";
-    case "206": return "考前總整理配置";
-    default: return "平面圖配置";
-  }
-};
-
 questions.forEach((q) => {
   variants.forEach((v) => {
     // Generate Plan Item
     planItems.push({
       code: `${q}${v}`,
-      title: `${q}${v} ${getPlanTitle(q)}`,
+      title: `${q}${v} 平面配置圖`,
       variants: [v],
-      focus: getPlanFocus(q),
+      focus: "平面配置圖",
       notes: `${q}題型${v}版平面配置圖練習，專注通道淨寬、家具尺度與動線流暢性。`
     });
 

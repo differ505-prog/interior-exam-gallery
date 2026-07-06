@@ -26,6 +26,16 @@ export function ArchiveSectionClient({ section, uploads }: ArchiveSectionClientP
   const perspectiveQuestions = ["207", "208", "209", "210", "211", "212"];
   const types = ["全部", "天花板配置圖", "客廳立面圖", "餐廳立面圖", "主臥立面圖"];
 
+  // Calculate section stats
+  const totalItems = section.items.length;
+  const sectionCodes = new Set(section.items.map((item) => item.code.trim().toLowerCase()));
+  const sectionUploads = uploads.filter((u) => sectionCodes.has(u.sheetCode.trim().toLowerCase()));
+  const uploadedCount = sectionUploads.length;
+  
+  const completedCodes = new Set(sectionUploads.map((u) => u.sheetCode.trim().toLowerCase()));
+  const completedCount = completedCodes.size;
+  const completionRate = totalItems > 0 ? Math.round((completedCount / totalItems) * 100) : 0;
+
   // Filter logic
   const filteredItems = section.items.filter((item) => {
     if (isPlan) {
@@ -56,11 +66,28 @@ export function ArchiveSectionClient({ section, uploads }: ArchiveSectionClientP
 
   return (
     <section className="archive-block" id={section.slug}>
-      <div className="archive-heading">
-        <p className="eyebrow">{section.eyebrow}</p>
-        <div>
-          <h2>{section.title}</h2>
-          <p>{section.summary}</p>
+      <div className="archive-heading-container">
+        <div className="archive-heading">
+          <p className="eyebrow">{section.eyebrow}</p>
+          <div>
+            <h2>{section.title}</h2>
+            <p>{section.summary}</p>
+          </div>
+        </div>
+
+        <div className="section-stats" aria-label="章節統計資訊">
+          <div className="stat-badge">
+            <span className="stat-val">{totalItems}</span>
+            <span className="stat-lbl">總題數</span>
+          </div>
+          <div className="stat-badge">
+            <span className="stat-val">{uploadedCount}</span>
+            <span className="stat-lbl">已上傳</span>
+          </div>
+          <div className="stat-badge stat-badge--accent">
+            <span className="stat-val">{completionRate}%</span>
+            <span className="stat-lbl">完成度</span>
+          </div>
         </div>
       </div>
       
