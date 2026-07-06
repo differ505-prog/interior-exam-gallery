@@ -15,7 +15,7 @@ export type ArchiveSection = {
   items: ArchiveItem[];
 };
 
-export type UploadKind = "我的練習圖" | "他人範例圖";
+export type UploadKind = "我的練習圖" | "他人範例圖" | "他人作品參考";
 
 export type UploadEntry = {
   id: string;

@@ -15,13 +15,14 @@ type DbUploadRow = {
   created_at: string;
 };
 
-const ALLOWED_KINDS: ReadonlySet<UploadEntry["kind"]> = new Set([
+const ALLOWED_KINDS: ReadonlySet<string> = new Set([
   "我的練習圖",
   "他人範例圖",
+  "他人作品參考",
 ]);
 
 function mapUpload(row: DbUploadRow): UploadEntry | null {
-  if (!ALLOWED_KINDS.has(row.kind as UploadEntry["kind"])) {
+  if (!ALLOWED_KINDS.has(row.kind)) {
     return null;
   }
 
@@ -30,13 +31,19 @@ function mapUpload(row: DbUploadRow): UploadEntry | null {
     return null;
   }
 
+  // Normalize "他人範例圖" to "他人作品參考" for UI consistency
+  let mappedKind = row.kind as UploadEntry["kind"];
+  if (row.kind === "他人範例圖") {
+    mappedKind = "他人作品參考";
+  }
+
   return {
     id: String(row.id),
     title: String(row.title ?? "").trim() || "未命名圖面",
     category: String(row.category ?? "").trim() || "未分類",
     sheetCode: String(row.sheet_code ?? "").trim() || "—",
     imageUrl: String(row.image_url ?? "").trim(),
-    kind: row.kind as UploadEntry["kind"],
+    kind: mappedKind,
     authorName: String(row.author_name ?? "").trim() || "匿名",
     scoreNote: String(row.score_note ?? "").trim(),
     weaknesses: Array.isArray(row.weaknesses)

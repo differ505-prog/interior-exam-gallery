@@ -114,41 +114,4 @@ export const examSections: ArchiveSection[] = [
   },
 ];
 
-export const sampleUploads: UploadEntry[] = [
-  {
-    id: "demo-1",
-    title: "201A 客餐廳平面練習",
-    category: "平面圖 201-206",
-    sheetCode: "201A",
-    imageUrl: "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80",
-    kind: "我的練習圖",
-    authorName: "你",
-    scoreNote: "玄關櫃比例不夠穩，餐桌與走道淨寬偏窄，預估扣 6-8 分。",
-    weaknesses: ["入口收納深度不足", "餐桌邊距太小", "尺寸標註密度不平均"],
-    createdAt: "2026-06-20T10:30:00.000Z",
-  },
-  {
-    id: "demo-2",
-    title: "208 乙向透視參考",
-    category: "透視圖 207-212",
-    sheetCode: "208乙",
-    imageUrl: "https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=1200&q=80",
-    kind: "他人範例圖",
-    authorName: "範例收藏",
-    scoreNote: "配色節奏穩，主牆與吊燈構圖清楚，適合當作上色參考。",
-    weaknesses: ["人物比例略高", "桌面陰影邊界偏硬"],
-    createdAt: "2026-06-18T08:10:00.000Z",
-  },
-  {
-    id: "demo-3",
-    title: "216 大樣收邊複盤",
-    category: "大樣圖 213-224",
-    sheetCode: "216",
-    imageUrl: "https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=1200&q=80",
-    kind: "我的練習圖",
-    authorName: "你",
-    scoreNote: "材料層次對，但尺寸箭頭與節點標示順序還不夠乾淨。",
-    weaknesses: ["箭頭方向不一致", "節點說明字太擠", "材料厚度未完全對齊"],
-    createdAt: "2026-06-14T12:00:00.000Z",
-  },
-];
+export const sampleUploads: UploadEntry[] = [];

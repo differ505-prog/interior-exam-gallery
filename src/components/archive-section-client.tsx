@@ -29,10 +29,14 @@ export function ArchiveSectionClient({ section, uploads }: ArchiveSectionClientP
   // Calculate section stats
   const totalItems = section.items.length;
   const sectionCodes = new Set(section.items.map((item) => item.code.trim().toLowerCase()));
-  const sectionUploads = uploads.filter((u) => sectionCodes.has(u.sheetCode.trim().toLowerCase()));
-  const uploadedCount = sectionUploads.length;
   
-  const completedCodes = new Set(sectionUploads.map((u) => u.sheetCode.trim().toLowerCase()));
+  // Only count student's own practices for completion and upload count
+  const myUploads = uploads.filter(
+    (u) => sectionCodes.has(u.sheetCode.trim().toLowerCase()) && u.kind === "我的練習圖"
+  );
+  const uploadedCount = myUploads.length;
+  
+  const completedCodes = new Set(myUploads.map((u) => u.sheetCode.trim().toLowerCase()));
   const completedCount = completedCodes.size;
   const completionRate = totalItems > 0 ? Math.round((completedCount / totalItems) * 100) : 0;
 

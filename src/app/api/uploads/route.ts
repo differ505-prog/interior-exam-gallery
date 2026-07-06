@@ -18,7 +18,7 @@ const categoryOptions = new Set([
   "大樣圖 213-224",
 ]);
 
-const kindOptions = new Set(["我的練習圖", "他人範例圖"]);
+const kindOptions = new Set(["我的練習圖", "他人範例圖", "他人作品參考"]);
 
 const ipBuckets = new Map<string, { count: number; resetAt: number }>();
 

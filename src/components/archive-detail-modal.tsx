@@ -17,6 +17,9 @@ export function ArchiveDetailModal({ item, uploads, onClose }: ArchiveDetailModa
   const [isLargeZoom, setIsLargeZoom] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  const myPractices = useMemo(() => uploads.filter((u) => u.kind === "我的練習圖"), [uploads]);
+  const otherReferences = useMemo(() => uploads.filter((u) => u.kind === "他人範例圖"), [uploads]);
+
   useEffect(() => {
     setMounted(true);
     return () => setMounted(false);
@@ -146,10 +149,10 @@ export function ArchiveDetailModal({ item, uploads, onClose }: ArchiveDetailModa
 
           {/* Practice submissions */}
           <section className="modal-section">
-            <h3 className="section-title">我的練習與範例回饋 ({uploads.length})</h3>
-            {uploads.length > 0 ? (
+            <h3 className="section-title">我的練習成果 ({myPractices.length})</h3>
+            {myPractices.length > 0 ? (
               <div className="modal-uploads-grid">
-                {uploads.map((upload) => (
+                {myPractices.map((upload) => (
                   <div className="modal-upload-card" key={upload.id}>
                     <div className="modal-upload-img-wrap" onClick={() => setActiveImage(upload.imageUrl)}>
                       <SafeImage src={upload.imageUrl} alt={upload.title} aspectRatio="4 / 3" />
@@ -182,10 +185,57 @@ export function ArchiveDetailModal({ item, uploads, onClose }: ArchiveDetailModa
               </div>
             ) : (
               <div className="no-uploads-box">
-                <p>尚未上傳此題目的練習圖面。</p>
+                <p>尚未上傳您的個人練習圖面。</p>
                 <a href="#upload-studio" className="modal-cta-btn" onClick={onClose}>
                   <Upload size={16} />
-                  <span>立即上傳此題練習</span>
+                  <span>立即上傳個人練習</span>
+                </a>
+              </div>
+            )}
+          </section>
+
+          {/* Others' Reference Submissions */}
+          <section className="modal-section">
+            <h3 className="section-title">他人優秀作品參考 ({otherReferences.length})</h3>
+            {otherReferences.length > 0 ? (
+              <div className="modal-uploads-grid">
+                {otherReferences.map((upload) => (
+                  <div className="modal-upload-card" key={upload.id}>
+                    <div className="modal-upload-img-wrap" onClick={() => setActiveImage(upload.imageUrl)}>
+                      <SafeImage src={upload.imageUrl} alt={upload.title} aspectRatio="4 / 3" />
+                      <span className="modal-upload-kind">他人作品參考</span>
+                      <button className="modal-upload-zoom" aria-label="放大圖面">
+                        <ZoomIn size={16} />
+                      </button>
+                    </div>
+                    <div className="modal-upload-details">
+                      <div className="modal-upload-meta">
+                        <span className="modal-upload-author">{upload.authorName}</span>
+                        <span className="modal-upload-date">
+                          {new Date(upload.createdAt).toLocaleDateString("zh-TW")}
+                        </span>
+                      </div>
+                      <h4>{upload.title}</h4>
+                      <p className="modal-upload-score">{upload.scoreNote}</p>
+                      {upload.weaknesses.length > 0 && (
+                        <div className="modal-upload-weaknesses">
+                          {upload.weaknesses.map((w, idx) => (
+                            <span className="modal-weakness-tag" key={idx}>
+                              {w}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="no-uploads-box no-uploads-box--neutral">
+                <p>尚未收藏他人優秀練習圖面。上傳可以方便收藏對照學習。</p>
+                <a href="#upload-studio" className="modal-cta-btn modal-cta-btn--secondary" onClick={onClose}>
+                  <Upload size={16} />
+                  <span>上傳他人作品參考</span>
                 </a>
               </div>
             )}

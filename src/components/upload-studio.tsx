@@ -11,7 +11,7 @@ const categoryOptions = [
   "大樣圖 213-224",
 ] as const;
 
-const kindOptions = ["我的練習圖", "他人範例圖"] as const;
+const kindOptions = ["我的練習圖", "他人作品參考"] as const;
 
 type CategoryOption = (typeof categoryOptions)[number];
 type KindOption = (typeof kindOptions)[number];

@@ -1664,3 +1664,20 @@ main {
 .stat-badge--accent .stat-lbl {
   color: var(--accent);
 }
+
+/* Neutral Box and Secondary CTA elements */
+.no-uploads-box--neutral {
+  border-style: dashed;
+  background: rgba(74, 68, 62, 0.03);
+}
+
+.modal-cta-btn--secondary {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line-strong);
+}
+
+.modal-cta-btn--secondary:hover {
+  background: var(--line);
+  color: var(--text-strong);
+}
