@@ -2,7 +2,7 @@
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LoaderCircle, Upload, WandSparkles } from "lucide-react";
+import { LoaderCircle, Upload, WandSparkles, X } from "lucide-react";
 
 const categoryOptions = [
   "平面圖 201-206",
@@ -37,6 +37,36 @@ export function UploadStudio() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
+  // Autocomplete and suggestion dropdown states
+  const [kind, setKind] = useState<string>("我的練習圖");
+  const [authorName, setAuthorName] = useState<string>("");
+  const [savedAuthors, setSavedAuthors] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Load saved authors from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("saved_authors");
+      if (saved) {
+        setSavedAuthors(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.error("Failed to load saved authors", e);
+    }
+  }, []);
+
+  // Close suggestions list on clicking outside the input area
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -64,7 +94,19 @@ export function UploadStudio() {
         throw new Error(result.message || "上傳失敗，請稍後再試。");
       }
 
+      // Save author memory on success for others' reference works
+      if (kind === "他人作品參考" && authorName.trim()) {
+        const trimmed = authorName.trim();
+        const current = [...savedAuthors];
+        if (!current.includes(trimmed)) {
+          const updated = [trimmed, ...current].slice(0, 15);
+          setSavedAuthors(updated);
+          localStorage.setItem("saved_authors", JSON.stringify(updated));
+        }
+      }
+
       form.reset();
+      setAuthorName(""); // Reset controlled input
       if (previewUrl) {
         URL.revokeObjectURL(previewUrl);
         setPreviewUrl(null);
@@ -146,7 +188,19 @@ export function UploadStudio() {
             </select>
           </Field>
           <Field id="kind" label="圖像類型" required>
-            <select defaultValue={kindOptions[0]} id="kind" name="kind" required>
+            <select
+              value={kind}
+              id="kind"
+              name="kind"
+              required
+              onChange={(e) => {
+                const val = e.target.value;
+                setKind(val);
+                if (val !== "他人作品參考") {
+                  setShowSuggestions(false);
+                }
+              }}
+            >
               {kindOptions.map((option: KindOption) => (
                 <option key={option} value={option}>
                   {option}
@@ -155,14 +209,54 @@ export function UploadStudio() {
             </select>
           </Field>
           <Field id="authorName" label="作者 / 來源" required>
-            <input
-              id="authorName"
-              maxLength={MAX_TITLE_LENGTH}
-              name="authorName"
-              placeholder="例如：我自己、同學範例、講義整理"
-              required
-              type="text"
-            />
+            <div className="author-input-wrapper" ref={wrapperRef}>
+              <input
+                id="authorName"
+                maxLength={MAX_TITLE_LENGTH}
+                name="authorName"
+                value={authorName}
+                onChange={(e) => setAuthorName(e.target.value)}
+                onFocus={() => {
+                  if (kind === "他人作品參考" && savedAuthors.length > 0) {
+                    setShowSuggestions(true);
+                  }
+                }}
+                placeholder={kind === "他人作品參考" ? "例如：同學範例、大正講義" : "例如：我自己"}
+                required
+                type="text"
+                autoComplete="off"
+              />
+              
+              {showSuggestions && kind === "他人作品參考" && savedAuthors.length > 0 && (
+                <div className="suggestions-dropdown" role="listbox">
+                  {savedAuthors.map((author) => (
+                    <div 
+                      key={author} 
+                      className="suggestion-item"
+                      onClick={() => {
+                        setAuthorName(author);
+                        setShowSuggestions(false);
+                      }}
+                    >
+                      <span className="suggestion-item-text">{author}</span>
+                      <button
+                        className="suggestion-delete-btn"
+                        type="button"
+                        aria-label={`刪除歷史紀錄 ${author}`}
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent dropdown selection select
+                          const updated = savedAuthors.filter((a) => a !== author);
+                          setSavedAuthors(updated);
+                          localStorage.setItem("saved_authors", JSON.stringify(updated));
+                        }}
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </Field>
           <Field id="image" label="圖片檔案" required>
             <input

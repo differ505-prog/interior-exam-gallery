@@ -1681,3 +1681,66 @@ main {
   background: var(--line);
   color: var(--text-strong);
 }
+
+/* Autocomplete Suggestion Dropdown */
+.author-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.suggestions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  z-index: 10;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 4px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  animation: fadeIn var(--duration-fast) var(--ease-out);
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-4);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out);
+  color: var(--text);
+}
+
+.suggestion-item:hover {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.suggestion-item-text {
+  flex-grow: 1;
+  text-align: left;
+}
+
+.suggestion-delete-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 99px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.suggestion-delete-btn:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
