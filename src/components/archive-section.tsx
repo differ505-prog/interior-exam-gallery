@@ -1,6 +1,10 @@
 import { ArchiveSection } from "@/types/exam";
+import { ArchiveCard } from "@/components/archive-card";
+import { getRecentUploads } from "@/lib/uploads";
 
-export function ArchiveSectionBlock({ section }: { section: ArchiveSection }) {
+export async function ArchiveSectionBlock({ section }: { section: ArchiveSection }) {
+  const uploads = await getRecentUploads().catch(() => []);
+
   return (
     <section className="archive-block" id={section.slug}>
       <div className="archive-heading">
@@ -15,17 +19,19 @@ export function ArchiveSectionBlock({ section }: { section: ArchiveSection }) {
         <p>{section.visualNote}</p>
       </div>
       <div className="archive-grid">
-        {section.items.map((item) => (
-          <article className="archive-card" key={`${section.slug}-${item.code}`}>
-            <div className="archive-card-top">
-              <p>{item.code}</p>
-              <span>{item.variants.join(" / ")}</span>
-            </div>
-            <h3>{item.title}</h3>
-            <p>{item.focus}</p>
-            <small>{item.notes}</small>
-          </article>
-        ))}
+        {section.items.map((item) => {
+          const matchedUploads = uploads.filter(
+            (u) => u.sheetCode.trim().toLowerCase() === item.code.trim().toLowerCase()
+          );
+          return (
+            <ArchiveCard
+              item={item}
+              key={`${section.slug}-${item.code}`}
+              sectionSlug={section.slug}
+              uploads={matchedUploads}
+            />
+          );
+        })}
       </div>
     </section>
   );

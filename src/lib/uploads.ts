@@ -15,21 +15,41 @@ type DbUploadRow = {
   created_at: string;
 };
 
-function mapUpload(row: DbUploadRow): UploadEntry {
+const ALLOWED_KINDS: ReadonlySet<UploadEntry["kind"]> = new Set([
+  "我的練習圖",
+  "他人範例圖",
+]);
+
+function mapUpload(row: DbUploadRow): UploadEntry | null {
+  if (!ALLOWED_KINDS.has(row.kind as UploadEntry["kind"])) {
+    return null;
+  }
+
+  const created = new Date(row.created_at);
+  if (Number.isNaN(created.getTime())) {
+    return null;
+  }
+
   return {
-    id: row.id,
-    title: row.title,
-    category: row.category,
-    sheetCode: row.sheet_code,
-    imageUrl: row.image_url,
-    kind: row.kind,
-    authorName: row.author_name,
-    scoreNote: row.score_note,
-    weaknesses: row.weaknesses,
-    createdAt: row.created_at,
+    id: String(row.id),
+    title: String(row.title ?? "").trim() || "未命名圖面",
+    category: String(row.category ?? "").trim() || "未分類",
+    sheetCode: String(row.sheet_code ?? "").trim() || "—",
+    imageUrl: String(row.image_url ?? "").trim(),
+    kind: row.kind as UploadEntry["kind"],
+    authorName: String(row.author_name ?? "").trim() || "匿名",
+    scoreNote: String(row.score_note ?? "").trim(),
+    weaknesses: Array.isArray(row.weaknesses)
+      ? row.weaknesses.filter((w): w is string => typeof w === "string" && w.trim().length > 0)
+      : [],
+    createdAt: created.toISOString(),
   };
 }
 
+/**
+ * 從 Supabase 拉取最近上傳；若失敗或環境未設定，退回展示資料。
+ * 絕不將錯誤拋到 caller，避免單一筆資料損毀拖垮整頁 SSR。
+ */
 export async function getRecentUploads(): Promise<UploadEntry[]> {
   if (!hasSupabaseEnv) {
     return sampleUploads;
@@ -39,7 +59,9 @@ export async function getRecentUploads(): Promise<UploadEntry[]> {
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
       .from("practice_entries")
-      .select("id, title, category, sheet_code, image_url, kind, author_name, score_note, weaknesses, created_at")
+      .select(
+        "id, title, category, sheet_code, image_url, kind, author_name, score_note, weaknesses, created_at",
+      )
       .order("created_at", { ascending: false })
       .limit(6);
 
@@ -51,9 +73,15 @@ export async function getRecentUploads(): Promise<UploadEntry[]> {
       return sampleUploads;
     }
 
-    return data.map((row) => mapUpload(row as DbUploadRow));
+    const mapped = data
+      .map((row) => mapUpload(row as DbUploadRow))
+      .filter((item): item is UploadEntry => item !== null);
+
+    return mapped.length > 0 ? mapped : sampleUploads;
   } catch (error) {
-    console.error("Failed to load uploads from Supabase", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Failed to load uploads from Supabase", error);
+    }
     return sampleUploads;
   }
 }

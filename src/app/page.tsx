@@ -1,106 +1,140 @@
+import Link from "next/link";
+import { Suspense } from "react";
 import { ArchiveSectionBlock } from "@/components/archive-section";
-import { RecentUploads } from "@/components/recent-uploads";
 import { UploadStudio } from "@/components/upload-studio";
+import { AsyncUploadsSection } from "@/components/recent-uploads-section";
+import { EmptyState, SectionHeading, SkeletonGrid, SurfacePanel } from "@/components/ui/primitives";
 import { examSections } from "@/data/exam-content";
-import { getRecentUploads } from "@/lib/uploads";
 
-const quickLinks = [
-  { href: "#plan", label: "平面圖 201-206" },
-  { href: "#ceiling-elevation", label: "天花板圖 / 立面圖" },
-  { href: "#perspective", label: "透視圖 207-212" },
-  { href: "#detail", label: "大樣圖 213-224" },
-  { href: "#upload-studio", label: "上傳練習圖" },
-];
+const chapterLinks = [
+  { href: "#plan", label: "平面圖" },
+  { href: "#ceiling-elevation", label: "天花與立面" },
+  { href: "#perspective", label: "透視圖" },
+  { href: "#detail", label: "大樣圖" },
+] as const;
+
+const actionLinks = [
+  { href: "#upload-studio", label: "上傳", variant: "ghost" as const },
+  { href: "#recent-uploads", label: "最近上傳", variant: "ghost" as const },
+] as const;
 
 const metrics = [
   { label: "平面圖版本", value: "30" },
   { label: "透視視角", value: "18" },
   { label: "大樣節點", value: "12" },
   { label: "練習複盤模組", value: "遠端同步" },
-];
+] as const;
 
-export default async function HomePage() {
-  const uploads = await getRecentUploads();
+const weeklySteps = [
+  "先看 201A 平面圖與客廳立面",
+  "再練 208 乙向透視與吊燈構圖",
+  "最後複盤 216 大樣節點與扣分點",
+] as const;
 
+const HERO_DESCRIPTION =
+  "策展式應考。圖面、複盤與扣分點，集中在一處。";
+
+export default function HomePage() {
   return (
-    <main className="page-shell">
-      <section className="hero-panel">
+    <main id="main-content">
+      <SurfacePanel ariaLabel="網站主視覺與導覽" className="hero-panel" id="hero">
         <header className="topbar">
-          <div>
-            <p className="eyebrow">Draft Gallery 乙級術科</p>
-            <h1>把術科圖面整理成可閱讀、可上傳、可複盤的圖庫藝廊</h1>
+          <div className="topbar__intro">
+            <p className="eyebrow">Draft Gallery</p>
+            <h1 className="heading heading--h1">
+              術科圖庫，從閱讀到複盤。
+            </h1>
           </div>
-          <nav>
-            {quickLinks.map((link) => (
-              <a href={link.href} key={link.href}>
-                {link.label}
-              </a>
-            ))}
+          <nav aria-label="章節快速導覽" className="topbar__nav">
+            <ul className="topbar__nav-list">
+              {chapterLinks.map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href}>{link.label}</Link>
+                </li>
+              ))}
+            </ul>
           </nav>
         </header>
 
         <div className="hero-grid">
-          <div className="hero-copy">
-            <p>
-              這不是補習班式的資料堆疊，而是一個有策展感的應考網站。你可以用畫廊式節奏查看平面圖、立面圖、透視圖與大樣圖，也可以把自己的練習圖和他人範例圖上傳到遠端圖庫，逐張寫下自評缺點與扣分點。
-            </p>
-            <div className="hero-actions">
-              <a className="solid-link" href="#upload-studio">
-                立即建立我的複盤牆
-              </a>
-              <a className="ghost-link" href="#recent-uploads">
-                查看最近上傳
-              </a>
+          <article className="hero-copy">
+            <p>{HERO_DESCRIPTION}</p>
+            <div className="hero-actions" role="group" aria-label="主要動作">
+              <Link aria-label="建立複盤牆" className="solid-link" href="#upload-studio">
+                建立複盤牆
+              </Link>
+              {actionLinks.map((link) => (
+                <Link
+                  aria-label={link.label}
+                  className="ghost-link"
+                  href={link.href}
+                  key={link.href}
+                >
+                  {link.label}
+                </Link>
+              ))}
             </div>
-          </div>
-          <aside className="hero-card">
-            <span>本週練習動線</span>
-            <ol>
-              <li>先看 201A 平面圖與客廳立面</li>
-              <li>再練 208 乙向透視與吊燈構圖</li>
-              <li>最後複盤 216 大樣節點與扣分點</li>
+          </article>
+
+          <aside aria-label="本週節奏" className="hero-card">
+            <span className="hero-card__eyebrow">本週節奏</span>
+            <ol className="hero-card__steps">
+              {weeklySteps.map((step, index) => (
+                <li key={step}>
+                  <span className="hero-card__step-index" aria-hidden="true">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <span>{step}</span>
+                </li>
+              ))}
             </ol>
           </aside>
         </div>
 
-        <div className="metric-row">
+        <dl aria-label="題庫規模" className="metric-row">
           {metrics.map((metric) => (
-            <article className="metric-card" key={metric.label}>
-              <strong>{metric.value}</strong>
-              <span>{metric.label}</span>
-            </article>
+            <div className="metric-card" key={metric.label}>
+              <dt className="metric-card__label">{metric.label}</dt>
+              <dd className="metric-card__value">{metric.value}</dd>
+            </div>
           ))}
-        </div>
-      </section>
+        </dl>
+      </SurfacePanel>
 
-      <section className="intro-panel">
-        <div>
-          <p className="eyebrow">Curated Workflow</p>
-          <h2>左側索引、中央圖面、右側複盤，維持安靜但專業的閱讀節奏</h2>
-        </div>
-        <p>
-          網站介面以暖白、炭黑、霧金與灰綠作為核心色，讓圖面像展覽作品一樣被觀看，資訊則維持最少但最有用。適合長時間備考，不會被雜訊打斷。
+      <SurfacePanel ariaLabel="策展工作流說明" className="intro-panel">
+        <SectionHeading
+          eyebrow="Workflow"
+          title="安靜的閱讀節奏。"
+        />
+        <p className="intro-panel__body">
+          暖白、炭黑、霧金。為長時間備考而設計。
         </p>
-      </section>
+      </SurfacePanel>
 
-      {examSections.map((section) => (
-        <ArchiveSectionBlock key={section.slug} section={section} />
-      ))}
+      <Suspense
+        fallback={
+          <SurfacePanel ariaLabel="題庫章節載入中">
+            <SkeletonGrid ariaLabel="題庫章節載入中" count={6} height={180} />
+          </SurfacePanel>
+        }
+      >
+        {examSections.length === 0 ? (
+          <SurfacePanel ariaLabel="題庫章節">
+            <EmptyState
+              description="章節資料建置中。"
+              title="章節建置中"
+            />
+          </SurfacePanel>
+        ) : (
+          examSections.map((section) => (
+            <ArchiveSectionBlock key={section.slug} section={section} />
+          ))
+        )}
+      </Suspense>
 
       <UploadStudio />
 
-      <section className="recent-section" id="recent-uploads">
-        <div className="archive-heading">
-          <p className="eyebrow">Recent Critiques</p>
-          <div>
-            <h2>最近上傳與複盤</h2>
-            <p>
-              這裡會顯示你的練習圖與收藏範例圖，每張都附上自評缺點、扣分點與整理者資訊。
-            </p>
-          </div>
-        </div>
-        <RecentUploads uploads={uploads} />
-      </section>
+      <AsyncUploadsSection />
     </main>
   );
 }

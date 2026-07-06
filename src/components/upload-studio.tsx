@@ -1,198 +1,250 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, Upload, WandSparkles } from "lucide-react";
 
 const categoryOptions = [
   "平面圖 201-206",
-  "天花板圖",
-  "立面圖：客廳",
-  "立面圖：主臥",
-  "立面圖：餐廳",
+  "天花板圖 / 立面圖",
   "透視圖 207-212",
   "大樣圖 213-224",
-];
+] as const;
 
 const kindOptions = ["我的練習圖", "他人範例圖"] as const;
+
+type CategoryOption = (typeof categoryOptions)[number];
+type KindOption = (typeof kindOptions)[number];
+
+const guidance = [
+  "上傳練習圖，建個人錯題牆。",
+  "收藏範例圖，作構圖參考。",
+  "附自評、扣分點與複盤。",
+] as const;
+
+const MAX_TITLE_LENGTH = 60;
+const MAX_TEXTAREA_LENGTH = 500;
+
+function truncate(value: string, max: number) {
+  return value.length > max ? `${value.slice(0, max)}…` : value;
+}
 
 export function UploadStudio() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageTone, setMessageTone] = useState<"info" | "error">("info");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
-  const guidance = useMemo(
-    () => [
-      "可上傳自己的練習圖，建立個人錯題牆。",
-      "也可收藏他人範例圖，當作構圖或上色參考。",
-      "每張圖都能附上自評缺點、扣分點與複盤重點。",
-    ],
-    [],
-  );
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
-  const handleSubmit = async (event: {
-    preventDefault: () => void;
-    currentTarget: HTMLFormElement;
-  }) => {
+  const orderedGuidance = useMemo(() => guidance, []);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const form = event.currentTarget;
     setIsSubmitting(true);
     setMessage(null);
 
-    const form = event.currentTarget;
-    const formData = new FormData(form);
-
     try {
+      const formData = new FormData(form);
       const response = await fetch("/api/uploads", {
         method: "POST",
         body: formData,
       });
 
-      const result = (await response.json()) as { message?: string };
+      const result = (await response.json().catch(() => ({}))) as { message?: string };
 
       if (!response.ok) {
         throw new Error(result.message || "上傳失敗，請稍後再試。");
       }
 
       form.reset();
-      setPreviewUrl(null);
-      setMessage(
-        "上傳完成，圖面與扣分點已加入圖庫。\n如果你已連接 Supabase，資料會同步存到遠端。",
-      );
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+        setPreviewUrl(null);
+      }
+      setMessageTone("info");
+      setMessage("完成。已加入圖庫。");
       router.refresh();
     } catch (error) {
-      const nextMessage =
-        error instanceof Error ? error.message : "發生未知錯誤。";
-      setMessage(nextMessage);
+      setMessageTone("error");
+      setMessage(error instanceof Error ? error.message : "發生未知錯誤。");
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handlePreviewChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+      return;
+    }
+    setPreviewUrl(URL.createObjectURL(file));
+  };
+
   return (
-    <section className="studio-shell" id="upload-studio">
+    <section aria-labelledby="upload-studio-title" className="studio-shell" id="upload-studio">
       <div className="studio-copy">
         <p className="eyebrow">Upload Studio</p>
-        <h2>上傳練習圖、收藏範例圖，建立自己的扣分點資料庫</h2>
+        <h2 id="upload-studio-title">上傳。建立扣分點資料庫。</h2>
         <p>
-          這個區塊是整站的實戰核心。你可以把每次練習的圖面丟進來，直接記錄自己看見的缺點、預估扣分與下次修正方向。
+          實戰核心。每張圖都帶著扣分點與修正方向。
         </p>
-        <div className="studio-points">
-          {guidance.map((item) => (
-            <div className="studio-point" key={item}>
-              <WandSparkles size={16} />
+        <ol className="studio-points" aria-label="上傳建議">
+          {orderedGuidance.map((item) => (
+            <li className="studio-point" key={item}>
+              <WandSparkles aria-hidden="true" size={16} />
               <span>{item}</span>
-            </div>
+            </li>
           ))}
-        </div>
+        </ol>
       </div>
 
-      <form className="studio-form" onSubmit={handleSubmit}>
+      <form
+        aria-busy={isSubmitting}
+        aria-describedby={message ? "upload-form-message" : undefined}
+        className="studio-form"
+        onSubmit={handleSubmit}
+        ref={formRef}
+      >
         <div className="field-grid">
-          <label>
-            圖面名稱
+          <Field id="title" label="圖面名稱" required>
             <input
+              id="title"
+              maxLength={MAX_TITLE_LENGTH}
               name="title"
               placeholder="例如：201A 平面圖第 3 次練習"
               required
               type="text"
             />
-          </label>
-          <label>
-            題號 / 版本
+          </Field>
+          <Field id="sheetCode" label="題號 / 版本" required>
             <input
+              id="sheetCode"
+              maxLength={20}
               name="sheetCode"
               placeholder="例如：201A、208乙、216"
               required
               type="text"
             />
-          </label>
-          <label>
-            類別
-            <select defaultValue={categoryOptions[0]} name="category">
+          </Field>
+          <Field id="category" label="類別" required>
+            <select defaultValue={categoryOptions[0]} id="category" name="category" required>
               {categoryOptions.map((option) => (
                 <option key={option} value={option}>
                   {option}
                 </option>
               ))}
             </select>
-          </label>
-          <label>
-            圖像類型
-            <select defaultValue={kindOptions[0]} name="kind">
-              {kindOptions.map((option) => (
+          </Field>
+          <Field id="kind" label="圖像類型" required>
+            <select defaultValue={kindOptions[0]} id="kind" name="kind" required>
+              {kindOptions.map((option: KindOption) => (
                 <option key={option} value={option}>
                   {option}
                 </option>
               ))}
             </select>
-          </label>
-          <label>
-            作者 / 來源
+          </Field>
+          <Field id="authorName" label="作者 / 來源" required>
             <input
+              id="authorName"
+              maxLength={MAX_TITLE_LENGTH}
               name="authorName"
               placeholder="例如：我自己、同學範例、講義整理"
               required
               type="text"
             />
-          </label>
-          <label>
-            圖片檔案
+          </Field>
+          <Field id="image" label="圖片檔案" required>
             <input
               accept="image/png,image/jpeg,image/webp"
+              id="image"
               name="image"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (!file) {
-                  setPreviewUrl(null);
-                  return;
-                }
-
-                setPreviewUrl(URL.createObjectURL(file));
-              }}
+              onChange={handlePreviewChange}
               required
               type="file"
             />
-          </label>
+          </Field>
         </div>
 
-        <label>
-          自評缺點 / 扣分點
+        <Field id="weaknesses" label="自評缺點 / 扣分點" required>
           <textarea
+            id="weaknesses"
+            maxLength={MAX_TEXTAREA_LENGTH}
             name="weaknesses"
             placeholder={"每行一點，例如：\n尺寸標註太擠\n走道淨寬不足\n主牆比例不穩"}
             required
             rows={5}
           />
-        </label>
+        </Field>
 
-        <label>
-          綜合複盤
+        <Field id="scoreNote" label="綜合複盤" required>
           <textarea
+            id="scoreNote"
+            maxLength={MAX_TEXTAREA_LENGTH}
             name="scoreNote"
             placeholder="例如：櫃體比例有改善，但玄關與餐桌距離仍過近，預估扣 5 分。"
             required
             rows={4}
           />
-        </label>
+        </Field>
 
         {previewUrl ? (
-          <div className="preview-box">
-            <img alt="預覽" src={previewUrl} />
+          <div className="preview-box" aria-label="選擇圖片預覽">
+            <img alt="已選擇的圖片預覽" decoding="async" src={previewUrl} />
           </div>
         ) : null}
 
         <button className="submit-button" disabled={isSubmitting} type="submit">
           {isSubmitting ? (
-            <LoaderCircle className="spin" size={18} />
+            <LoaderCircle aria-hidden="true" className="spin" size={18} />
           ) : (
-            <Upload size={18} />
+            <Upload aria-hidden="true" size={18} />
           )}
-          {isSubmitting ? "上傳中" : "送出到圖庫"}
+          <span>{isSubmitting ? "送出中" : "送出"}</span>
         </button>
 
-        {message ? <p className="form-message">{message}</p> : null}
+        {message ? (
+          <p
+            aria-live="polite"
+            className={`form-message form-message--${messageTone}`}
+            id="upload-form-message"
+            role={messageTone === "error" ? "alert" : "status"}
+          >
+            {truncate(message, 240)}
+          </p>
+        ) : null}
       </form>
     </section>
   );
 }
+
+type FieldProps = {
+  id: string;
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
+};
+
+function Field({ id, label, required, children }: FieldProps) {
+  return (
+    <label className="form-field" htmlFor={id}>
+      <span className="form-field__label">
+        {label}
+        {required ? <span aria-hidden="true" className="form-field__required"> *</span> : null}
+      </span>
+      {children}
+    </label>
+  );
+}
+
+export type { CategoryOption };
