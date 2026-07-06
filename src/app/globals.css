@@ -1375,40 +1375,18 @@ main {
   position: fixed;
   inset: 0;
   background: rgba(14, 13, 11, 0.94);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   z-index: 2000;
-  padding: var(--space-2);
-  cursor: zoom-out;
+  overflow: auto; /* Enable native vertical and horizontal scrolling */
   animation: fadeIn var(--duration-fast) var(--ease-out);
-  overflow: hidden;
-}
-
-/* When zoomed, allow overlay to scroll */
-.lightbox-overlay--zoomed {
-  align-items: flex-start;
-  justify-content: flex-start;
-  overflow: auto;
-  cursor: zoom-out;
 }
 
 .lightbox-content {
   display: flex;
-  align-items: center;
-  justify-content: center;
   min-height: 100%;
-  width: 100%;
-}
-
-.lightbox-overlay--zoomed .lightbox-content {
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  min-height: max-content;
+  min-width: 100%;
   width: max-content;
-  margin: 0 auto;
-  padding: var(--space-12) var(--space-10);
+  padding: var(--space-8);
+  box-sizing: border-box;
 }
 
 .img-zoomed-fit {
@@ -1420,7 +1398,9 @@ main {
   border-radius: var(--radius-sm);
   box-shadow: 0 24px 72px rgba(0, 0, 0, 0.6);
   cursor: zoom-in;
+  margin: auto; /* Flexbox centering magic */
   transition: transform var(--duration-fast) var(--ease-out);
+  flex-shrink: 0;
 }
 
 .img-zoomed-large {
@@ -1428,10 +1408,11 @@ main {
   max-width: none;
   height: auto;
   display: block;
-  margin: 0 auto;
   border-radius: var(--radius-sm);
   box-shadow: 0 24px 72px rgba(0, 0, 0, 0.7);
   cursor: zoom-out;
+  margin: auto; /* Flexbox centering / scrollable layout magic */
+  flex-shrink: 0;
 }
 
 /* Fixed controls when overlay is scrolled */
