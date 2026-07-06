@@ -236,14 +236,15 @@ export function ArchiveDetailModal({ item, uploads, onClose }: ArchiveDetailModa
             </>
           )}
 
-          <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
-            <img 
-              src={activeImage} 
-              alt="放大圖面" 
-              className={isLargeZoom ? "img-zoomed-large" : "img-zoomed-fit"}
-              onClick={() => setIsLargeZoom(!isLargeZoom)}
-            />
-          </div>
+          <img 
+            src={activeImage} 
+            alt="放大圖面" 
+            className={isLargeZoom ? "img-zoomed-large" : "img-zoomed-fit"}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsLargeZoom(!isLargeZoom);
+            }}
+          />
         </div>
       )}
     </>

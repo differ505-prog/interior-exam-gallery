@@ -1379,7 +1379,7 @@ main {
   align-items: center;
   justify-content: center;
   z-index: 2000;
-  padding: var(--space-2);
+  padding: var(--space-4);
   cursor: zoom-out;
   animation: fadeIn var(--duration-fast) var(--ease-out);
   overflow: hidden;
@@ -1392,23 +1392,6 @@ main {
   cursor: zoom-out;
 }
 
-.lightbox-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100%;
-  width: 100%;
-}
-
-/* Switch container to block layout when zoomed to enable native scroll alignment */
-.lightbox-overlay--zoomed .lightbox-content {
-  display: block;
-  min-height: auto;
-  width: max-content;
-  margin: 0 auto;
-  padding: var(--space-12) var(--space-10);
-}
-
 .img-zoomed-fit {
   max-width: 96vw;
   max-height: 92vh;
@@ -1418,7 +1401,6 @@ main {
   border-radius: var(--radius-sm);
   box-shadow: 0 24px 72px rgba(0, 0, 0, 0.6);
   cursor: zoom-in;
-  margin: auto; /* Centers horizontally and vertically inside display: flex container */
   transition: transform var(--duration-fast) var(--ease-out);
   flex-shrink: 0;
 }
@@ -1431,7 +1413,7 @@ main {
   border-radius: var(--radius-sm);
   box-shadow: 0 24px 72px rgba(0, 0, 0, 0.7);
   cursor: zoom-out;
-  margin: 0 auto; /* Center horizontally in block, top-aligned vertically */
+  margin: var(--space-12) auto; /* Centers horizontally, adds top/bottom spacing */
   flex-shrink: 0;
 }
 
