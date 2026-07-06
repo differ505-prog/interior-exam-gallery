@@ -9,10 +9,11 @@ import { SafeImage } from "@/components/ui/safe-image";
 type ArchiveDetailModalProps = {
   item: ArchiveItem;
   uploads: UploadEntry[];
+  sectionSlug: string;
   onClose: () => void;
 };
 
-export function ArchiveDetailModal({ item, uploads, onClose }: ArchiveDetailModalProps) {
+export function ArchiveDetailModal({ item, uploads, sectionSlug, onClose }: ArchiveDetailModalProps) {
   const [activeImage, setActiveImage] = useState<string | null>(null);
   const [isLargeZoom, setIsLargeZoom] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -28,6 +29,24 @@ export function ArchiveDetailModal({ item, uploads, onClose }: ArchiveDetailModa
   const is208 = item.code.startsWith("208");
   const planUrl = is208 ? "/images/208/2021021722093353239 (1).jpg" : null;
   const elevUrl = is208 ? "/images/208/2021021722093353239 (2).jpg" : null;
+
+  const handlePrefill = (kindVal: "我的練習圖" | "他人作品參考") => {
+    let uploadCategory = "平面圖 201-206";
+    if (sectionSlug === "ceiling-elevation") uploadCategory = "天花板圖 / 立面圖";
+    if (sectionSlug === "perspective") uploadCategory = "透視圖 207-212";
+    if (sectionSlug === "detail") uploadCategory = "大樣圖 213-224";
+
+    window.dispatchEvent(
+      new CustomEvent("prefill-upload", {
+        detail: {
+          sheetCode: item.code,
+          category: uploadCategory,
+          kind: kindVal
+        }
+      })
+    );
+    onClose();
+  };
 
   // Build the list of all zoomable images in order
   const zoomableImages = useMemo(() => {
@@ -174,7 +193,7 @@ export function ArchiveDetailModal({ item, uploads, onClose }: ArchiveDetailModa
             ) : (
               <div className="no-uploads-box">
                 <p>尚未上傳您的個人練習圖面。</p>
-                <a href="#upload-studio" className="modal-cta-btn" onClick={onClose}>
+                <a href="#upload-studio" className="modal-cta-btn" onClick={() => handlePrefill("我的練習圖")}>
                   <Upload size={16} />
                   <span>立即上傳個人練習</span>
                 </a>
@@ -221,7 +240,7 @@ export function ArchiveDetailModal({ item, uploads, onClose }: ArchiveDetailModa
             ) : (
               <div className="no-uploads-box no-uploads-box--neutral">
                 <p>尚未收藏他人優秀練習圖面。上傳可以方便收藏對照學習。</p>
-                <a href="#upload-studio" className="modal-cta-btn modal-cta-btn--secondary" onClick={onClose}>
+                <a href="#upload-studio" className="modal-cta-btn modal-cta-btn--secondary" onClick={() => handlePrefill("他人作品參考")}>
                   <Upload size={16} />
                   <span>上傳他人作品參考</span>
                 </a>

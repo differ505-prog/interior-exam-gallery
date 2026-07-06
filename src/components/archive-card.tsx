@@ -51,6 +51,7 @@ export function ArchiveCard({ item, sectionSlug, uploads = [] }: ArchiveCardProp
         <ArchiveDetailModal
           item={item}
           uploads={uploads}
+          sectionSlug={sectionSlug}
           onClose={() => setIsOpen(false)}
         />
       )}

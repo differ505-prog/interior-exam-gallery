@@ -66,9 +66,42 @@ export function UploadStudio() {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
   }, [previewUrl]);
+  // Listen for prefill events to automatically configure the upload fields
+  useEffect(() => {
+    const handlePrefill = (e: Event) => {
+      const { sheetCode, category, kind: kindVal } = (e as CustomEvent).detail;
+      if (sheetCode) {
+        if (formRef.current) {
+          const titleInput = formRef.current.querySelector("#title") as HTMLInputElement;
+          const sheetCodeInput = formRef.current.querySelector("#sheetCode") as HTMLInputElement;
+          const categorySelect = formRef.current.querySelector("#category") as HTMLSelectElement;
+          const kindSelect = formRef.current.querySelector("#kind") as HTMLSelectElement;
+          
+          if (sheetCodeInput) sheetCodeInput.value = sheetCode;
+          if (categorySelect) categorySelect.value = category;
+          if (kindSelect) {
+            kindSelect.value = kindVal;
+            setKind(kindVal);
+          }
+          
+          // Prefill default title
+          if (titleInput) {
+            titleInput.value = `${sheetCode} ${kindVal === "我的練習圖" ? "個人練習" : "作品參考"}`;
+          }
 
+          // Prepopulate authorName default for personal practice
+          if (kindVal === "我的練習圖") {
+            setAuthorName("我自己");
+          } else {
+            setAuthorName("");
+          }
+        }
+      }
+    };
 
-
+    window.addEventListener("prefill-upload", handlePrefill);
+    return () => window.removeEventListener("prefill-upload", handlePrefill);
+  }, []);
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = event.currentTarget;
