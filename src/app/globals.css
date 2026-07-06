@@ -1379,7 +1379,7 @@ main {
   align-items: center;
   justify-content: center;
   z-index: 2000;
-  padding: var(--space-6);
+  padding: var(--space-2);
   cursor: zoom-out;
   animation: fadeIn var(--duration-fast) var(--ease-out);
   overflow: hidden;
@@ -1409,8 +1409,8 @@ main {
 }
 
 .img-zoomed-fit {
-  max-width: 92vw;
-  max-height: 85vh;
+  max-width: 96vw;
+  max-height: 92vh;
   width: auto;
   height: auto;
   object-fit: contain;
@@ -1421,8 +1421,8 @@ main {
 }
 
 .img-zoomed-large {
-  width: auto;
-  max-width: 1600px;
+  width: 2200px;
+  max-width: none;
   height: auto;
   display: block;
   margin: 0 auto;
@@ -1439,17 +1439,19 @@ main {
   width: 44px;
   height: 44px;
   border-radius: 99px;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.5);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background var(--duration-fast) var(--ease-out);
+  transition: background var(--duration-fast) var(--ease-out), opacity var(--duration-fast) var(--ease-out);
   z-index: 2020;
+  opacity: 0.55;
 }
 
 .lightbox-close:hover {
-  background: rgba(255, 255, 255, 0.28);
+  background: rgba(0, 0, 0, 0.85);
+  opacity: 1;
 }
 
 .lightbox-nav-btn {
@@ -1459,18 +1461,20 @@ main {
   width: 56px;
   height: 56px;
   border-radius: 99px;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.4);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
+  transition: background var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out), opacity var(--duration-fast) var(--ease-out);
   z-index: 2010;
+  opacity: 0.5;
 }
 
 .lightbox-nav-btn:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.75);
   transform: translateY(-50%) scale(1.05);
+  opacity: 1;
 }
 
 .lightbox-nav-btn:active {
