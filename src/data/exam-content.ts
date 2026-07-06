@@ -1,11 +1,45 @@
 import { ArchiveSection, UploadEntry } from "@/types/exam";
 
+const planItems: ArchiveSection["items"] = [];
 const ceilingElevationItems: ArchiveSection["items"] = [];
 const questions = ["201", "202", "203", "204", "205", "206"];
 const variants = ["A", "B", "C", "D", "E"];
 
+const getPlanFocus = (q: string) => {
+  switch (q) {
+    case "201": return "入口、客餐廳關係與家具尺度";
+    case "202": return "畸零角處理與視線收束";
+    case "203": return "櫃體比例與空間壓迫感";
+    case "204": return "通行寬度與家具轉身半徑";
+    case "205": return "客餐廳與書房交界處理";
+    case "206": return "整體配置平衡與圖面完整度";
+    default: return "平面配置、動線與尺寸分析";
+  }
+};
+
+const getPlanTitle = (q: string) => {
+  switch (q) {
+    case "201": return "住宅基礎配置";
+    case "202": return "格局轉折配置";
+    case "203": return "收納整合配置";
+    case "204": return "動線修正配置";
+    case "205": return "複合機能配置";
+    case "206": return "考前總整理配置";
+    default: return "平面圖配置";
+  }
+};
+
 questions.forEach((q) => {
   variants.forEach((v) => {
+    // Generate Plan Item
+    planItems.push({
+      code: `${q}${v}`,
+      title: `${q}${v} ${getPlanTitle(q)}`,
+      variants: [v],
+      focus: getPlanFocus(q),
+      notes: `${q}題型${v}版平面配置圖練習，專注通道淨寬、家具尺度與動線流暢性。`
+    });
+
     // 1. 天花板配置圖
     ceilingElevationItems.push({
       code: `${q}${v}天花`,
@@ -46,16 +80,9 @@ export const examSections: ArchiveSection[] = [
     slug: "plan",
     eyebrow: "Plan Archive",
     title: "平面圖 201-206",
-    summary: "以題號為主軸整理 A-E 版本，搭配作圖順序、常錯位置與應考節奏。",
+    summary: "收錄 201-206 各版型（A-E）的平面配置圖，搭配家具尺度與應考節奏。",
     visualNote: "像畫冊一樣閱讀平面配置，先看格局節奏，再看尺寸與動線。",
-    items: [
-      { code: "201", title: "住宅基礎題", variants: ["A", "B", "C", "D", "E"], focus: "入口、客餐廳關係與家具尺度", notes: "適合當作暖身題，先練速度再練細節。" },
-      { code: "202", title: "格局轉折題", variants: ["A", "B", "C", "D", "E"], focus: "畸零角處理與視線收束", notes: "容易在轉角 and 通道尺度失分。" },
-      { code: "203", title: "收納整合題", variants: ["A", "B", "C", "D", "E"], focus: "櫃體比例與空間壓迫感", notes: "需同步對照立面圖，避免平面與立面矛盾。" },
-      { code: "204", title: "動線修正題", variants: ["A", "B", "C", "D", "E"], focus: "通行寬度與家具轉身半徑", notes: "建議搭配紅線標註常錯軸線。" },
-      { code: "205", title: "複合機能題", variants: ["A", "B", "C", "D", "E"], focus: "客餐廳與書房交界處理", notes: "適合放進比對模式練習。" },
-      { code: "206", title: "考前總整理題", variants: ["A", "B", "C", "D", "E"], focus: "整體配置平衡與圖面完整度", notes: "可作為模擬考總複盤入口。" },
-    ],
+    items: planItems,
   },
   {
     slug: "ceiling-elevation",

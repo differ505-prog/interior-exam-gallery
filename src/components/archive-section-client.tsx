@@ -10,10 +10,12 @@ type ArchiveSectionClientProps = {
 };
 
 export function ArchiveSectionClient({ section, uploads }: ArchiveSectionClientProps) {
+  const isPlan = section.slug === "plan";
   const isCeilingElevation = section.slug === "ceiling-elevation";
   const isPerspective = section.slug === "perspective";
 
   // Filter states
+  const [selectedPlanQuestion, setSelectedPlanQuestion] = useState<string>("201");
   const [selectedQuestion, setSelectedQuestion] = useState<string>("201");
   const [selectedType, setSelectedType] = useState<string>("全部");
   
@@ -26,6 +28,10 @@ export function ArchiveSectionClient({ section, uploads }: ArchiveSectionClientP
 
   // Filter logic
   const filteredItems = section.items.filter((item) => {
+    if (isPlan) {
+      return item.code.startsWith(selectedPlanQuestion);
+    }
+
     if (isCeilingElevation) {
       const matchesQuestion = item.code.startsWith(selectedQuestion);
       let matchesType = true;
@@ -62,6 +68,27 @@ export function ArchiveSectionClient({ section, uploads }: ArchiveSectionClientP
         <span>策展閱讀方式</span>
         <p>{section.visualNote}</p>
       </div>
+
+      {/* Foldable/Collapsible Filters for Plan */}
+      {isPlan && (
+        <div className="archive-filters" aria-label="平面圖篩選面板">
+          <div className="filter-group">
+            <span className="filter-label">選擇題號：</span>
+            <div className="filter-options">
+              {questions.map((q) => (
+                <button
+                  key={q}
+                  className={`filter-btn ${selectedPlanQuestion === q ? "filter-btn--active" : ""}`}
+                  onClick={() => setSelectedPlanQuestion(q)}
+                  type="button"
+                >
+                  {q} 題
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Foldable/Collapsible Filters for Ceiling & Elevation */}
       {isCeilingElevation && (
