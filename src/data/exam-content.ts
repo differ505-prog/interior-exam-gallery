@@ -1,5 +1,28 @@
 import { ArchiveSection, UploadEntry } from "@/types/exam";
 
+const ceilingElevationItems: ArchiveSection["items"] = [];
+const questions = ["201", "202", "203", "204", "205", "206"];
+const variants = ["A", "B", "C", "D", "E"];
+
+questions.forEach((q) => {
+  variants.forEach((v) => {
+    ceilingElevationItems.push({
+      code: `${q}${v}天花`,
+      title: `${q}${v} 天花板配置圖`,
+      variants: ["天花配置", "燈具迴路"],
+      focus: "天花配置、燈具配置與出風口投影",
+      notes: `${q}題型${v}版天花板施工圖，細心檢核迴路開關控制與樑位投影。`
+    });
+    ceilingElevationItems.push({
+      code: `${q}${v}立面`,
+      title: `${q}${v} 立面配置圖`,
+      variants: ["立面配置", "剖面尺度"],
+      focus: "立面櫃體投影、高度尺度與材質細部標註",
+      notes: `${q}題型${v}版剖立面圖，檢查與平面圖之尺度家具是否協調。`
+    });
+  });
+});
+
 export const examSections: ArchiveSection[] = [
   {
     slug: "plan",
@@ -9,7 +32,7 @@ export const examSections: ArchiveSection[] = [
     visualNote: "像畫冊一樣閱讀平面配置，先看格局節奏，再看尺寸與動線。",
     items: [
       { code: "201", title: "住宅基礎題", variants: ["A", "B", "C", "D", "E"], focus: "入口、客餐廳關係與家具尺度", notes: "適合當作暖身題，先練速度再練細節。" },
-      { code: "202", title: "格局轉折題", variants: ["A", "B", "C", "D", "E"], focus: "畸零角處理與視線收束", notes: "容易在轉角和通道尺度失分。" },
+      { code: "202", title: "格局轉折題", variants: ["A", "B", "C", "D", "E"], focus: "畸零角處理與視線收束", notes: "容易在轉角 and 通道尺度失分。" },
       { code: "203", title: "收納整合題", variants: ["A", "B", "C", "D", "E"], focus: "櫃體比例與空間壓迫感", notes: "需同步對照立面圖，避免平面與立面矛盾。" },
       { code: "204", title: "動線修正題", variants: ["A", "B", "C", "D", "E"], focus: "通行寬度與家具轉身半徑", notes: "建議搭配紅線標註常錯軸線。" },
       { code: "205", title: "複合機能題", variants: ["A", "B", "C", "D", "E"], focus: "客餐廳與書房交界處理", notes: "適合放進比對模式練習。" },
@@ -18,16 +41,11 @@ export const examSections: ArchiveSection[] = [
   },
   {
     slug: "ceiling-elevation",
-    eyebrow: "Ceiling & Elevation",
+    eyebrow: "Ceiling & Elevation Archive",
     title: "天花板圖與立面圖",
-    summary: "把天花板圖與客廳、主臥、餐廳立面串成一條視覺檢核路徑。",
-    visualNote: "從上視圖到立面，像策展牆一樣閱讀照明、櫃體、線板與材質。",
-    items: [
-      { code: "CL", title: "天花板圖", variants: ["燈具", "迴路", "線型"], focus: "燈具配置、天花層次與出風口協調", notes: "先確認照明邏輯，再回頭修飾線型。" },
-      { code: "EL-L", title: "客廳立面", variants: ["主牆", "櫃體", "材質"], focus: "主視覺牆、層板與比例節奏", notes: "檢查與平面圖家具位置是否一致。" },
-      { code: "EL-M", title: "主臥立面", variants: ["床頭", "衣櫃", "化妝台"], focus: "床頭尺度、櫃體深度與機能整合", notes: "容易忽略插座與檯面高度。" },
-      { code: "EL-D", title: "餐廳立面", variants: ["餐邊櫃", "吊燈", "端景"], focus: "餐邊櫃比例與吊燈中線", notes: "建議搭配大樣圖一起看材質交接。" },
-    ],
+    summary: "收錄 201-206 各版型（A-E）的天花板配置圖與立面圖。",
+    visualNote: "您可以點擊上方題號標籤切換檢視，對照天花照明迴路與立面圖櫃體投影設計。",
+    items: ceilingElevationItems,
   },
   {
     slug: "perspective",
