@@ -6,19 +6,37 @@ const variants = ["A", "B", "C", "D", "E"];
 
 questions.forEach((q) => {
   variants.forEach((v) => {
+    // 1. 天花板配置圖
     ceilingElevationItems.push({
       code: `${q}${v}天花`,
       title: `${q}${v} 天花板配置圖`,
       variants: ["天花配置", "燈具迴路"],
       focus: "天花配置、燈具配置與出風口投影",
-      notes: `${q}題型${v}版天花板施工圖，細心檢核迴路開關控制與樑位投影。`
+      notes: `${q}題型${v}版天花配置圖，注意燈槽尺寸與迴路配線。`
     });
+    // 2. 客廳立面圖
     ceilingElevationItems.push({
-      code: `${q}${v}立面`,
-      title: `${q}${v} 立面配置圖`,
-      variants: ["立面配置", "剖面尺度"],
-      focus: "立面櫃體投影、高度尺度與材質細部標註",
-      notes: `${q}題型${v}版剖立面圖，檢查與平面圖之尺度家具是否協調。`
+      code: `${q}${v}客立`,
+      title: `${q}${v} 客廳立面圖`,
+      variants: ["客廳立面", "剖面高度"],
+      focus: "電視牆投影、展示櫃尺度與高度標註",
+      notes: `${q}題型${v}版客廳立面配置，注意材質交接與高度標記。`
+    });
+    // 3. 餐廳立面圖
+    ceilingElevationItems.push({
+      code: `${q}${v}餐立`,
+      title: `${q}${v} 餐廳立面圖`,
+      variants: ["餐廳立面", "剖面高度"],
+      focus: "餐邊櫃比例、出風口投影與主牆造型",
+      notes: `${q}題型${v}版餐廳立面配置，注意拉門收邊與餐几尺度。`
+    });
+    // 4. 主臥立面圖
+    ceilingElevationItems.push({
+      code: `${q}${v}臥立`,
+      title: `${q}${v} 主臥立面圖`,
+      variants: ["主臥立面", "剖面高度"],
+      focus: "床頭背牆、衣櫃機能收納與化妝桌配置",
+      notes: `${q}題型${v}版主臥室立面配置，細檢化妝鏡高度與抽屜配置。`
     });
   });
 });

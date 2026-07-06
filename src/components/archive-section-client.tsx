@@ -22,7 +22,7 @@ export function ArchiveSectionClient({ section, uploads }: ArchiveSectionClientP
 
   const questions = ["201", "202", "203", "204", "205", "206"];
   const perspectiveQuestions = ["207", "208", "209", "210", "211", "212"];
-  const types = ["全部", "天花板配置圖", "立面配置圖"];
+  const types = ["全部", "天花板配置圖", "客廳立面圖", "餐廳立面圖", "主臥立面圖"];
 
   // Filter logic
   const filteredItems = section.items.filter((item) => {
@@ -31,8 +31,12 @@ export function ArchiveSectionClient({ section, uploads }: ArchiveSectionClientP
       let matchesType = true;
       if (selectedType === "天花板配置圖") {
         matchesType = item.code.endsWith("天花");
-      } else if (selectedType === "立面配置圖") {
-        matchesType = item.code.endsWith("立面");
+      } else if (selectedType === "客廳立面圖") {
+        matchesType = item.code.endsWith("客立");
+      } else if (selectedType === "餐廳立面圖") {
+        matchesType = item.code.endsWith("餐立");
+      } else if (selectedType === "主臥立面圖") {
+        matchesType = item.code.endsWith("臥立");
       }
       return matchesQuestion && matchesType;
     }
