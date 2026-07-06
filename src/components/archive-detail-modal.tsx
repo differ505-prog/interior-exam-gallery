@@ -65,8 +65,9 @@ export function ArchiveDetailModal({ item, uploads, onClose }: ArchiveDetailModa
   }, [onClose, activeImage, zoomableImages]);
 
   return (
-    <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+    <>
+      <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
+        <div className="modal-container" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <header className="modal-header">
           <div className="modal-header-title">
@@ -182,6 +183,7 @@ export function ArchiveDetailModal({ item, uploads, onClose }: ArchiveDetailModa
           </section>
         </div>
       </div>
+    </div>
 
       {/* Lightbox for Zoomed Image */}
       {activeImage && (
@@ -244,6 +246,6 @@ export function ArchiveDetailModal({ item, uploads, onClose }: ArchiveDetailModa
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
