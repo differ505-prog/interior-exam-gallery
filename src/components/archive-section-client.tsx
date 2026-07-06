@@ -75,7 +75,6 @@ export function ArchiveSectionClient({ section, uploads }: ArchiveSectionClientP
           <p className="eyebrow">{section.eyebrow}</p>
           <div>
             <h2>{section.title}</h2>
-            <p>{section.summary}</p>
           </div>
         </div>
 
@@ -93,11 +92,6 @@ export function ArchiveSectionClient({ section, uploads }: ArchiveSectionClientP
             <span className="stat-lbl">完成度</span>
           </div>
         </div>
-      </div>
-      
-      <div className="archive-note">
-        <span>策展閱讀方式</span>
-        <p>{section.visualNote}</p>
       </div>
 
       {/* Foldable/Collapsible Filters for Plan */}

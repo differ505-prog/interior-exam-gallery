@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { ArchiveSectionBlock } from "@/components/archive-section";
 import { UploadStudio } from "@/components/upload-studio";
 import { AsyncUploadsSection } from "@/components/recent-uploads-section";
-import { EmptyState, SectionHeading, SkeletonGrid, SurfacePanel } from "@/components/ui/primitives";
+import { EmptyState, SkeletonGrid, SurfacePanel } from "@/components/ui/primitives";
 import { examSections } from "@/data/exam-content";
 
 const chapterLinks = [
@@ -25,14 +25,8 @@ const metrics = [
   { label: "練習複盤模組", value: "遠端同步" },
 ] as const;
 
-const weeklySteps = [
-  "先看 201A 平面圖與客廳立面",
-  "再練 208 乙向透視與吊燈構圖",
-  "最後複盤 216 大樣節點與扣分點",
-] as const;
-
 const HERO_DESCRIPTION =
-  "策展式應考。圖面、複盤與扣分點，集中在一處。";
+  "術科練習圖紙備份與對應大類對比系統。";
 
 export default function HomePage() {
   return (
@@ -75,20 +69,6 @@ export default function HomePage() {
               ))}
             </div>
           </article>
-
-          <aside aria-label="本週節奏" className="hero-card">
-            <span className="hero-card__eyebrow">本週節奏</span>
-            <ol className="hero-card__steps">
-              {weeklySteps.map((step, index) => (
-                <li key={step}>
-                  <span className="hero-card__step-index" aria-hidden="true">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <span>{step}</span>
-                </li>
-              ))}
-            </ol>
-          </aside>
         </div>
 
         <dl aria-label="題庫規模" className="metric-row">
@@ -99,16 +79,6 @@ export default function HomePage() {
             </div>
           ))}
         </dl>
-      </SurfacePanel>
-
-      <SurfacePanel ariaLabel="策展工作流說明" className="intro-panel">
-        <SectionHeading
-          eyebrow="Workflow"
-          title="安靜的閱讀節奏。"
-        />
-        <p className="intro-panel__body">
-          暖白、炭黑、霧金。為長時間備考而設計。
-        </p>
       </SurfacePanel>
 
       <Suspense

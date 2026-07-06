@@ -93,18 +93,6 @@ export function ArchiveDetailModal({ item, uploads, onClose }: ArchiveDetailModa
 
         {/* Scrollable Content */}
         <div className="modal-content">
-          {/* Info area */}
-          <section className="modal-info-section">
-            <div className="modal-info-card">
-              <h3>核心考點</h3>
-              <p>{item.focus}</p>
-            </div>
-            <div className="modal-info-card">
-              <h3>備考建議</h3>
-              <p>{item.notes}</p>
-            </div>
-          </section>
-
           {/* Question Reference Area (題目區) */}
           <section className="modal-section">
             <h3 className="section-title">題目區（平面圖＋立面圖）</h3>

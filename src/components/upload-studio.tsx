@@ -1,8 +1,8 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LoaderCircle, Upload, WandSparkles, X } from "lucide-react";
+import { LoaderCircle, Upload, X } from "lucide-react";
 
 const categoryOptions = [
   "平面圖 201-206",
@@ -15,12 +15,6 @@ const kindOptions = ["我的練習圖", "他人作品參考"] as const;
 
 type CategoryOption = (typeof categoryOptions)[number];
 type KindOption = (typeof kindOptions)[number];
-
-const guidance = [
-  "上傳練習圖，建個人錯題牆。",
-  "收藏範例圖，作構圖參考。",
-  "附自評、扣分點與複盤。",
-] as const;
 
 const MAX_TITLE_LENGTH = 60;
 const MAX_TEXTAREA_LENGTH = 500;
@@ -73,7 +67,7 @@ export function UploadStudio() {
     };
   }, [previewUrl]);
 
-  const orderedGuidance = useMemo(() => guidance, []);
+
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -136,18 +130,7 @@ export function UploadStudio() {
     <section aria-labelledby="upload-studio-title" className="studio-shell" id="upload-studio">
       <div className="studio-copy">
         <p className="eyebrow">Upload Studio</p>
-        <h2 id="upload-studio-title">上傳。建立扣分點資料庫。</h2>
-        <p>
-          實戰核心。每張圖都帶著扣分點與修正方向。
-        </p>
-        <ol className="studio-points" aria-label="上傳建議">
-          {orderedGuidance.map((item) => (
-            <li className="studio-point" key={item}>
-              <WandSparkles aria-hidden="true" size={16} />
-              <span>{item}</span>
-            </li>
-          ))}
-        </ol>
+        <h2 id="upload-studio-title">上傳圖紙與自評</h2>
       </div>
 
       <form
