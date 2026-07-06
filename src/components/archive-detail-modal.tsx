@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { X, ZoomIn, FileImage, Upload } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { X, ZoomIn, FileImage, Upload, ArrowLeft, ArrowRight } from "lucide-react";
 import { ArchiveItem, UploadEntry } from "@/types/exam";
 import { SafeImage } from "@/components/ui/safe-image";
 
@@ -14,22 +14,51 @@ type ArchiveDetailModalProps = {
 export function ArchiveDetailModal({ item, uploads, onClose }: ArchiveDetailModalProps) {
   const [activeImage, setActiveImage] = useState<string | null>(null);
 
-  // Lock scroll on body when modal is open
+  const is208 = item.code.startsWith("208");
+  const planUrl = is208 ? "/images/208/2021021722093353239 (1).jpg" : null;
+  const elevUrl = is208 ? "/images/208/2021021722093353239 (2).jpg" : null;
+
+  // Build the list of all zoomable images in order
+  const zoomableImages = useMemo(() => {
+    return [
+      planUrl,
+      elevUrl,
+      ...uploads.map((u) => u.imageUrl),
+    ].filter((url): url is string => !!url);
+  }, [planUrl, elevUrl, uploads]);
+
+  // Lock scroll on body and manage keyboard events when modal is open
   useEffect(() => {
     document.body.style.overflow = "hidden";
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        if (activeImage) {
+          setActiveImage(null);
+        } else {
+          onClose();
+        }
+      } else if (activeImage && zoomableImages.length > 1) {
+        if (e.key === "ArrowRight" || e.key === "Right") {
+          const currentIndex = zoomableImages.indexOf(activeImage);
+          if (currentIndex !== -1) {
+            const nextIndex = (currentIndex + 1) % zoomableImages.length;
+            setActiveImage(zoomableImages[nextIndex]);
+          }
+        } else if (e.key === "ArrowLeft" || e.key === "Left") {
+          const currentIndex = zoomableImages.indexOf(activeImage);
+          if (currentIndex !== -1) {
+            const prevIndex = (currentIndex - 1 + zoomableImages.length) % zoomableImages.length;
+            setActiveImage(zoomableImages[prevIndex]);
+          }
+        }
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => {
       document.body.style.overflow = "unset";
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [onClose]);
-
-  const is208 = item.code.startsWith("208");
-  const planUrl = is208 ? "/images/208/2021021722093353239 (1).jpg" : null;
-  const elevUrl = is208 ? "/images/208/2021021722093353239 (2).jpg" : null;
+  }, [onClose, activeImage, zoomableImages]);
 
   return (
     <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
@@ -156,6 +185,36 @@ export function ArchiveDetailModal({ item, uploads, onClose }: ArchiveDetailModa
           <button className="lightbox-close" onClick={() => setActiveImage(null)} aria-label="關閉放大圖">
             <X size={24} />
           </button>
+          
+          {zoomableImages.length > 1 && (
+            <>
+              <button 
+                className="lightbox-nav-btn lightbox-nav-btn--left" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const currentIndex = zoomableImages.indexOf(activeImage);
+                  const prevIndex = (currentIndex - 1 + zoomableImages.length) % zoomableImages.length;
+                  setActiveImage(zoomableImages[prevIndex]);
+                }}
+                aria-label="上一張"
+              >
+                <ArrowLeft size={28} />
+              </button>
+              <button 
+                className="lightbox-nav-btn lightbox-nav-btn--right" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const currentIndex = zoomableImages.indexOf(activeImage);
+                  const nextIndex = (currentIndex + 1) % zoomableImages.length;
+                  setActiveImage(zoomableImages[nextIndex]);
+                }}
+                aria-label="下一張"
+              >
+                <ArrowRight size={28} />
+              </button>
+            </>
+          )}
+
           <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
             <img src={activeImage} alt="放大圖面" />
           </div>

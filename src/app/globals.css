@@ -1433,3 +1433,50 @@ main {
     gap: var(--space-5);
   }
 }
+
+/* Lightbox Navigation Buttons */
+.lightbox-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 56px;
+  height: 56px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
+  z-index: 2010;
+}
+
+.lightbox-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-50%) scale(1.05);
+}
+
+.lightbox-nav-btn:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+.lightbox-nav-btn--left {
+  left: var(--space-6);
+}
+
+.lightbox-nav-btn--right {
+  right: var(--space-6);
+}
+
+@media (max-width: 680px) {
+  .lightbox-nav-btn {
+    width: 44px;
+    height: 44px;
+  }
+  .lightbox-nav-btn--left {
+    left: var(--space-3);
+  }
+  .lightbox-nav-btn--right {
+    right: var(--space-3);
+  }
+}
