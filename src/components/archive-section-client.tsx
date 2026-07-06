@@ -40,6 +40,28 @@ export function ArchiveSectionClient({ section, uploads }: ArchiveSectionClientP
   const completedCount = completedCodes.size;
   const completionRate = totalItems > 0 ? Math.round((completedCount / totalItems) * 100) : 0;
 
+  // Split perspective completion rates
+  let onePointRate = 0;
+  let twoPointRate = 0;
+  if (isPerspective) {
+    const endsWithChar = (str: string, char: string) => {
+      const normalized = str.trim().toUpperCase();
+      return normalized.endsWith(char.toUpperCase());
+    };
+    
+    const onePointItems = section.items.filter((item) => endsWithChar(item.code, "甲"));
+    const twoPointItems = section.items.filter((item) => endsWithChar(item.code, "乙") || endsWithChar(item.code, "丙"));
+    
+    const onePointUploads = myUploads.filter((u) => endsWithChar(u.sheetCode, "甲"));
+    const twoPointUploads = myUploads.filter((u) => endsWithChar(u.sheetCode, "乙") || endsWithChar(u.sheetCode, "丙"));
+    
+    const completedOnePoint = new Set(onePointUploads.map((u) => u.sheetCode.trim().toLowerCase()));
+    const completedTwoPoint = new Set(twoPointUploads.map((u) => u.sheetCode.trim().toLowerCase()));
+    
+    onePointRate = onePointItems.length > 0 ? Math.round((completedOnePoint.size / onePointItems.length) * 100) : 0;
+    twoPointRate = twoPointItems.length > 0 ? Math.round((completedTwoPoint.size / twoPointItems.length) * 100) : 0;
+  }
+
   // Filter logic
   const filteredItems = section.items.filter((item) => {
     if (isPlan) {
@@ -87,10 +109,23 @@ export function ArchiveSectionClient({ section, uploads }: ArchiveSectionClientP
             <span className="stat-val">{uploadedCount}</span>
             <span className="stat-lbl">已上傳</span>
           </div>
-          <div className="stat-badge stat-badge--accent">
-            <span className="stat-val">{completionRate}%</span>
-            <span className="stat-lbl">完成度</span>
-          </div>
+          {isPerspective ? (
+            <>
+              <div className="stat-badge stat-badge--accent">
+                <span className="stat-val">{onePointRate}%</span>
+                <span className="stat-lbl">一消(甲)</span>
+              </div>
+              <div className="stat-badge stat-badge--accent">
+                <span className="stat-val">{twoPointRate}%</span>
+                <span className="stat-lbl">二消(乙丙)</span>
+              </div>
+            </>
+          ) : (
+            <div className="stat-badge stat-badge--accent">
+              <span className="stat-val">{completionRate}%</span>
+              <span className="stat-lbl">完成度</span>
+            </div>
+          )}
         </div>
       </div>
 
