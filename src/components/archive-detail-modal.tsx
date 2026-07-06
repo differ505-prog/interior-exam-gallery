@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { X, ZoomIn, FileImage, Upload, ArrowLeft, ArrowRight } from "lucide-react";
 import { ArchiveItem, UploadEntry } from "@/types/exam";
 import { SafeImage } from "@/components/ui/safe-image";
@@ -14,6 +15,12 @@ type ArchiveDetailModalProps = {
 export function ArchiveDetailModal({ item, uploads, onClose }: ArchiveDetailModalProps) {
   const [activeImage, setActiveImage] = useState<string | null>(null);
   const [isLargeZoom, setIsLargeZoom] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   const is208 = item.code.startsWith("208");
   const planUrl = is208 ? "/images/208/2021021722093353239 (1).jpg" : null;
@@ -64,7 +71,9 @@ export function ArchiveDetailModal({ item, uploads, onClose }: ArchiveDetailModa
     };
   }, [onClose, activeImage, zoomableImages]);
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <>
       <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
         <div className="modal-container" onClick={(e) => e.stopPropagation()}>
@@ -247,6 +256,7 @@ export function ArchiveDetailModal({ item, uploads, onClose }: ArchiveDetailModa
           />
         </div>
       )}
-    </>
+    </>,
+    document.body
   );
 }
