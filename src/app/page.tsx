@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { ArchiveSectionBlock } from "@/components/archive-section";
 import { UploadStudio } from "@/components/upload-studio";
 import { AsyncUploadsSection } from "@/components/recent-uploads-section";
+import { PracticePlanSection } from "@/components/practice-plan-section";
 import { EmptyState, SkeletonGrid, SurfacePanel } from "@/components/ui/primitives";
 import { examSections } from "@/data/exam-content";
 import { examNotes } from "@/data/exam-notes";
@@ -81,6 +82,8 @@ export default function HomePage() {
           ))}
         </dl>
       </SurfacePanel>
+
+      <PracticePlanSection />
 
       <Suspense
         fallback={

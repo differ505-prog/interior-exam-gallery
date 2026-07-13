@@ -2165,3 +2165,472 @@ main {
     overflow-x: auto;
   }
 }
+
+/* =========================================================================
+   Practice Plan Section — 3小時動態調控練習計畫書
+   樣式沿用既有 token (--accent, --bg-deep, --panel 等)，無新色碼
+   ========================================================================= */
+
+.practice-plan-panel {
+  scroll-margin-top: var(--space-12);
+}
+
+.practice-plan-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6);
+  padding-bottom: var(--space-6);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: var(--space-6);
+}
+
+.practice-plan-hero__header {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.practice-plan-hero__subtitle {
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin: 0;
+  max-width: 60ch;
+}
+
+.practice-plan-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.practice-plan-stat {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-1);
+  transition: transform var(--duration-base) var(--ease-out),
+              box-shadow var(--duration-base) var(--ease-out);
+}
+
+.practice-plan-stat:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.practice-plan-stat dt {
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+.practice-plan-stat dd {
+  color: var(--text-strong);
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+}
+
+.practice-plan-stat__unit {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.practice-plan-stat--highlight {
+  background: var(--accent-soft);
+  border-color: rgba(135, 111, 73, 0.32);
+}
+
+/* Tabs */
+.practice-plan-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: rgba(255, 255, 255, 0.42);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  margin-bottom: var(--space-5);
+}
+
+.practice-plan-tab {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--duration-base) var(--ease-out);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.practice-plan-tab:hover {
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--text-strong);
+}
+
+.practice-plan-tab--active {
+  background: var(--text-strong);
+  color: var(--on-accent);
+  border-color: var(--text-strong);
+}
+
+.practice-plan-tab__icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.practice-plan-tab__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.practice-plan-body {
+  min-height: 200px;
+}
+
+.practice-plan-section-desc {
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin: 0 0 var(--space-5) 0;
+  max-width: 70ch;
+}
+
+/* Strategy Cards (4 個核心策略) */
+.practice-plan-strategy-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-4);
+}
+
+.practice-plan-strategy-card {
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  display: grid;
+  gap: var(--space-3);
+  transition: transform var(--duration-base) var(--ease-out),
+              box-shadow var(--duration-base) var(--ease-out);
+}
+
+.practice-plan-strategy-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.practice-plan-strategy-card__title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-strong);
+  margin: 0;
+  line-height: 1.35;
+}
+
+.practice-plan-strategy-card__desc {
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--text);
+  margin: 0;
+}
+
+.practice-plan-strategy-card__tactic {
+  display: grid;
+  gap: var(--space-1);
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--line);
+}
+
+.practice-plan-strategy-card__tactic-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.practice-plan-strategy-card__tactic p {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text-strong);
+  margin: 0;
+}
+
+/* Weekly Table */
+.practice-plan-weekly-table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.practice-plan-weekly-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  min-width: 720px;
+}
+
+.practice-plan-weekly-table th {
+  background: var(--bg-deep);
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line-strong);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.practice-plan-weekly-table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  vertical-align: top;
+  line-height: 1.5;
+}
+
+.practice-plan-weekly-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.practice-plan-weekly-table tbody tr {
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.practice-plan-weekly-table tbody tr:hover {
+  background: rgba(135, 111, 73, 0.04);
+}
+
+.practice-plan-weekly-table__day {
+  font-weight: 700;
+  color: var(--accent-strong);
+  white-space: nowrap;
+}
+
+.practice-plan-weekly-table__goal {
+  font-weight: 600;
+  color: var(--text-strong);
+  white-space: nowrap;
+}
+
+.practice-plan-weekly-table__adjust {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.practice-plan-session-badge {
+  display: inline-block;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  white-space: nowrap;
+}
+
+.practice-plan-session-badge--下午 {
+  background: rgba(74, 68, 62, 0.08);
+  color: var(--text);
+}
+
+/* Log Cards */
+.practice-plan-log-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.practice-plan-log-card {
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  display: grid;
+  gap: var(--space-3);
+  transition: transform var(--duration-base) var(--ease-out),
+              box-shadow var(--duration-base) var(--ease-out);
+}
+
+.practice-plan-log-card:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.practice-plan-log-card__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+
+.practice-plan-log-card__date {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent-strong);
+  letter-spacing: -0.02em;
+}
+
+.practice-plan-log-card__topic {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-strong);
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.practice-plan-log-card__mode {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 2px var(--space-2);
+  background: var(--bg-deep);
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+.practice-plan-log-card__body {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.practice-plan-log-card__row {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.practice-plan-log-card__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.practice-plan-log-card__row p {
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--text);
+  margin: 0;
+}
+
+/* Tools Grid */
+.practice-plan-tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+
+.practice-plan-tool-card {
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  display: grid;
+  gap: var(--space-2);
+  transition: transform var(--duration-base) var(--ease-out),
+              box-shadow var(--duration-base) var(--ease-out);
+}
+
+.practice-plan-tool-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.practice-plan-tool-card__title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-strong);
+  margin: 0;
+}
+
+.practice-plan-tool-card__desc {
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--text);
+  margin: 0;
+}
+
+/* Mindset Cards */
+.practice-plan-mindset-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-4);
+}
+
+.practice-plan-mindset-card {
+  background: linear-gradient(135deg, var(--bg-deep) 0%, rgba(255, 255, 255, 0.92) 100%);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.practice-plan-mindset-card__title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-strong);
+  margin: 0;
+}
+
+.practice-plan-mindset-card__desc {
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--text);
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .practice-plan-hero {
+    padding-bottom: var(--space-4);
+    margin-bottom: var(--space-4);
+  }
+
+  .practice-plan-tab {
+    font-size: 0.82rem;
+    padding: var(--space-2) var(--space-3);
+    flex: 1 1 auto;
+  }
+
+  .practice-plan-tab__label {
+    display: none;
+  }
+
+  .practice-plan-tab__icon {
+    font-size: 1.1rem;
+  }
+
+  .practice-plan-log-card__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+}
