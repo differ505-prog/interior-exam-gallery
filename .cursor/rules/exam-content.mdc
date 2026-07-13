@@ -86,6 +86,23 @@ src/data/exam-content.ts
 
 不得新增非上述維度的自訂分類標籤。如需新增，請先提出修憲申請。
 
+## 型別一致性 SOP
+
+`src/data/exam-content.ts` 的 `ArchiveItem` 型別定義於 `src/types/exam.ts`，**`notes` 欄位為 `string`（非 `string[]`）**，備考知識以 `\n` 換行分隔。
+
+嚴禁在 `.cursor/rules/` 或 `AGENTS.md` 中描述與 `src/types/exam.ts` 實際型別不符的假設。
+
+## 雙軌並行工作流（Gemini 內容處理）
+
+當使用者同時提供「憲法延伸」與「備考知識」時，視為**同一個任務**，必須在同一輪對話內完成以下四步：
+
+1. **憲章寫入**：將憲章延伸寫入 `AGENTS.md`
+2. **資料庫寫入**：備考知識寫入 `src/data/exam-notes.ts`，試卷內容寫入 `src/data/exam-content.ts`
+3. **UI 整合**：建立對應元件並串聯進現有頁面
+4. **啟動 dev server**：確認 http://localhost:3000 可正常瀏覽
+
+嚴禁分兩輪處理（先交憲章、再等下一輪做 UI），造成 context 重複浪費。
+
 ## Gemini 分享內容整合 SOP
 
 當使用者提供 Gemini 試卷相關內容時（https://share.gemini.google/EB90gRTHstTN）：

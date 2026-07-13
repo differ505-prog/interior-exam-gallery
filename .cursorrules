@@ -30,6 +30,7 @@
 9. 內容鎖定：src/data/exam-content.ts 的試卷內容一字不可改
 10. 修改紀律：大重構前提醒使用者確認 Git Commit 狀態
 11. 視覺驗收：每次完成後啟動 npm run dev，列舉 http://localhost:3000
+12. **雙軌並行**：Gemini 內容需在同一輪完成「憲章寫入 → 資料庫寫入 → UI 整合 → 啟動 dev server」，嚴禁分兩輪處理
 
 【字體 SOP（詳見 AGENTS.md SOP 1–3）】
 - 大字（≥ 3rem）：letter-spacing ≤ 0.02em，行高 ≥ 1.25
