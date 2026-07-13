@@ -205,15 +205,39 @@ function ToolsSection() {
     <div className="practice-plan-tools">
       <p className="practice-plan-section-desc">高效工具與戰術 SOP，專門對付 3 小時考試的時間壓力。</p>
       <div className="practice-plan-tools-grid">
-        {tacticTools.map((tool) => (
-          <article key={tool.id} className="practice-plan-tool-card">
-            <h3 className="practice-plan-tool-card__title">{tool.title}</h3>
-            <p className="practice-plan-tool-card__desc">{tool.description}</p>
-          </article>
-        ))}
+        {tacticTools.map((tool, index) => {
+          const tag = toolTagFromId(tool.id);
+          return (
+            <article key={tool.id} className="practice-plan-tool-card">
+              <span className="practice-plan-tool-card__index" aria-hidden="true">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <div className="practice-plan-tool-card__body">
+                <div className="practice-plan-tool-card__head">
+                  <h3 className="practice-plan-tool-card__title">{tool.title}</h3>
+                  {tag && (
+                    <span className={`practice-plan-tool-card__tag practice-plan-tool-card__tag--${tag.variant}`}>
+                      {tag.label}
+                    </span>
+                  )}
+                </div>
+                <p className="practice-plan-tool-card__desc">{tool.description}</p>
+              </div>
+            </article>
+          );
+        })}
       </div>
     </div>
   );
+}
+
+type ToolTag = { label: string; variant: "prep" | "draft" | "schedule" };
+
+function toolTagFromId(id: string): ToolTag | null {
+  if (id.includes("finish") || id.includes("pre")) return { label: "預製", variant: "prep" };
+  if (id.includes("draft") || id.includes("transparent")) return { label: "底稿", variant: "draft" };
+  if (id.includes("cut") || id.includes("h-")) return { label: "時程", variant: "schedule" };
+  return null;
 }
 
 function MindsetSection() {
