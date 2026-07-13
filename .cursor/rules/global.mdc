@@ -17,7 +17,22 @@ alwaysApply: true
 
 ## 工程與資安原則（詳見 AGENTS.md 第二章）
 
-**原則 5–12**：DRY 與模組化、語意與 SEO、防禦性 UI、資安防禦、內容鎖定、修改紀律、視覺驗收。
+**原則 5–12**：DRY 與模組化、語意與 SEO、防禦性 UI、資安防禦、內容鎖定、修改紀律、視覺驗收、容器寬度紀律。
+
+### §12 容器寬度紀律（Container Width Discipline）
+
+**條文**：所有「文字段落」、「卡片描述」、「區塊說明文字」一律禁止使用 `max-width: NNch` 的窄寬斷尾（如 `max-width: 60ch`、`max-width: 70ch`）。
+
+**唯一例外**：
+- Hero 主視覺的主標題（H1），可用 `max-width` 控制排版韻律。
+- 長篇引言區（如聖經經文、設計宣言），須包在 `.container-tight` 內並明確標示為「引言」。
+
+**理由**：窄寬斷尾會在桌機寬螢幕下產生「中央一條窄欄 + 兩側大片空白」的破碎佈局，破壞 Stripe 骨架的 Grid 系統。
+
+**RWD 紀律**：
+- 任何 Tab / Pill 按鈕容器，若標籤文字 ≥ 6 字元，必須使用 `overflow-x: auto` + `flex-wrap: nowrap`，禁止 `flex-wrap: wrap` 導致按鈕高度炸裂。
+- Tab 標籤收合為「僅圖示」模式的 RWD 斷點統一為 **1024px**（桌機/平板分界），不用 768px。
+- 統計卡網格在 `≤ 480px` 時改為 `2 × 2` 雙欄，禁止單欄堆疊造成過度捲動。
 
 試卷題庫定義於 `src/data/exam-content.ts`，共 180 張試卷，`code` / `focus` / `notes` 欄位為內容鎖定白名單，嚴禁擅自增刪修改。
 

@@ -2194,7 +2194,8 @@ main {
   font-size: 0.95rem;
   line-height: 1.6;
   margin: 0;
-  max-width: 60ch;
+  max-width: none;
+  text-wrap: pretty;
 }
 
 .practice-plan-stats {
@@ -2253,13 +2254,16 @@ main {
 /* Tabs */
 .practice-plan-tabs {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: var(--space-2);
   padding: var(--space-2);
   background: rgba(255, 255, 255, 0.42);
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
   margin-bottom: var(--space-5);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
 .practice-plan-tab {
@@ -2313,7 +2317,8 @@ main {
   font-size: 0.95rem;
   line-height: 1.6;
   margin: 0 0 var(--space-5) 0;
-  max-width: 70ch;
+  max-width: none;
+  text-wrap: pretty;
 }
 
 /* Strategy Cards (4 個核心策略) */
@@ -2608,16 +2613,11 @@ main {
   margin: 0;
 }
 
-@media (max-width: 768px) {
-  .practice-plan-hero {
-    padding-bottom: var(--space-4);
-    margin-bottom: var(--space-4);
-  }
-
+@media (max-width: 1024px) {
   .practice-plan-tab {
     font-size: 0.82rem;
     padding: var(--space-2) var(--space-3);
-    flex: 1 1 auto;
+    flex: 0 0 auto;
   }
 
   .practice-plan-tab__label {
@@ -2625,12 +2625,25 @@ main {
   }
 
   .practice-plan-tab__icon {
-    font-size: 1.1rem;
+    font-size: 1.15rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .practice-plan-hero {
+    padding-bottom: var(--space-4);
+    margin-bottom: var(--space-4);
   }
 
   .practice-plan-log-card__header {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-2);
+  }
+}
+
+@media (max-width: 480px) {
+  .practice-plan-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
