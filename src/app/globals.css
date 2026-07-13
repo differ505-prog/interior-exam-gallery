@@ -2189,6 +2189,11 @@ main {
   gap: var(--space-2);
 }
 
+.practice-plan-hero__header .heading--h2 {
+  letter-spacing: normal;
+  text-wrap: balance;
+}
+
 .practice-plan-hero__subtitle {
   color: var(--muted);
   font-size: 0.95rem;
@@ -2200,7 +2205,7 @@ main {
 
 .practice-plan-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-3);
   margin: 0;
 }
@@ -2247,8 +2252,8 @@ main {
 }
 
 .practice-plan-stat--highlight {
-  background: var(--accent-soft);
-  border-color: rgba(135, 111, 73, 0.32);
+  background: rgba(135, 111, 73, 0.06);
+  border-color: rgba(135, 111, 73, 0.18);
 }
 
 /* Tabs */
@@ -2333,7 +2338,8 @@ main {
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   padding: var(--space-5);
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: var(--space-3);
   transition: transform var(--duration-base) var(--ease-out),
               box-shadow var(--duration-base) var(--ease-out);
@@ -2350,6 +2356,10 @@ main {
   color: var(--text-strong);
   margin: 0;
   line-height: 1.35;
+  min-height: calc(1.35em * 2);
+  display: flex;
+  align-items: flex-start;
+  text-wrap: balance;
 }
 
 .practice-plan-strategy-card__desc {
@@ -2626,6 +2636,10 @@ main {
 
   .practice-plan-tab__icon {
     font-size: 1.15rem;
+  }
+
+  .practice-plan-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

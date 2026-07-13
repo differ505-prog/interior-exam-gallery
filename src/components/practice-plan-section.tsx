@@ -61,7 +61,10 @@ export function PracticePlanSection() {
               <span className="practice-plan-stat__unit"> 天</span>
             </dd>
           </div>
-          <div className="practice-plan-stat practice-plan-stat--highlight">
+          <div
+            className="practice-plan-stat practice-plan-stat--highlight"
+            aria-current="true"
+          >
             <dt>筆試實力</dt>
             <dd>✅ {practicePlanStats.writtenScore}</dd>
           </div>
