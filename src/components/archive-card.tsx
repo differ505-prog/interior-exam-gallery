@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { ArchiveItem, UploadEntry } from "@/types/exam";
+import { ExamNoteCategory } from "@/types/exam-note";
 import { ArchiveDetailModal } from "@/components/archive-detail-modal";
 
 type ArchiveCardProps = {
   item: ArchiveItem;
   sectionSlug: string;
   uploads?: UploadEntry[];
+  examNotes?: ExamNoteCategory[];
 };
 
 /**
@@ -15,7 +17,7 @@ type ArchiveCardProps = {
  * 從原本 archive-section.tsx 抽離出來的可複用卡片，
  * 加入 hover 微互動 + 流體排版防溢出，並加入點擊開啟題目與練習圖面詳情 Modal 的功能。
  */
-export function ArchiveCard({ item, sectionSlug, uploads = [] }: ArchiveCardProps) {
+export function ArchiveCard({ item, sectionSlug, uploads = [], examNotes }: ArchiveCardProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -52,6 +54,7 @@ export function ArchiveCard({ item, sectionSlug, uploads = [] }: ArchiveCardProp
           item={item}
           uploads={uploads}
           sectionSlug={sectionSlug}
+          examNotes={examNotes}
           onClose={() => setIsOpen(false)}
         />
       )}

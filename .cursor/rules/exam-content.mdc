@@ -1,0 +1,97 @@
+---
+description: 題庫內容管理標準 — 試卷 180 張不得任意修改
+globs:
+  - "src/data/exam-content.ts"
+  - "src/components/archive-card.tsx"
+  - "src/components/archive-section*.tsx"
+  - "src/components/archive-detail-modal.tsx"
+alwaysApply: false
+---
+
+# 題庫內容管理標準
+
+本規則適用於所有涉及試卷內容的檔案。試卷題庫定義於 `src/data/exam-content.ts`，是本專案最重要的內容鎖定白名單。
+
+## 試卷架構（內容鎖定）
+
+```
+src/data/exam-content.ts
+├── Section: plan (平面圖)
+│   ├── Questions 201–206
+│   └── Variants: A, B, C, D, E
+├── Section: ceiling-elevation (天花板與立面圖)
+│   ├── Questions 201–206
+│   └── Variants × 視角 (天花/客立/餐立/臥立)
+├── Section: perspective (透視圖)
+│   ├── Questions 207–212
+│   └── Variants: 甲, 乙, 丙
+└── Section: detail (大樣圖)
+    ├── Questions 213–224
+    └── Variants: 尺度/材質/做法
+```
+
+## 內容鎖定分級
+
+### 完全鎖定（嚴禁修改）
+- `code`：試卷編號（如 "201-A"）
+- `focus`：考試重點（完整肯定句，不得改為問句）
+- `notes`：扣分點陣列（前綴 "×" 不可移除）
+
+### 鎖定但可排版
+- `title`：試卷標題（可調整字體/間距/對齊，不可刪減文字）
+- `variants`：版本名稱陣列（不可增刪版本數量）
+
+### 可自由新增
+- `imageUrl`：試卷圖片 URL（由上傳功能動態填入）
+- UI 呈現層（CSS、動畫、元件結構）
+
+## 新增試卷內容的 SOP
+
+當使用者要求新增試卷內容時，必須：
+
+1. **確認來源**：優先使用政府公告的技能檢定試題，或使用者提供的 Gemini 內容
+2. **格式驗證**：確認符合 `ArchiveItem` 型別（`src/types/exam.ts`）
+3. **Section 分類**：正確歸入 plan / ceiling-elevation / perspective / detail
+4. **Code 命名**：遵循現有命名慣例（如 "215" 或 "215-尺度"）
+5. **更新憲章附錄 G**：在 `AGENTS.md` 附錄 G 的題庫敘述處同步更新
+
+## UI 呈現標準
+
+試卷卡（`archive-card.tsx`）呈現試卷時：
+- **試卷編號**：使用 `--color-accent`（`#876f49`）強調試卷編號
+- **版本標籤**：使用 `uppercase tracking-widest text-xs` 樣式
+- **考試重點**：`focus` 以 `text-muted` 呈現，截斷至 2 行
+- **扣分點**：在 `archive-detail-modal.tsx` 的「自評複盤」面板中以列表呈現
+
+## 扣分點呈現格式
+
+```tsx
+// archive-detail-modal.tsx 中的扣分點呈現
+<div className="space-y-1">
+  {notes.map((note, i) => (
+    <p key={i} className="text-sm text-red-700/80">
+      {note.startsWith('×') ? note : `× ${note}`}
+    </p>
+  ))}
+</div>
+```
+
+## 試卷篩選與分類
+
+試卷卡片支援以下維度篩選：
+- **Section 篩選**：平面圖 / 天花板與立面圖 / 透視圖 / 大樣圖
+- **版本篩選**（室內平面圖限定）：A / B / C / D / E
+- **視角篩選**（天花板與立面圖限定）：天花 / 客立 / 餐立 / 臥立
+- **方向篩選**（透視圖限定）：甲 / 乙 / 丙
+
+不得新增非上述維度的自訂分類標籤。如需新增，請先提出修憲申請。
+
+## Gemini 分享內容整合 SOP
+
+當使用者提供 Gemini 試卷相關內容時（https://share.gemini.google/EB90gRTHstTN）：
+
+1. 將試卷題庫內容寫入 `src/data/exam-content.ts`，遵循「內容鎖定分級」
+2. 將備考知識/技巧類內容寫入 `src/data/exam-notes.ts`（新建）
+3. 將 UI 規範類內容評估是否新增至 `AGENTS.md` 新條款或 `附錄 F`
+4. 將品牌/文案類內容更新至 `AGENTS.md` 附錄 C 品牌詞庫
+5. 更新憲章附錄 G 的試卷總數統計

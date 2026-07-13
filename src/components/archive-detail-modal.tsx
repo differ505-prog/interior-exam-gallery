@@ -4,16 +4,19 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, ZoomIn, FileImage, Upload, ArrowLeft, ArrowRight } from "lucide-react";
 import { ArchiveItem, UploadEntry } from "@/types/exam";
+import { ExamNoteCategory } from "@/types/exam-note";
 import { SafeImage } from "@/components/ui/safe-image";
+import { ExamNotesPanel } from "@/components/exam-notes-panel";
 
 type ArchiveDetailModalProps = {
   item: ArchiveItem;
   uploads: UploadEntry[];
   sectionSlug: string;
+  examNotes?: ExamNoteCategory[];
   onClose: () => void;
 };
 
-export function ArchiveDetailModal({ item, uploads, sectionSlug, onClose }: ArchiveDetailModalProps) {
+export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onClose }: ArchiveDetailModalProps) {
   const [activeImage, setActiveImage] = useState<string | null>(null);
   const [isLargeZoom, setIsLargeZoom] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -247,6 +250,17 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, onClose }: Arch
               </div>
             )}
           </section>
+
+          {/* 備考知識面板 */}
+          {examNotes && examNotes.length > 0 && (
+            <section className="modal-section modal-section--notes">
+              <h3 className="section-title">備考知識</h3>
+              <ExamNotesPanel
+                categories={examNotes}
+                relatedCode={item.code}
+              />
+            </section>
+          )}
         </div>
       </div>
     </div>

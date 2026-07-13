@@ -1,0 +1,45 @@
+---
+description: Global system constitution — applies to all files in this project
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# 系統憲法 — Draft Gallery 乙級術科
+
+本規則為本專案全域適用的系統憲法。完整版本（含 8 條 SOP、豁免清單、衝突解決協議）請見專案根目錄 `AGENTS.md`。
+
+## 設計與美學原則（詳見 AGENTS.md 第一章）
+
+**原則 1–4**：Stripe 資訊邏輯、Apple 極簡視覺、色彩紀律鎖定、高階微互動。
+
+品牌色：`#876f49`（暖棕），全域透過 CSS 變數覆用，嚴禁每次生成不同色碼。
+
+## 工程與資安原則（詳見 AGENTS.md 第二章）
+
+**原則 5–12**：DRY 與模組化、語意與 SEO、防禦性 UI、資安防禦、內容鎖定、修改紀律、視覺驗收。
+
+試卷題庫定義於 `src/data/exam-content.ts`，共 180 張試卷，`code` / `focus` / `notes` 欄位為內容鎖定白名單，嚴禁擅自增刪修改。
+
+## Pre-flight Checklist（每次生成前必跑）
+
+見 `AGENTS.md` 第五章。至少完成以下檢查後再生成新程式碼：
+1. `grep -rn "var(--" src/` — 確認 CSS 變數覆用
+2. `grep -rn "font-size:\|letter-spacing:" src/` — 確認字體合規
+3. `grep -rEho "@media \(max-width: [0-9]+px\)" src/` — 確認不新增非標準斷點
+4. `ls src/components/` — 確認無重複元件
+5. 確認新增色彩集中於 `src/app/globals.css` 的 `:root` 區塊
+6. 確認 font-size ≤ 6rem
+7. 確認 ≥3rem 標題有 `text-wrap: balance`
+8. 確認 commit 前本地 `npm run dev` 可正常運行
+
+## 衝突解決（詳見 AGENTS.md 第四章）
+
+三級分級：
+- **第一級（自動修）**：`≥ 0.06em` 字距、超過 6rem 字級、缺 `alt`、寫死 hex
+- **第二級（必須詢問）**：SOP 閾值邊緣 ±10% 的邊界值
+- **第三級（必須修憲才能動）**：與設計哲學層級衝突
+
+## 品牌詞庫（詳見 AGENTS.md 附錄 C）
+
+固定詞組：「乙級術科」「Draft Gallery」「平面圖 201–206」「透視圖 207–212」「大樣圖 213–224」「練習圖上傳」「扣分點分析」「自評複盤」。不得擅自改寫。

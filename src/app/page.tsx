@@ -5,6 +5,7 @@ import { UploadStudio } from "@/components/upload-studio";
 import { AsyncUploadsSection } from "@/components/recent-uploads-section";
 import { EmptyState, SkeletonGrid, SurfacePanel } from "@/components/ui/primitives";
 import { examSections } from "@/data/exam-content";
+import { examNotes } from "@/data/exam-notes";
 
 const chapterLinks = [
   { href: "#plan", label: "平面圖" },
@@ -97,7 +98,7 @@ export default function HomePage() {
           </SurfacePanel>
         ) : (
           examSections.map((section) => (
-            <ArchiveSectionBlock key={section.slug} section={section} />
+            <ArchiveSectionBlock key={section.slug} section={section} examNotes={examNotes} />
           ))
         )}
       </Suspense>

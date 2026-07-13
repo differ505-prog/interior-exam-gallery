@@ -1744,3 +1744,424 @@ main {
   background: var(--danger-soft);
   color: var(--danger);
 }
+
+/* =========================================================================
+   備考知識面板 ExamNotesPanel
+   ========================================================================= */
+.modal-section--notes {
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+}
+
+.exam-notes-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Tab Bar */
+.exam-notes-panel__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+
+.exam-notes-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  background: var(--bg-deep);
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.exam-notes-tab:hover {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+  transform: translateY(-1px);
+}
+
+.exam-notes-tab--active {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+}
+
+.exam-notes-tab--active:hover {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  color: var(--on-accent);
+}
+
+.exam-notes-tab__icon {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.exam-notes-tab__label {
+  white-space: nowrap;
+}
+
+/* Tab Body */
+.exam-notes-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.exam-notes-panel__desc {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Note Card List */
+.note-card-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+/* Note Card */
+.note-card {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  display: grid;
+  gap: var(--space-2);
+  transition: border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.note-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.note-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.note-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.note-card__toggle {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  transition: background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.note-card__toggle:hover {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.note-card__chevron {
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.note-card__chevron--up {
+  transform: rotate(180deg);
+}
+
+.note-card__title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-strong);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.note-card__content {
+  font-size: 0.875rem;
+  color: var(--muted);
+  line-height: 1.65;
+  margin: 0;
+}
+
+.note-card__content--multiline {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.note-card__line {
+  font-size: 0.875rem;
+  color: var(--muted);
+  line-height: 1.65;
+  margin: 0;
+}
+
+.note-card__line--check {
+  padding-left: var(--space-4);
+  position: relative;
+  color: var(--text);
+}
+
+.note-card__line--check::before {
+  content: "□";
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.note-card__line--step {
+  padding-left: var(--space-5);
+  position: relative;
+  color: var(--text);
+}
+
+.note-card__line--step::before {
+  content: counter(step-counter, decimal) ".";
+  counter-increment: step-counter;
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.note-card__table-wrap {
+  overflow-x: auto;
+}
+
+.note-card__table {
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  color: var(--text);
+  white-space: pre;
+  margin: 0;
+}
+
+/* Note Badge */
+.note-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.badge--formula {
+  background: rgba(135, 111, 73, 0.18);
+  color: var(--accent-strong);
+}
+
+.badge--procedure {
+  background: rgba(59, 130, 246, 0.12);
+  color: #1d4ed8;
+}
+
+.badge--checklist {
+  background: rgba(16, 185, 129, 0.12);
+  color: #065f46;
+}
+
+.badge--table {
+  background: rgba(139, 92, 246, 0.12);
+  color: #5b21b6;
+}
+
+.badge--note {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+/* Note Tag */
+.note-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: 0.72rem;
+  background: var(--bg-deep);
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+
+/* Note Detail (expandable) */
+.note-card__detail {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height var(--duration-base) var(--ease-out);
+}
+
+.note-card__detail--visible {
+  max-height: 400px;
+}
+
+.note-card__detail-inner {
+  border-top: 1px solid var(--line);
+  padding-top: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.note-card__detail-text {
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.65;
+  margin: 0;
+}
+
+/* Scale Reference Table */
+.note-scale-table {
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+}
+
+.note-scale-table__scroll {
+  overflow-x: auto;
+}
+
+.note-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.note-table th {
+  background: var(--bg-deep);
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--line-strong);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.note-table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  vertical-align: middle;
+}
+
+.note-table__row--highlight td {
+  background: rgba(135, 111, 73, 0.06);
+}
+
+.note-table__cell--primary {
+  font-weight: 700;
+  color: var(--accent-strong);
+}
+
+.note-table__cell--muted {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+/* Formula Block */
+.note-formula-block {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  display: grid;
+  gap: var(--space-3);
+}
+
+.note-formula-block__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.note-formula-block__name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.note-formula-block__equation {
+  font-family: var(--font-sans);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-strong);
+  letter-spacing: -0.02em;
+  padding: var(--space-3) var(--space-4);
+  background: var(--accent-soft);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--accent);
+}
+
+.note-formula-block__vars {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.note-formula-block__var {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.note-formula-block__sym {
+  font-weight: 700;
+  color: var(--accent-strong);
+  min-width: 80px;
+}
+
+.note-formula-block__example {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  font-size: 0.85rem;
+  color: var(--muted);
+  padding-top: var(--space-2);
+  border-top: 1px dashed var(--line);
+}
+
+.note-formula-block__example-label {
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 40px;
+}
+
+/* Responsive Notes Panel */
+@media (max-width: 768px) {
+  .exam-notes-panel__tabs {
+    gap: var(--space-2);
+  }
+
+  .note-formula-block__equation {
+    font-size: 0.95rem;
+    overflow-x: auto;
+  }
+}

@@ -2,14 +2,16 @@
 
 import { useState } from "react";
 import { ArchiveSection, UploadEntry } from "@/types/exam";
+import { ExamNoteCategory } from "@/types/exam-note";
 import { ArchiveCard } from "@/components/archive-card";
 
 type ArchiveSectionClientProps = {
   section: ArchiveSection;
   uploads: UploadEntry[];
+  examNotes?: ExamNoteCategory[];
 };
 
-export function ArchiveSectionClient({ section, uploads }: ArchiveSectionClientProps) {
+export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSectionClientProps) {
   const isPlan = section.slug === "plan";
   const isCeilingElevation = section.slug === "ceiling-elevation";
   const isPerspective = section.slug === "perspective";
@@ -219,6 +221,7 @@ export function ArchiveSectionClient({ section, uploads }: ArchiveSectionClientP
               key={`${section.slug}-${item.code}`}
               sectionSlug={section.slug}
               uploads={matchedUploads}
+              examNotes={examNotes}
             />
           );
         })}
