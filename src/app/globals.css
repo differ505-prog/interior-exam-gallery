@@ -3021,6 +3021,26 @@ main {
   transform: translateY(0);
 }
 
+.marker-filter__clear-inline {
+  display: inline-block;
+  margin-top: var(--space-2);
+  padding: 3px var(--space-3);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.marker-filter__clear-inline:hover {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
 .marker-palette__empty {
   text-align: center;
   padding: var(--space-5) var(--space-4);
@@ -3063,29 +3083,23 @@ main {
   transition: background var(--duration-fast) var(--ease-out);
 }
 
-.marker-form__swatch-input {
+.marker-form__color-picker {
   flex: 1;
   min-width: 0;
-  padding: var(--space-2) var(--space-3);
+  height: 40px;
+  padding: 4px;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.86);
-  color: var(--text);
-  font-size: 0.88rem;
-  font-family: var(--font-sans);
+  cursor: pointer;
   transition: border-color var(--duration-fast) var(--ease-out),
     box-shadow var(--duration-fast) var(--ease-out);
   outline: none;
 }
 
-.marker-form__swatch-input:focus {
+.marker-form__color-picker:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
-}
-
-.marker-form__swatch-input::placeholder {
-  color: var(--muted);
-  opacity: 0.6;
 }
 
 .marker-form__grid {
@@ -3209,6 +3223,12 @@ main {
   color: var(--accent-strong);
 }
 
+.marker-filter__hint {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin: 0;
+}
+
 .marker-form__error {
   font-size: 0.78rem;
   color: var(--danger);
@@ -3270,7 +3290,85 @@ main {
   transform: translateY(0);
 }
 
-/* ---- Marker List ---- */
+/* ---- Filter Bar ---- */
+.marker-filter {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.marker-filter__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.marker-filter__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px var(--space-3);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+  white-space: nowrap;
+}
+
+.marker-filter__chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.marker-filter__chip--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.marker-filter__chip-count {
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+
+.marker-filter__clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px var(--space-2);
+  border-radius: var(--radius-pill);
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-out);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.marker-filter__clear:hover {
+  color: var(--danger);
+}
+
+.marker-filter__result {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* ---- Marker Card ---- */
 .marker-list {
   display: grid;
   gap: var(--space-2);
@@ -3336,22 +3434,48 @@ main {
   font-variant-numeric: tabular-nums;
 }
 
-.marker-card__type {
-  font-size: 0.72rem;
-  color: var(--muted);
-  background: var(--bg-deep);
-  padding: 1px var(--space-2);
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--line);
-}
-
-.marker-card__note {
+.marker-card__purpose {
   font-size: 0.8rem;
   color: var(--muted);
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.marker-card__purposes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+.marker-card__purpose-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  background: var(--panel-soft);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+  white-space: nowrap;
+}
+
+.marker-card__purpose-tag:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.marker-card__purpose-tag--active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-strong);
 }
 
 .marker-card__actions {

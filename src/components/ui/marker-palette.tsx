@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Palette, Plus, X, Edit3, Check, ChevronDown } from "lucide-react";
 
 const STORAGE_KEY = "draft-gallery-marker-palette";
@@ -12,25 +12,38 @@ const BRANDS = [
   { value: "其他", label: "其他" },
 ] as const;
 
-const TYPES = [
-  { value: "酒精", label: "酒精（暈染佳）" },
-  { value: "水性", label: "水性（線條佳）" },
-  { value: "代針筆", label: "代針筆（輪廓線）" },
-] as const;
-
 export type Marker = {
   id: string;
   brand: string;
   number: string;
-  type: string;
   swatch: string;
-  note: string;
+  purposes: string[];
 };
 
 function loadMarkers(): Marker[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return [];
+    const parsed: unknown[] = JSON.parse(raw);
+    return parsed.map((m: unknown) => {
+      const marker = m as Record<string, unknown>;
+      const rawPurposes = marker.purposes ?? marker.purpose;
+      const purposes: string[] = Array.isArray(rawPurposes)
+        ? rawPurposes
+        : typeof rawPurposes === "string"
+        ? (rawPurposes as string)
+            .split(/[,，]/)
+            .map((p: string) => p.trim())
+            .filter(Boolean)
+        : [];
+      return {
+        id: String(marker.id ?? crypto.randomUUID()),
+        brand: String(marker.brand ?? "其他"),
+        number: String(marker.number ?? ""),
+        swatch: String(marker.swatch ?? "#000000"),
+        purposes,
+      } satisfies Marker;
+    });
   } catch {
     return [];
   }
@@ -44,10 +57,6 @@ function saveMarkers(markers: Marker[]) {
   }
 }
 
-function isValidHex(value: string): boolean {
-  return /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(value);
-}
-
 type Mode = "view" | "add" | "edit";
 
 export function MarkerPalette() {
@@ -55,31 +64,58 @@ export function MarkerPalette() {
   const [mode, setMode] = useState<Mode>("view");
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // Form state
-  const [form, setForm] = useState({ brand: "Copic", number: "", type: "酒精", swatch: "#876F49", note: "" });
+  const [form, setForm] = useState({ brand: "Copic", number: "", swatch: "#876F49", purposesText: "" });
   const [formError, setFormError] = useState("");
-  const [typeOpen, setTypeOpen] = useState(false);
   const [brandOpen, setBrandOpen] = useState(false);
 
+  // --- Filter state ---
+  const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
+
+  // --- Auto-generate filter chips from all marker purposes ---
+  const allPurposes = useMemo(() => {
+    const set = new Set<string>();
+    markers.forEach((m) => m.purposes.forEach((p) => set.add(p)));
+    return Array.from(set).sort();
+  }, [markers]);
+
+  const filteredMarkers = useMemo(() => {
+    if (activeFilters.size === 0) return markers;
+    return markers.filter((m) =>
+      m.purposes.some((p) => activeFilters.has(p))
+    );
+  }, [markers, activeFilters]);
+
+  const toggleFilter = (purpose: string) => {
+    setActiveFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(purpose)) next.delete(purpose);
+      else next.add(purpose);
+      return next;
+    });
+  };
+
+  const clearFilters = () => setActiveFilters(new Set());
+
+  // --- Form helpers ---
   const resetForm = () => {
-    setForm({ brand: "Copic", number: "", type: "酒精", swatch: "#876F49", note: "" });
+    setForm({ brand: "Copic", number: "", swatch: "#876F49", purposesText: "" });
     setFormError("");
   };
+
+  const parsePurposes = (text: string): string[] =>
+    text.split(/[,，]/).map((p) => p.trim()).filter(Boolean);
 
   const handleAdd = () => {
     const trimmed = form.number.trim();
     if (!trimmed) { setFormError("請填入色號"); return; }
-    if (!isValidHex(form.swatch)) { setFormError("請填入正確色碼，如 #876F49"); return; }
     const exists = markers.some((m) => m.brand === form.brand && m.number === trimmed);
     if (exists) { setFormError("此色號已存在"); return; }
-
     const next: Marker = {
       id: crypto.randomUUID(),
       brand: form.brand,
       number: trimmed,
-      type: form.type,
       swatch: form.swatch,
-      note: form.note.trim(),
+      purposes: parsePurposes(form.purposesText),
     };
     const updated = [...markers, next];
     setMarkers(updated);
@@ -97,7 +133,12 @@ export function MarkerPalette() {
   const handleEdit = (id: string) => {
     const m = markers.find((m) => m.id === id);
     if (!m) return;
-    setForm({ brand: m.brand, number: m.number, type: m.type, swatch: m.swatch, note: m.note });
+    setForm({
+      brand: m.brand,
+      number: m.number,
+      swatch: m.swatch,
+      purposesText: m.purposes.join(", "),
+    });
     setFormError("");
     setEditingId(id);
   };
@@ -106,13 +147,11 @@ export function MarkerPalette() {
     if (!editingId) return;
     const trimmed = form.number.trim();
     if (!trimmed) { setFormError("請填入色號"); return; }
-    if (!isValidHex(form.swatch)) { setFormError("請填入正確色碼，如 #876F49"); return; }
     const exists = markers.some((m) => m.id !== editingId && m.brand === form.brand && m.number === trimmed);
     if (exists) { setFormError("此色號已存在"); return; }
-
     const updated = markers.map((m) =>
       m.id === editingId
-        ? { ...m, brand: form.brand, number: trimmed, type: form.type, swatch: form.swatch, note: form.note.trim() }
+        ? { ...m, brand: form.brand, number: trimmed, swatch: form.swatch, purposes: parsePurposes(form.purposesText) }
         : m
     );
     setMarkers(updated);
@@ -127,10 +166,12 @@ export function MarkerPalette() {
     resetForm();
   };
 
-  const swatchStyle = (color: string) => ({
-    background: color,
-    boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-  });
+  // Count how many markers per purpose (for chip badge)
+  const purposeCount = useMemo(() => {
+    const map = new Map<string, number>();
+    markers.forEach((m) => m.purposes.forEach((p) => map.set(p, (map.get(p) ?? 0) + 1)));
+    return map;
+  }, [markers]);
 
   return (
     <div className="marker-palette">
@@ -167,27 +208,23 @@ export function MarkerPalette() {
           className="marker-form"
           onSubmit={(e) => {
             e.preventDefault();
-            if (editingId) {
-              handleUpdate();
-            } else {
-              handleAdd();
-            }
+            if (editingId) handleUpdate();
+            else handleAdd();
           }}
         >
+          {/* Color row */}
           <div className="marker-form__swatch-row">
             <div
               className="marker-form__swatch-preview"
-              style={swatchStyle(form.swatch)}
+              style={{ background: form.swatch }}
               title="顏色預覽"
             />
             <input
-              type="text"
-              className="marker-form__swatch-input"
+              type="color"
+              className="marker-form__color-picker"
               value={form.swatch}
-              onChange={(e) => { setForm((f) => ({ ...f, swatch: e.target.value })); setFormError(""); }}
-              placeholder="#876F49"
-              maxLength={7}
-              aria-label="色碼"
+              onChange={(e) => setForm((f) => ({ ...f, swatch: e.target.value }))}
+              aria-label="選擇顏色"
             />
           </div>
 
@@ -236,48 +273,18 @@ export function MarkerPalette() {
               />
             </div>
 
-            {/* Type dropdown */}
-            <div className="marker-form__field">
-              <label className="marker-form__label">筆型</label>
-              <div className="marker-dropdown">
-                <button
-                  type="button"
-                  className="marker-dropdown__trigger"
-                  onClick={() => setTypeOpen((v) => !v)}
-                  aria-expanded={typeOpen}
-                >
-                  <span>{TYPES.find((t) => t.value === form.type)?.label}</span>
-                  <ChevronDown size={14} className={`marker-dropdown__chevron ${typeOpen ? "marker-dropdown__chevron--open" : ""}`} />
-                </button>
-                {typeOpen && (
-                  <ul className="marker-dropdown__menu" role="listbox">
-                    {TYPES.map((t) => (
-                      <li key={t.value}>
-                        <button
-                          type="button"
-                          className={`marker-dropdown__item ${form.type === t.value ? "marker-dropdown__item--active" : ""}`}
-                          onClick={() => { setForm((f) => ({ ...f, type: t.value })); setTypeOpen(false); }}
-                        >
-                          {t.label}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-
-            {/* Note */}
+            {/* Purposes */}
             <div className="marker-form__field marker-form__field--full">
-              <label className="marker-form__label">用途備註</label>
+              <label className="marker-form__label">用途</label>
               <input
                 type="text"
                 className="marker-form__input"
-                value={form.note}
-                onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
-                placeholder="木皮陰影、沙發布料、吊燈金屬"
-                aria-label="用途備註"
+                value={form.purposesText}
+                onChange={(e) => setForm((f) => ({ ...f, purposesText: e.target.value }))}
+                placeholder="木皮, 陰影, 布料"
+                aria-label="用途（多個用逗號分隔）"
               />
+              <span className="marker-form__hint">多個用途請用逗號分隔</span>
             </div>
           </div>
 
@@ -295,19 +302,72 @@ export function MarkerPalette() {
         </form>
       )}
 
-      {/* Marker List */}
+      {/* Filter bar */}
       {markers.length > 0 && mode === "view" && (
+        <div className="marker-filter">
+          <div className="marker-filter__chips" role="group" aria-label="用途篩選">
+            <button
+              className={`marker-filter__chip ${activeFilters.size === 0 ? "marker-filter__chip--active" : ""}`}
+              onClick={clearFilters}
+            >
+              全部
+              <span className="marker-filter__chip-count">{markers.length}</span>
+            </button>
+            {allPurposes.map((p) => (
+              <button
+                key={p}
+                className={`marker-filter__chip ${activeFilters.has(p) ? "marker-filter__chip--active" : ""}`}
+                onClick={() => toggleFilter(p)}
+                aria-pressed={activeFilters.has(p)}
+              >
+                {p}
+                <span className="marker-filter__chip-count">{purposeCount.get(p) ?? 0}</span>
+              </button>
+            ))}
+          </div>
+          {activeFilters.size > 0 && (
+            <button className="marker-filter__clear" onClick={clearFilters} aria-label="清除所有篩選">
+              <X size={12} />
+              <span>清除</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Result count */}
+      {mode === "view" && activeFilters.size > 0 && filteredMarkers.length > 0 && (
+        <p className="marker-filter__result">
+          顯示 {filteredMarkers.length} 支符合「
+          {Array.from(activeFilters).join("、")}」
+        </p>
+      )}
+
+      {/* Marker List */}
+      {filteredMarkers.length > 0 && mode === "view" && (
         <ul className="marker-list">
-          {markers.map((m) => (
+          {filteredMarkers.map((m) => (
             <li key={m.id} className="marker-card">
-              <div className="marker-card__swatch" style={swatchStyle(m.swatch)} />
+              <div className="marker-card__swatch" style={{ background: m.swatch }} />
               <div className="marker-card__body">
                 <div className="marker-card__meta">
                   <span className="marker-card__brand">{m.brand}</span>
                   <span className="marker-card__number">{m.number}</span>
-                  <span className="marker-card__type">{m.type}</span>
                 </div>
-                {m.note && <p className="marker-card__note">{m.note}</p>}
+                {m.purposes.length > 0 && (
+                  <div className="marker-card__purposes">
+                    {m.purposes.map((p) => (
+                      <button
+                        key={p}
+                        className={`marker-card__purpose-tag ${activeFilters.has(p) ? "marker-card__purpose-tag--active" : ""}`}
+                        onClick={() => toggleFilter(p)}
+                        aria-pressed={activeFilters.has(p)}
+                        title={`篩選「${p}」`}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="marker-card__actions">
                 <button
@@ -328,6 +388,14 @@ export function MarkerPalette() {
             </li>
           ))}
         </ul>
+      )}
+
+      {/* No results */}
+      {mode === "view" && markers.length > 0 && filteredMarkers.length === 0 && (
+        <div className="marker-palette__empty">
+          <p>目前沒有符合篩選條件的麥克筆</p>
+          <button className="marker-filter__clear-inline" onClick={clearFilters}>清除篩選</button>
+        </div>
       )}
     </div>
   );
