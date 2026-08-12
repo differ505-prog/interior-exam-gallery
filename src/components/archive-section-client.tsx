@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { ArchiveSection, UploadEntry } from "@/types/exam";
 import { ExamNoteCategory } from "@/types/exam-note";
 import { ArchiveCard } from "@/components/archive-card";
@@ -12,6 +13,10 @@ type ArchiveSectionClientProps = {
 };
 
 export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSectionClientProps) {
+  // Default: first section (plan) expanded, others collapsed
+  const defaultExpanded = section.slug === "plan";
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+
   const isPlan = section.slug === "plan";
   const isCeilingElevation = section.slug === "ceiling-elevation";
   const isPerspective = section.slug === "perspective";
@@ -94,144 +99,164 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
 
   return (
     <section className="archive-block" id={section.slug}>
-      <div className="archive-heading-container">
-        <div className="archive-heading">
-          <p className="eyebrow">{section.eyebrow}</p>
-          <div>
-            <h2>{section.title}</h2>
+      {/* Collapsible Header */}
+      <button
+        className="archive-block__toggle"
+        onClick={() => setIsExpanded((v) => !v)}
+        aria-expanded={isExpanded}
+        aria-controls={`${section.slug}-content`}
+        type="button"
+      >
+        <div className="archive-heading-container">
+          <div className="archive-heading">
+            <p className="eyebrow">{section.eyebrow}</p>
+            <div>
+              <h2>{section.title}</h2>
+            </div>
           </div>
-        </div>
 
-        <div className="section-stats" aria-label="章節統計資訊">
-          <div className="stat-badge">
-            <span className="stat-val">{totalItems}</span>
-            <span className="stat-lbl">總題數</span>
-          </div>
-          <div className="stat-badge">
-            <span className="stat-val">{uploadedCount}</span>
-            <span className="stat-lbl">已上傳</span>
-          </div>
-          {isPerspective ? (
-            <>
+          <div className="section-stats" aria-label="章節統計資訊">
+            <div className="stat-badge">
+              <span className="stat-val">{totalItems}</span>
+              <span className="stat-lbl">總題數</span>
+            </div>
+            <div className="stat-badge">
+              <span className="stat-val">{uploadedCount}</span>
+              <span className="stat-lbl">已上傳</span>
+            </div>
+            {isPerspective ? (
+              <>
+                <div className="stat-badge stat-badge--accent">
+                  <span className="stat-val">{onePointRate}%</span>
+                  <span className="stat-lbl">一消(甲)</span>
+                </div>
+                <div className="stat-badge stat-badge--accent">
+                  <span className="stat-val">{twoPointRate}%</span>
+                  <span className="stat-lbl">二消(乙丙)</span>
+                </div>
+              </>
+            ) : (
               <div className="stat-badge stat-badge--accent">
-                <span className="stat-val">{onePointRate}%</span>
-                <span className="stat-lbl">一消(甲)</span>
+                <span className="stat-val">{completionRate}%</span>
+                <span className="stat-lbl">完成度</span>
               </div>
-              <div className="stat-badge stat-badge--accent">
-                <span className="stat-val">{twoPointRate}%</span>
-                <span className="stat-lbl">二消(乙丙)</span>
+            )}
+          </div>
+        </div>
+        <ChevronDown
+          size={20}
+          className={`archive-block__toggle-icon ${isExpanded ? "archive-block__toggle-icon--open" : ""}`}
+          aria-hidden="true"
+        />
+      </button>
+
+      {/* Collapsible Content */}
+      <div
+        id={`${section.slug}-content`}
+        className={`archive-block__content ${isExpanded ? "archive-block__content--visible" : ""}`}
+      >
+        {/* Foldable/Collapsible Filters for Plan */}
+        {isPlan && isExpanded && (
+          <div className="archive-filters" aria-label="平面圖篩選面板">
+            <div className="filter-group">
+              <span className="filter-label">選擇題號：</span>
+              <div className="filter-options">
+                {questions.map((q) => (
+                  <button
+                    key={q}
+                    className={`filter-btn ${selectedPlanQuestion === q ? "filter-btn--active" : ""}`}
+                    onClick={() => setSelectedPlanQuestion(q)}
+                    type="button"
+                  >
+                    {q} 題
+                  </button>
+                ))}
               </div>
-            </>
-          ) : (
-            <div className="stat-badge stat-badge--accent">
-              <span className="stat-val">{completionRate}%</span>
-              <span className="stat-lbl">完成度</span>
             </div>
-          )}
+          </div>
+        )}
+
+        {/* Foldable/Collapsible Filters for Ceiling & Elevation */}
+        {isCeilingElevation && isExpanded && (
+          <div className="archive-filters" aria-label="天花與立面篩選面板">
+            <div className="filter-group">
+              <span className="filter-label">選擇題號：</span>
+              <div className="filter-options">
+                {questions.map((q) => (
+                  <button
+                    key={q}
+                    className={`filter-btn ${selectedQuestion === q ? "filter-btn--active" : ""}`}
+                    onClick={() => setSelectedQuestion(q)}
+                    type="button"
+                  >
+                    {q} 題
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="filter-group">
+              <span className="filter-label">圖面種類：</span>
+              <div className="filter-options">
+                {types.map((t) => (
+                  <button
+                    key={t}
+                    className={`filter-btn ${selectedType === t ? "filter-btn--active" : ""}`}
+                    onClick={() => setSelectedType(t)}
+                    type="button"
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Foldable/Collapsible Filters for Perspective (207-212) */}
+        {isPerspective && isExpanded && (
+          <div className="archive-filters" aria-label="透視圖篩選面板">
+            <div className="filter-group">
+              <span className="filter-label">選擇題號：</span>
+              <div className="filter-options">
+                {perspectiveQuestions.map((q) => (
+                  <button
+                    key={q}
+                    className={`filter-btn ${selectedPerspective === q ? "filter-btn--active" : ""}`}
+                    onClick={() => setSelectedPerspective(q)}
+                    type="button"
+                  >
+                    {q} 題
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="archive-grid">
+          {filteredItems.map((item) => {
+            const matchedUploads = uploads.filter(
+              (u) => u.sheetCode.trim().toLowerCase() === item.code.trim().toLowerCase()
+            );
+            return (
+              <ArchiveCard
+                item={item}
+                key={`${section.slug}-${item.code}`}
+                sectionSlug={section.slug}
+                uploads={matchedUploads}
+                examNotes={examNotes}
+              />
+            );
+          })}
         </div>
+
+        {filteredItems.length === 0 && (
+          <div className="archive-empty">
+            <p>此類別目前尚無練習或圖面資料。</p>
+          </div>
+        )}
       </div>
-
-      {/* Foldable/Collapsible Filters for Plan */}
-      {isPlan && (
-        <div className="archive-filters" aria-label="平面圖篩選面板">
-          <div className="filter-group">
-            <span className="filter-label">選擇題號：</span>
-            <div className="filter-options">
-              {questions.map((q) => (
-                <button
-                  key={q}
-                  className={`filter-btn ${selectedPlanQuestion === q ? "filter-btn--active" : ""}`}
-                  onClick={() => setSelectedPlanQuestion(q)}
-                  type="button"
-                >
-                  {q} 題
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Foldable/Collapsible Filters for Ceiling & Elevation */}
-      {isCeilingElevation && (
-        <div className="archive-filters" aria-label="天花與立面篩選面板">
-          <div className="filter-group">
-            <span className="filter-label">選擇題號：</span>
-            <div className="filter-options">
-              {questions.map((q) => (
-                <button
-                  key={q}
-                  className={`filter-btn ${selectedQuestion === q ? "filter-btn--active" : ""}`}
-                  onClick={() => setSelectedQuestion(q)}
-                  type="button"
-                >
-                  {q} 題
-                </button>
-              ))}
-            </div>
-          </div>
-          
-          <div className="filter-group">
-            <span className="filter-label">圖面種類：</span>
-            <div className="filter-options">
-              {types.map((t) => (
-                <button
-                  key={t}
-                  className={`filter-btn ${selectedType === t ? "filter-btn--active" : ""}`}
-                  onClick={() => setSelectedType(t)}
-                  type="button"
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Foldable/Collapsible Filters for Perspective (207-212) */}
-      {isPerspective && (
-        <div className="archive-filters" aria-label="透視圖篩選面板">
-          <div className="filter-group">
-            <span className="filter-label">選擇題號：</span>
-            <div className="filter-options">
-              {perspectiveQuestions.map((q) => (
-                <button
-                  key={q}
-                  className={`filter-btn ${selectedPerspective === q ? "filter-btn--active" : ""}`}
-                  onClick={() => setSelectedPerspective(q)}
-                  type="button"
-                >
-                  {q} 題
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="archive-grid">
-        {filteredItems.map((item) => {
-          const matchedUploads = uploads.filter(
-            (u) => u.sheetCode.trim().toLowerCase() === item.code.trim().toLowerCase()
-          );
-          return (
-            <ArchiveCard
-              item={item}
-              key={`${section.slug}-${item.code}`}
-              sectionSlug={section.slug}
-              uploads={matchedUploads}
-              examNotes={examNotes}
-            />
-          );
-        })}
-      </div>
-
-      {filteredItems.length === 0 && (
-        <div className="archive-empty">
-          <p>此類別目前尚無練習或圖面資料。</p>
-        </div>
-      )}
     </section>
   );
 }

@@ -497,8 +497,53 @@ main {
 }
 
 /* =========================================================================
-   Archive block
+   Archive block — collapsible sections
    ========================================================================= */
+.archive-block__toggle {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: var(--space-4);
+  text-align: left;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.archive-block__toggle:hover {
+  opacity: 0.8;
+}
+
+.archive-block__toggle-icon {
+  flex-shrink: 0;
+  color: var(--muted);
+  margin-top: 4px;
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.archive-block__toggle-icon--open {
+  transform: rotate(180deg);
+}
+
+.archive-block__content {
+  display: grid;
+  gap: var(--space-4);
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height var(--duration-base) var(--ease-out),
+    opacity var(--duration-base) var(--ease-out);
+}
+
+.archive-block__content--visible {
+  max-height: none;
+  opacity: 1;
+  overflow: visible;
+}
 .archive-heading-container {
   display: flex;
   flex-direction: column;
