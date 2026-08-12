@@ -3004,6 +3004,96 @@ main {
 }
 
 /* =========================================================================
+   Floating TOC — 滑動浮現的導覽按鈕
+   ========================================================================= */
+.floating-toc {
+  position: fixed;
+  bottom: var(--space-6);
+  right: var(--space-6);
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+  opacity: 0;
+  transform: translateY(16px);
+  pointer-events: none;
+  transition: opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+}
+
+.floating-toc--visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.floating-toc__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--text-strong);
+  color: var(--on-accent);
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: background var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.floating-toc__trigger:hover {
+  background: #2a2724;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.floating-toc__menu {
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  overflow: hidden;
+  animation: fadeIn var(--duration-fast) var(--ease-out);
+  min-width: 140px;
+}
+
+.floating-toc__menu ul {
+  padding: var(--space-2);
+  list-style: none;
+}
+
+.floating-toc__link {
+  display: block;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.floating-toc__link:hover {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+@media (max-width: 480px) {
+  .floating-toc {
+    bottom: var(--space-4);
+    right: var(--space-4);
+  }
+}
+
+/* =========================================================================
    Marker Palette — 麥克筆資料庫（透視圖上色記錄）
    ========================================================================= */
 .marker-palette {

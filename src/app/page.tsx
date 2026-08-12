@@ -4,28 +4,10 @@ import { ArchiveSectionBlock } from "@/components/archive-section";
 import { UploadStudio } from "@/components/upload-studio";
 import { AsyncUploadsSection } from "@/components/recent-uploads-section";
 import { PracticePlanSection } from "@/components/practice-plan-section";
+import { FloatingTOC } from "@/components/floating-toc";
 import { EmptyState, SkeletonGrid, SurfacePanel } from "@/components/ui/primitives";
 import { examSections } from "@/data/exam-content";
 import { examNotes } from "@/data/exam-notes";
-
-const chapterLinks = [
-  { href: "#plan", label: "平面圖" },
-  { href: "#ceiling-elevation", label: "天花與立面" },
-  { href: "#perspective", label: "透視圖" },
-  { href: "#detail", label: "大樣圖" },
-] as const;
-
-const actionLinks = [
-  { href: "#upload-studio", label: "上傳", variant: "ghost" as const },
-  { href: "#recent-uploads", label: "最近上傳", variant: "ghost" as const },
-] as const;
-
-const metrics = [
-  { label: "平面圖版本", value: "30" },
-  { label: "透視視角", value: "18" },
-  { label: "大樣節點", value: "12" },
-  { label: "練習複盤模組", value: "遠端同步" },
-] as const;
 
 const HERO_DESCRIPTION =
   "術科練習圖紙備份與對應大類對比系統。";
@@ -41,15 +23,6 @@ export default function HomePage() {
               術科圖庫，從閱讀到複盤。
             </h1>
           </div>
-          <nav aria-label="章節快速導覽" className="topbar__nav">
-            <ul className="topbar__nav-list">
-              {chapterLinks.map((link) => (
-                <li key={link.href}>
-                  <Link href={link.href}>{link.label}</Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
         </header>
 
         <div className="hero-grid">
@@ -59,27 +32,41 @@ export default function HomePage() {
               <Link aria-label="建立複盤牆" className="solid-link" href="#upload-studio">
                 建立複盤牆
               </Link>
-              {actionLinks.map((link) => (
-                <Link
-                  aria-label={link.label}
-                  className="ghost-link"
-                  href={link.href}
-                  key={link.href}
-                >
-                  {link.label}
-                </Link>
-              ))}
+              <Link
+                aria-label="上傳"
+                className="ghost-link"
+                href="#upload-studio"
+              >
+                上傳
+              </Link>
+              <Link
+                aria-label="最近上傳"
+                className="ghost-link"
+                href="#recent-uploads"
+              >
+                最近上傳
+              </Link>
             </div>
           </article>
         </div>
 
         <dl aria-label="題庫規模" className="metric-row">
-          {metrics.map((metric) => (
-            <div className="metric-card" key={metric.label}>
-              <dt className="metric-card__label">{metric.label}</dt>
-              <dd className="metric-card__value">{metric.value}</dd>
-            </div>
-          ))}
+          <div className="metric-card">
+            <dt className="metric-card__label">平面圖版本</dt>
+            <dd className="metric-card__value">30</dd>
+          </div>
+          <div className="metric-card">
+            <dt className="metric-card__label">透視視角</dt>
+            <dd className="metric-card__value">18</dd>
+          </div>
+          <div className="metric-card">
+            <dt className="metric-card__label">大樣節點</dt>
+            <dd className="metric-card__value">12</dd>
+          </div>
+          <div className="metric-card">
+            <dt className="metric-card__label">練習複盤模組</dt>
+            <dd className="metric-card__value">遠端同步</dd>
+          </div>
         </dl>
       </SurfacePanel>
 
@@ -109,6 +96,8 @@ export default function HomePage() {
       <UploadStudio />
 
       <AsyncUploadsSection />
+
+      <FloatingTOC />
     </main>
   );
 }
