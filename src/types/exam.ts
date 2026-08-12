@@ -4,6 +4,8 @@ export type ArchiveItem = {
   variants: string[];
   focus: string;
   notes: string;
+  /** 試卷教學連結（由 Supabase 動態填入，目前 localStorage 階段性支援） */
+  links?: string[];
 };
 
 export type ArchiveSection = {

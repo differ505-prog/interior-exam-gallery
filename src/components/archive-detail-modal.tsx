@@ -6,6 +6,7 @@ import { X, ZoomIn, FileImage, Upload, ArrowLeft, ArrowRight } from "lucide-reac
 import { ArchiveItem, UploadEntry } from "@/types/exam";
 import { ExamNoteCategory } from "@/types/exam-note";
 import { SafeImage } from "@/components/ui/safe-image";
+import { TeachingLinks } from "@/components/ui/teaching-links";
 import { ExamNotesPanel } from "@/components/exam-notes-panel";
 
 type ArchiveDetailModalProps = {
@@ -261,6 +262,16 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
               />
             </section>
           )}
+
+          {/* 教學資源連結 */}
+          <section className="modal-section modal-section--notes">
+            <h3 className="section-title">教學資源</h3>
+            <TeachingLinks
+              sheetCode={item.code}
+              initialLinks={item.links}
+              maxLinks={sectionSlug === "perspective" ? 2 : 1}
+            />
+          </section>
         </div>
       </div>
     </div>
