@@ -7,6 +7,7 @@ import { ArchiveItem, UploadEntry } from "@/types/exam";
 import { ExamNoteCategory } from "@/types/exam-note";
 import { SafeImage } from "@/components/ui/safe-image";
 import { TeachingLinks } from "@/components/ui/teaching-links";
+import { MarkerPalette } from "@/components/ui/marker-palette";
 import { ExamNotesPanel } from "@/components/exam-notes-panel";
 
 type ArchiveDetailModalProps = {
@@ -272,6 +273,13 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
               maxLinks={sectionSlug === "perspective" ? 2 : 1}
             />
           </section>
+
+          {/* 麥克筆資料庫（僅透視圖顯示） */}
+          {sectionSlug === "perspective" && (
+            <section className="modal-section modal-section--notes">
+              <MarkerPalette />
+            </section>
+          )}
         </div>
       </div>
     </div>
