@@ -220,7 +220,7 @@ main {
   box-shadow: var(--shadow);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
-  padding: var(--space-7);
+  padding: var(--space-8);
 }
 
 /* =========================================================================
