@@ -218,6 +218,13 @@ grep -rEn "font-size: [0-9]+\.[5-9]rem|font-size: [1-9][0-9]rem" src/
 - **品牌詞庫對齊**：CTA、tag 是否與既有品牌詞庫一致（「乙級術科」「練習圖上傳」「扣分點分析」為固定詞組，不可擅自改寫）
 - **觸發條件**：`font-size`、`letter-spacing`、`line-height`、`text-wrap` 任一變更
 
+## SOP 9：CSS 變數防禦性編程（CSS Variable Defensive Programming）
+
+在使用設計系統的 CSS 變數（尤其是間距、大小等結構性變數）時，若該變數未在 `:root` 定義，會導致整個 CSS 屬性失效（例如 `padding: var(--space-7)` 會變成 `padding: 0`）。
+
+- **防衛性回退**：除非有絕對把握該變數存在，否則在新增樣式時，強烈建議加上合理的回退值（Fallback），例如 `padding: var(--space-7, 32px)` 或 `var(--space-7, var(--space-8))`。
+- **邊界驗證**：在優化間距與排版時，必須檢查該變數是否存在於 `:root` 的設計 Token 區塊中，禁止盲目臆測變數名稱（如臆測 `--space-7` 存在）。
+
 ---
 
 # 第四章：衝突解決與豁免制度
@@ -319,6 +326,7 @@ grep -rEn "font-size: [0-9]+\.[5-9]rem|font-size: [1-9][0-9]rem" src/
 
 - **教訓 1**（來自忙碌腰帶第 4-8 輪）：單一目錄掃描（只看 `index.astro`）會錯過 Hero h1 在其他元件、Footer h2 在 Layout 中的重大違規。**本專案必須嚴守第五章掃描範圍 6 個目錄。**
 - **教訓 2**（來自忙碌腰帶第 14 輪）：Commit message 自稱「清零」前，必須實際再跑一次完整 grep 驗證，不可憑記憶清點。
+- **教訓 3**（CSS 變數未定義導致版面崩壞，2026-08-13）：曾因使用未定義的 `var(--space-7)` 導致 `.archive-block` 的 `padding` 整個被瀏覽器丟棄，造成標題文字直接貼死在白色卡片頂部邊框。此後嚴格要求執行 SOP 9 的變數防衛性檢查。
 
 ---
 
