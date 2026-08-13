@@ -100,21 +100,19 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
   return (
     <section className="archive-block" id={section.slug}>
       {/* Collapsible Header */}
-      <button
-        className="archive-block__toggle"
-        onClick={() => setIsExpanded((v) => !v)}
-        aria-expanded={isExpanded}
-        aria-controls={`${section.slug}-content`}
-        type="button"
-      >
-        <div className="archive-heading-container">
-          <div className="archive-heading">
-            <p className="eyebrow">{section.eyebrow}</p>
-            <div>
-              <h2>{section.title}</h2>
-            </div>
-          </div>
+      <div className="archive-block__header">
+        <div className="archive-block__header-left">
+          <p className="eyebrow">{section.eyebrow}</p>
+          <h2 className="archive-block__title">{section.title}</h2>
+        </div>
 
+        <button
+          className="archive-block__toggle"
+          onClick={() => setIsExpanded((v) => !v)}
+          aria-expanded={isExpanded}
+          aria-controls={`${section.slug}-content`}
+          type="button"
+        >
           <div className="section-stats" aria-label="章節統計資訊">
             <div className="stat-badge">
               <span className="stat-val">{totalItems}</span>
@@ -142,13 +140,13 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
               </div>
             )}
           </div>
-        </div>
-        <ChevronDown
-          size={20}
-          className={`archive-block__toggle-icon ${isExpanded ? "archive-block__toggle-icon--open" : ""}`}
-          aria-hidden="true"
-        />
-      </button>
+          <ChevronDown
+            size={20}
+            className={`archive-block__toggle-icon ${isExpanded ? "archive-block__toggle-icon--open" : ""}`}
+            aria-hidden="true"
+          />
+        </button>
+      </div>
 
       {/* Collapsible Content */}
       <div
