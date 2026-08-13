@@ -697,6 +697,7 @@ main {
   opacity: 1;
   visibility: visible;
   overflow: visible;
+  padding: var(--space-2) 0; /* Prevent top border clipping */
 }
 .archive-heading-container {
   display: flex;
@@ -775,6 +776,7 @@ main {
   color: var(--accent);
   font-weight: 700;
   margin: 0;
+  line-height: 1.2;
 }
 
 .archive-card__variants,
@@ -1811,7 +1813,6 @@ main {
   font-size: var(--text-base);
 }
 
-/* Dashboard Section Stats Badges */
 .section-stats {
   display: flex;
   gap: var(--space-3);
@@ -1822,6 +1823,7 @@ main {
 @media (min-width: 768px) {
   .section-stats {
     margin-top: 0;
+    gap: var(--space-4);
   }
 }
 
@@ -1830,11 +1832,14 @@ main {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-sm);
-  background: var(--bg-deep);
-  border: 1px solid var(--line);
-  min-width: 76px;
+  padding: 0 var(--space-3);
+  border-right: 1px solid var(--line);
+  min-width: 60px;
+}
+
+.stat-badge:last-child {
+  border-right: none;
+  padding-right: 0;
 }
 
 .stat-val {
@@ -1851,11 +1856,6 @@ main {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-top: 2px;
-}
-
-.stat-badge--accent {
-  background: var(--accent-soft);
-  border-color: var(--accent);
 }
 
 .stat-badge--accent .stat-val {
@@ -2412,19 +2412,15 @@ main {
 }
 
 .practice-plan-stat {
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
+  background: transparent;
+  padding: var(--space-4) var(--space-2);
   display: grid;
   gap: var(--space-1);
-  transition: transform var(--duration-base) var(--ease-out),
-              box-shadow var(--duration-base) var(--ease-out);
+  border-right: 1px solid var(--line);
 }
 
-.practice-plan-stat:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-sm);
+.practice-plan-stat:last-child {
+  border-right: none;
 }
 
 .practice-plan-stat dt {
@@ -2453,8 +2449,8 @@ main {
 }
 
 .practice-plan-stat--highlight {
-  background: rgba(135, 111, 73, 0.06);
-  border-color: rgba(135, 111, 73, 0.18);
+  /* Subtle highlight instead of borders */
+  background: linear-gradient(to bottom, transparent, rgba(135, 111, 73, 0.04));
 }
 
 /* Tabs */
@@ -2499,9 +2495,10 @@ main {
 }
 
 .practice-plan-tab--active {
-  background: var(--text-strong);
-  color: var(--on-accent);
-  border-color: var(--text-strong);
+  background: var(--bg-deep);
+  color: var(--text-strong);
+  border-color: transparent;
+  box-shadow: var(--shadow-sm);
 }
 
 .practice-plan-tab__icon {
