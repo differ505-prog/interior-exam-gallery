@@ -5,6 +5,7 @@ import { UploadStudio } from "@/components/upload-studio";
 import { AsyncUploadsSection } from "@/components/recent-uploads-section";
 import { PracticePlanSection } from "@/components/practice-plan-section";
 import { FloatingTOC } from "@/components/floating-toc";
+import { ProgressTracker } from "@/components/progress-tracker";
 import { EmptyState, SkeletonGrid, SurfacePanel } from "@/components/ui/primitives";
 import { examSections } from "@/data/exam-content";
 import { examNotes } from "@/data/exam-notes";
@@ -48,6 +49,8 @@ export default function HomePage() {
               </Link>
             </div>
           </article>
+
+          <ProgressTracker />
         </div>
 
         <dl aria-label="題庫規模" className="metric-row">

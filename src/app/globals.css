@@ -497,6 +497,137 @@ main {
 }
 
 /* =========================================================================
+   Progress Tracker — 備考上膛進度卡
+   ========================================================================= */
+.progress-tracker {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.progress-tracker__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.progress-tracker__title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--accent);
+}
+
+.progress-tracker__label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-strong);
+  letter-spacing: 0.01em;
+}
+
+.progress-tracker__summary {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.progress-tracker__count {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-strong);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-tracker__denom {
+  font-size: 0.9rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-tracker__pct {
+  margin-left: var(--space-2);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-tracker__bar-wrap {
+  height: 8px;
+  background: var(--bg-deep);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.progress-tracker__bar {
+  height: 100%;
+  background: var(--accent);
+  border-radius: var(--radius-pill);
+  transition: width var(--duration-base) var(--ease-out);
+  min-width: 0;
+}
+
+.progress-tracker__hint {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin: 0;
+  text-align: center;
+}
+
+.progress-tracker__cats {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line);
+}
+
+.progress-tracker__cat {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.progress-tracker__cat-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.progress-tracker__cat-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.progress-tracker__cat-val {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-tracker__cat-bar {
+  height: 5px;
+  background: var(--bg-deep);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.progress-tracker__cat-fill {
+  height: 100%;
+  background: var(--accent-soft);
+  border-radius: var(--radius-pill);
+  transition: width var(--duration-base) var(--ease-out);
+  min-width: 0;
+}
+
+/* =========================================================================
    Archive block — collapsible sections
    ========================================================================= */
 .archive-block__toggle {
