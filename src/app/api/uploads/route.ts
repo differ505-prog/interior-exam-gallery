@@ -1,13 +1,14 @@
 import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
-import { bucketName, getSupabaseAdmin, hasSupabaseEnv } from "@/lib/supabase";
+import { cloudinary, cloudinaryFolder, hasCloudinaryEnv } from "@/lib/cloudinary";
+import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const allowedMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const maxFileSize = 10 * 1024 * 1024;
-const maxRequestSize = 12 * 1024 * 1024; // 圖片上限 + 其他欄位的安全邊際
+const maxRequestSize = 12 * 1024 * 1024;
 const rateLimitWindowMs = 60_000;
 const rateLimitMax = 8;
 
@@ -53,16 +54,21 @@ function badRequest(message: string) {
   return NextResponse.json({ message }, { status: 400 });
 }
 
+function getSupabaseClient() {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error("Missing Supabase env vars");
+  return createClient(url, key);
+}
+
 export async function GET() {
   return NextResponse.json({ ok: true });
 }
 
 export async function POST(request: Request) {
-  if (!hasSupabaseEnv) {
+  if (!hasCloudinaryEnv) {
     return NextResponse.json(
-      {
-        message: "尚未連接 Supabase。上傳暫停。",
-      },
+      { message: "尚未連接 Cloudinary。上傳暫停。" },
       { status: 503 },
     );
   }
@@ -138,46 +144,44 @@ export async function POST(request: Request) {
     return badRequest("請填寫作者名稱。");
   }
 
+  // Upload image to Cloudinary
+  const arrayBuffer = await image.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+
+  const cloudinaryResult = await new Promise<{ secure_url: string }>((resolve, reject) => {
+    cloudinary.uploader
+      .upload_stream(
+        {
+          folder: `${cloudinaryFolder}/${sheetCode}`,
+          public_id: `${Date.now()}-${randomUUID()}`,
+          resource_type: "image",
+        },
+        (error, result) => {
+          if (error || !result) return reject(error ?? new Error("Cloudinary upload failed"));
+          resolve({ secure_url: result.secure_url });
+        },
+      )
+      .end(buffer);
+  });
+
+  const imageUrl = cloudinaryResult.secure_url;
+
+  // Save metadata to Supabase (create client inline to avoid bundling server key)
   let supabase;
   try {
-    supabase = getSupabaseAdmin();
+    supabase = getSupabaseClient();
   } catch {
-    return NextResponse.json({ message: "伺服器尚未設定資料庫環境。" }, { status: 503 });
-  }
-
-  const extension = image.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-  const path = `${sheetCode}/${Date.now()}-${randomUUID()}.${extension}`;
-
-  let arrayBuffer: ArrayBuffer;
-  try {
-    arrayBuffer = await image.arrayBuffer();
-  } catch {
-    return badRequest("無法讀取圖片內容。");
-  }
-
-  const { error: uploadError } = await supabase.storage
-    .from(bucketName)
-    .upload(path, arrayBuffer, {
-      contentType: image.type,
-      upsert: false,
-    });
-
-  if (uploadError) {
     return NextResponse.json(
-      { message: `圖片上傳失敗：${uploadError.message}` },
-      { status: 500 },
+      { message: "伺服器尚未設定資料庫環境。" },
+      { status: 503 },
     );
   }
-
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from(bucketName).getPublicUrl(path);
 
   const { error: insertError } = await supabase.from("practice_entries").insert({
     title,
     category,
     sheet_code: sheetCode,
-    image_url: publicUrl,
+    image_url: imageUrl,
     kind,
     author_name: authorName,
     score_note: scoreNote,

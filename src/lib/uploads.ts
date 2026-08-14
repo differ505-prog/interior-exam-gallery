@@ -1,5 +1,5 @@
 import { sampleUploads } from "@/data/exam-content";
-import { hasSupabaseEnv, getSupabaseAdmin } from "@/lib/supabase";
+import { createClient } from "@supabase/supabase-js";
 import { UploadEntry } from "@/types/exam";
 
 type DbUploadRow = {
@@ -55,17 +55,21 @@ function mapUpload(row: DbUploadRow): UploadEntry | null {
   };
 }
 
-/**
- * 從 Supabase 拉取最近上傳；若失敗或環境未設定，退回展示資料。
- * 絕不將錯誤拋到 caller，避免單一筆資料損毀拖垮整頁 SSR。
- */
+function getSupabaseClient() {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key);
+}
+
 export async function getRecentUploads(): Promise<UploadEntry[]> {
-  if (!hasSupabaseEnv) {
+  const supabase = getSupabaseClient();
+
+  if (!supabase) {
     return sampleUploads;
   }
 
   try {
-    const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
       .from("practice_entries")
       .select(
