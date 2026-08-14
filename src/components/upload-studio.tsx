@@ -29,7 +29,16 @@ export function UploadStudio() {
   const [message, setMessage] = useState<string | null>(null);
   const [messageTone, setMessageTone] = useState<"info" | "error">("info");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isReady, setIsReady] = useState<boolean | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+
+  // Check Supabase readiness before rendering form
+  useEffect(() => {
+    fetch("/api/uploads/status")
+      .then((r) => r.json())
+      .then((data: { ready: boolean }) => setIsReady(data.ready))
+      .catch(() => setIsReady(false));
+  }, []);
 
   // Autocomplete and suggestion dropdown states
   const [kind, setKind] = useState<string>("我的練習圖");
@@ -159,6 +168,34 @@ export function UploadStudio() {
     setPreviewUrl(URL.createObjectURL(file));
   };
 
+  if (isReady === null) {
+    return (
+      <section aria-labelledby="upload-studio-title" className="studio-shell" id="upload-studio">
+        <div className="studio-copy">
+          <p className="eyebrow">Upload Studio</p>
+          <h2 id="upload-studio-title">上傳圖紙與自評</h2>
+        </div>
+        <div className="form-message form-message--info" style={{ padding: "var(--space-4)" }}>
+          讀取中…
+        </div>
+      </section>
+    );
+  }
+
+  if (!isReady) {
+    return (
+      <section aria-labelledby="upload-studio-title" className="studio-shell" id="upload-studio">
+        <div className="studio-copy">
+          <p className="eyebrow">Upload Studio</p>
+          <h2 id="upload-studio-title">上傳圖紙與自評</h2>
+        </div>
+        <div className="form-message form-message--error" style={{ padding: "var(--space-4)" }}>
+          尚未連接 Supabase。上傳功能暫停，請聯繫站長設定資料庫環境。
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section aria-labelledby="upload-studio-title" className="studio-shell" id="upload-studio">
       <div className="studio-copy">
@@ -286,25 +323,33 @@ export function UploadStudio() {
           </Field>
         </div>
 
-        <Field id="weaknesses" label="自評缺點 / 扣分點" required>
+        <Field id="weaknesses" label="自評缺點 / 扣分點">
           <textarea
             id="weaknesses"
             maxLength={MAX_TEXTAREA_LENGTH}
             name="weaknesses"
             placeholder={"每行一點，例如：\n尺寸標註太擠\n走道淨寬不足\n主牆比例不穩"}
-            required
             rows={5}
           />
         </Field>
 
-        <Field id="scoreNote" label="綜合複盤" required>
+        <Field id="scoreNote" label="綜合複盤">
           <textarea
             id="scoreNote"
             maxLength={MAX_TEXTAREA_LENGTH}
             name="scoreNote"
             placeholder="例如：櫃體比例有改善，但玄關與餐桌距離仍過近，預估扣 5 分。"
-            required
             rows={4}
+          />
+        </Field>
+
+        <Field id="teacherComment" label="老師評圖評語">
+          <textarea
+            id="teacherComment"
+            maxLength={MAX_TEXTAREA_LENGTH}
+            name="teacherComment"
+            placeholder="老師或同學給予的回饋與修正建議"
+            rows={3}
           />
         </Field>
 

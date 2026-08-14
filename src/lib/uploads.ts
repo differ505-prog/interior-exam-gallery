@@ -11,6 +11,7 @@ type DbUploadRow = {
   kind: UploadEntry["kind"];
   author_name: string;
   score_note: string;
+  teacher_comment: string;
   weaknesses: string[];
   created_at: string;
 };
@@ -46,6 +47,7 @@ function mapUpload(row: DbUploadRow): UploadEntry | null {
     kind: mappedKind,
     authorName: String(row.author_name ?? "").trim() || "匿名",
     scoreNote: String(row.score_note ?? "").trim(),
+    teacherComment: String(row.teacher_comment ?? "").trim(),
     weaknesses: Array.isArray(row.weaknesses)
       ? row.weaknesses.filter((w): w is string => typeof w === "string" && w.trim().length > 0)
       : [],
@@ -67,7 +69,7 @@ export async function getRecentUploads(): Promise<UploadEntry[]> {
     const { data, error } = await supabase
       .from("practice_entries")
       .select(
-        "id, title, category, sheet_code, image_url, kind, author_name, score_note, weaknesses, created_at",
+        "id, title, category, sheet_code, image_url, kind, author_name, score_note, teacher_comment, weaknesses, created_at",
       )
       .order("created_at", { ascending: false })
       .limit(6);

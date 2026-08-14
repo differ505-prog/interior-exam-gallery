@@ -28,6 +28,7 @@ export type UploadEntry = {
   kind: UploadKind;
   authorName: string;
   scoreNote: string;
+  teacherComment: string;
   weaknesses: string[];
   createdAt: string;
 };

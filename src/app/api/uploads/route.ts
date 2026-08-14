@@ -99,6 +99,7 @@ export async function POST(request: Request) {
   const kind = String(formData.get("kind") ?? "").trim();
   const authorName = String(formData.get("authorName") ?? "").trim().slice(0, 60);
   const scoreNote = String(formData.get("scoreNote") ?? "").trim().slice(0, 600);
+  const teacherComment = String(formData.get("teacherComment") ?? "").trim().slice(0, 600);
   const weaknesses = String(formData.get("weaknesses") ?? "")
     .split(/\r?\n/)
     .map((item) => item.trim().slice(0, 80))
@@ -133,8 +134,8 @@ export async function POST(request: Request) {
     return badRequest("請選擇有效的圖像類型。");
   }
 
-  if (!authorName || !scoreNote || weaknesses.length === 0) {
-    return badRequest("請完整填寫所有欄位。");
+  if (!authorName) {
+    return badRequest("請填寫作者名稱。");
   }
 
   let supabase;
@@ -180,6 +181,7 @@ export async function POST(request: Request) {
     kind,
     author_name: authorName,
     score_note: scoreNote,
+    teacher_comment: teacherComment,
     weaknesses,
   });
 
