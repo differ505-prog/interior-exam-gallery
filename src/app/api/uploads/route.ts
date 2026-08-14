@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { cloudinary, cloudinaryFolder, hasCloudinaryEnv } from "@/lib/cloudinary";
-import { createClient } from "@supabase/supabase-js";
+import { kvPushEntry, hasKvEnv } from "@/lib/kv-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -54,13 +54,6 @@ function badRequest(message: string) {
   return NextResponse.json({ message }, { status: 400 });
 }
 
-function getSupabaseClient() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error("Missing Supabase env vars");
-  return createClient(url, key);
-}
-
 export async function GET() {
   return NextResponse.json({ ok: true });
 }
@@ -69,6 +62,13 @@ export async function POST(request: Request) {
   if (!hasCloudinaryEnv) {
     return NextResponse.json(
       { message: "尚未連接 Cloudinary。上傳暫停。" },
+      { status: 503 },
+    );
+  }
+
+  if (!hasKvEnv()) {
+    return NextResponse.json(
+      { message: "尚未連接 Vercel KV。請至 Vercel 啟用 KV 資料庫。" },
       { status: 503 },
     );
   }
@@ -144,7 +144,7 @@ export async function POST(request: Request) {
     return badRequest("請填寫作者名稱。");
   }
 
-  // Upload image to Cloudinary
+  // 1. Upload image to Cloudinary
   const arrayBuffer = await image.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
@@ -157,7 +157,8 @@ export async function POST(request: Request) {
           resource_type: "image",
         },
         (error, result) => {
-          if (error || !result) return reject(error ?? new Error("Cloudinary upload failed"));
+          if (error || !result)
+            return reject(error ?? new Error("Cloudinary upload failed"));
           resolve({ secure_url: result.secure_url });
         },
       )
@@ -166,32 +167,25 @@ export async function POST(request: Request) {
 
   const imageUrl = cloudinaryResult.secure_url;
 
-  // Save metadata to Supabase (create client inline to avoid bundling server key)
-  let supabase;
+  // 2. Save metadata to Vercel KV
   try {
-    supabase = getSupabaseClient();
-  } catch {
+    await kvPushEntry({
+      title,
+      category,
+      sheetCode,
+      imageUrl,
+      kind: kind as "我的練習圖" | "他人範例圖" | "他人作品參考",
+      authorName,
+      scoreNote,
+      teacherComment,
+      weaknesses,
+    });
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Failed to save entry to Vercel KV", error);
+    }
     return NextResponse.json(
-      { message: "伺服器尚未設定資料庫環境。" },
-      { status: 503 },
-    );
-  }
-
-  const { error: insertError } = await supabase.from("practice_entries").insert({
-    title,
-    category,
-    sheet_code: sheetCode,
-    image_url: imageUrl,
-    kind,
-    author_name: authorName,
-    score_note: scoreNote,
-    teacher_comment: teacherComment,
-    weaknesses,
-  });
-
-  if (insertError) {
-    return NextResponse.json(
-      { message: `資料寫入失敗：${insertError.message}` },
+      { message: "資料寫入失敗，請稍後再試。" },
       { status: 500 },
     );
   }
