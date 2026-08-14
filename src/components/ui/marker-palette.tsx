@@ -141,6 +141,7 @@ export function MarkerPalette() {
     });
     setFormError("");
     setEditingId(id);
+    setMode("add");
   };
 
   const handleUpdate = () => {
@@ -157,6 +158,7 @@ export function MarkerPalette() {
     setMarkers(updated);
     saveMarkers(updated);
     setEditingId(null);
+    setMode("view");
     resetForm();
   };
 
