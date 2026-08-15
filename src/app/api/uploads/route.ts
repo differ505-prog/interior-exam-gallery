@@ -136,6 +136,16 @@ export async function POST(request: Request) {
     return badRequest("請選擇有效的類別。");
   }
 
+  console.log("[uploads] 接收參數:", {
+    title,
+    category,
+    sheetCode,
+    kind,
+    authorName,
+    imageSize: image.size,
+    imageType: image.type,
+  });
+
   if (!kindOptions.has(kind)) {
     return badRequest("請選擇有效的圖像類型。");
   }
@@ -168,6 +178,7 @@ export async function POST(request: Request) {
   const imageUrl = cloudinaryResult.secure_url;
 
   // 2. Save metadata to Vercel KV
+  console.log("[uploads] 圖片上傳成功，準備寫入 KV:", { title, sheetCode, imageUrl });
   try {
     await kvPushEntry({
       title,
@@ -180,10 +191,9 @@ export async function POST(request: Request) {
       teacherComment,
       weaknesses,
     });
+    console.log("[uploads] KV 寫入成功:", { sheetCode });
   } catch (error) {
-    if (process.env.NODE_ENV !== "production") {
-      console.error("Failed to save entry to Vercel KV", error);
-    }
+    console.error("[uploads] KV 寫入失敗:", error);
     return NextResponse.json(
       { message: "資料寫入失敗，請稍後再試。" },
       { status: 500 },

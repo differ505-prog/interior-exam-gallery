@@ -81,14 +81,22 @@ export async function kvPushEntry(payload: KvUploadPayload): Promise<void> {
     createdAt: new Date().toISOString(),
   };
 
+  const entryJson = JSON.stringify(entry);
+  console.log("[kv] LPUSH 寫入:", { key: KV_LIST_KEY, entryId: entry.id, sheetCode: payload.sheetCode, json: entryJson.slice(0, 120) });
+
   // LPUSH 新記錄到列表前端
-  await kv.lpush(KV_LIST_KEY, JSON.stringify(entry));
+  await kv.lpush(KV_LIST_KEY, entryJson);
 
   // 若超出上限，移除最舊記錄
   const len = await kv.llen(KV_LIST_KEY);
+  console.log("[kv] 寫入後列表長度:", len);
+
   if (len > MAX_ENTRIES) {
     await kv.lpop(KV_LIST_KEY);
+    console.log("[kv] 已移除最舊記錄");
   }
+
+  console.log("[kv] LPUSH 完成");
 }
 
 /**
@@ -106,12 +114,19 @@ export async function kvGetRecentEntries(
   }
 
   const entries = raw
-    .map((s) => {
-      try {
-        return JSON.parse(s) as Record<string, unknown>;
-      } catch {
-        return null;
+    .map((item) => {
+      // Vercel KV (Upstash) lrange 可能回 string 或直接是物件，統一處理
+      if (typeof item === "object" && item !== null) {
+        return item as Record<string, unknown>;
       }
+      if (typeof item === "string") {
+        try {
+          return JSON.parse(item) as Record<string, unknown>;
+        } catch {
+          return null;
+        }
+      }
+      return null;
     })
     .filter((r): r is Record<string, unknown> => r !== null)
     .map(mapEntry)

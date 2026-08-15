@@ -16,9 +16,7 @@ export async function getRecentUploads(): Promise<UploadEntry[]> {
 
     return entries;
   } catch (error) {
-    if (process.env.NODE_ENV !== "production") {
-      console.error("Failed to load uploads from Vercel KV", error);
-    }
+    console.error("[uploads] KV 讀取失敗:", error);
     return sampleUploads;
   }
 }
