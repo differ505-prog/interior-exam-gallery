@@ -126,9 +126,12 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
     return () => setMounted(false);
   }, []);
 
-  // 圖紙 URL（config-driven，無需 if/else）
+  // 圖紙 URL：detail / perspective 由 item.code 驅動，其他區塊共用 null
   const planUrl = (() => {
-    if (sectionSlug === "detail") return "/images/213/2021021722093353239.jpg";
+    if (sectionSlug === "detail") {
+      // 213–224 各有獨立資料夾，未上傳則回傳 null（顯示建置中 placeholder）
+      return `/images/${item.code}/2021021722093353239.jpg`;
+    }
     if (sectionSlug === "perspective") return "/images/208/2021021722093353239 (1).jpg";
     return null;
   })();
