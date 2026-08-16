@@ -9,6 +9,7 @@ import { SafeImage } from "@/components/ui/safe-image";
 import { TeachingLinks } from "@/components/ui/teaching-links";
 import { MarkerPalette } from "@/components/ui/marker-palette";
 import { ExamNotesPanel } from "@/components/exam-notes-panel";
+import { getSheetData, saveScratchNote } from "@/lib/user-data";
 
 // ─── 配置驅動：題目區渲染參數 ───────────────────────────────
 type LayoutVariant = "two-col" | "one-col";
@@ -52,16 +53,23 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
   const [mounted, setMounted] = useState(false);
   const [scratchNote, setScratchNote] = useState("");
 
-  // ─── 速記本：LocalStorage 暫存，跨 session 保留 ───────────
+  // ─── 速記本：跨裝置雲端同步，localStorage 降級 ──────────
+  const [scratchNote, setScratchNote] = useState("");
+
   useEffect(() => {
-    const saved = localStorage.getItem(`scratch:${item.code}`);
-    if (saved) setScratchNote(saved);
+    let cancelled = false;
+    (async () => {
+      const data = await getSheetData(item.code);
+      if (cancelled) return;
+      setScratchNote(data.scratchNote);
+    })();
+    return () => { cancelled = true; };
   }, [item.code]);
 
-  const handleScratchChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleScratchChange = async (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     setScratchNote(val);
-    localStorage.setItem(`scratch:${item.code}`, val);
+    await saveScratchNote(item.code, val);
   };
   // ───────────────────────────────────────────────────────────
 

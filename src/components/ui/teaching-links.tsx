@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useRef, KeyboardEvent } from "react";
+import { useState, useEffect, useRef, KeyboardEvent } from "react";
 import { Link2, Plus, X, ExternalLink } from "lucide-react";
+import { getSheetData, saveTeachingLinks } from "@/lib/user-data";
 
 export type TeachingLinkSlot = {
   label: string;
@@ -9,19 +10,19 @@ export type TeachingLinkSlot = {
 };
 
 type TeachingLinksProps = {
-  /** 試卷代碼，用於 localStorage key */
+  /** 試卷代碼，用於快取 key */
   sheetCode: string;
-  /** 初始連結（依序對應每個 slot） */
+  /** 初始連結（由 exam-content.ts 靜態提供，作為 fallback） */
   initialLinks?: string[];
   /** 每個 slot 有獨立的 label + placeholder */
   slots: TeachingLinkSlot[];
 };
 
-const STORAGE_KEY = "draft-gallery-teaching-links";
+const ANON_KEY = "draft-gallery-teaching-links";
 
-function loadLinks(sheetCode: string): string[] {
+function loadLegacyLinks(sheetCode: string): string[] {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(ANON_KEY);
     if (!stored) return [];
     const all: Record<string, string[]> = JSON.parse(stored);
     return all[sheetCode] ?? [];
@@ -30,12 +31,12 @@ function loadLinks(sheetCode: string): string[] {
   }
 }
 
-function saveLinks(sheetCode: string, links: string[]) {
+function saveLegacyLinks(sheetCode: string, links: string[]) {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(ANON_KEY);
     const all: Record<string, string[]> = stored ? JSON.parse(stored) : {};
     all[sheetCode] = links;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+    localStorage.setItem(ANON_KEY, JSON.stringify(all));
   } catch {
     // ignore
   }
@@ -51,88 +52,73 @@ function isValidUrl(value: string): boolean {
 }
 
 export function TeachingLinks({ sheetCode, initialLinks = [], slots }: TeachingLinksProps) {
-  // 初始化：優先取 localStorage，否則取 initialLinks
-  const [links, setLinks] = useState<string[]>(() => {
-    const saved = loadLinks(sheetCode);
-    if (saved.length > 0) return saved;
-    // 截斷至 slot 數量
-    return slots.map((_, i) => initialLinks[i] ?? "");
-  });
+  // 初始化：優先取 user-data sync 層（支援跨裝置），無則用 legacy localStorage，最後用 initialLinks
+  const [links, setLinks] = useState<string[]>([]);
+  const [initialized, setInitialized] = useState(false);
 
-  const [drafts, setDrafts] = useState<string[]>(() =>
-    slots.map(() => "")
-  );
-  const [errors, setErrors] = useState<string[]>(() =>
-    slots.map(() => "")
-  );
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const data = await getSheetData(sheetCode);
+      if (cancelled) return;
+      // 有雲端或新 cache：用 teachingLinks；否則遷移 legacy
+      const remoteLinks = data.teachingLinks;
+      const hasRemote = remoteLinks.length > 0;
+      if (hasRemote) {
+        setLinks(remoteLinks);
+      } else {
+        const legacy = loadLegacyLinks(sheetCode);
+        if (legacy.length > 0) {
+          setLinks(legacy);
+        } else {
+          setLinks(slots.map((_, i) => initialLinks[i] ?? ""));
+        }
+      }
+      setInitialized(true);
+    })();
+    return () => { cancelled = true; };
+  }, [sheetCode, slots.length, initialLinks]);
+
+  const [drafts, setDrafts] = useState<string[]>(() => slots.map(() => ""));
+  const [errors, setErrors] = useState<string[]>(() => slots.map(() => ""));
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const handleAdd = (slotIndex: number) => {
+  const handleAdd = async (slotIndex: number) => {
     const trimmed = drafts[slotIndex].trim();
     if (!trimmed) return;
     if (!isValidUrl(trimmed)) {
-      setErrors((prev) => {
-        const next = [...prev];
-        next[slotIndex] = "請輸入有效的網址";
-        return next;
-      });
+      setErrors((prev) => { const next = [...prev]; next[slotIndex] = "請輸入有效的網址"; return next; });
       return;
     }
     const next = [...links];
     next[slotIndex] = trimmed;
     setLinks(next);
-    saveLinks(sheetCode, next);
-    setDrafts((prev) => {
-      const d = [...prev];
-      d[slotIndex] = "";
-      return d;
-    });
-    setErrors((prev) => {
-      const e = [...prev];
-      e[slotIndex] = "";
-      return e;
-    });
+    setDrafts((prev) => { const d = [...prev]; d[slotIndex] = ""; return d; });
+    setErrors((prev) => { const e = [...prev]; e[slotIndex] = ""; return e; });
+    // 寫入雲端 + localStorage
+    await saveTeachingLinks(sheetCode, next);
+    saveLegacyLinks(sheetCode, next);
   };
 
-  const handleRemove = (slotIndex: number) => {
+  const handleRemove = async (slotIndex: number) => {
     const next = [...links];
     next[slotIndex] = "";
     setLinks(next);
-    saveLinks(sheetCode, next);
+    await saveTeachingLinks(sheetCode, next);
+    saveLegacyLinks(sheetCode, next);
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>, slotIndex: number) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleAdd(slotIndex);
-    }
+    if (e.key === "Enter") { e.preventDefault(); handleAdd(slotIndex); }
     if (e.key === "Escape") {
-      setDrafts((prev) => {
-        const d = [...prev];
-        d[slotIndex] = "";
-        return d;
-      });
-      setErrors((prev) => {
-        const e = [...prev];
-        e[slotIndex] = "";
-        return e;
-      });
+      setDrafts((prev) => { const d = [...prev]; d[slotIndex] = ""; return d; });
+      setErrors((prev) => { const e = [...prev]; e[slotIndex] = ""; return e; });
     }
   };
 
   const handleDraftChange = (value: string, slotIndex: number) => {
-    setDrafts((prev) => {
-      const d = [...prev];
-      d[slotIndex] = value;
-      return d;
-    });
-    if (errors[slotIndex]) {
-      setErrors((prev) => {
-        const e = [...prev];
-        e[slotIndex] = "";
-        return e;
-      });
-    }
+    setDrafts((prev) => { const d = [...prev]; d[slotIndex] = value; return d; });
+    if (errors[slotIndex]) setErrors((prev) => { const e = [...prev]; e[slotIndex] = ""; return e; });
   };
 
   return (
