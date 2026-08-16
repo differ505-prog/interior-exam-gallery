@@ -50,6 +50,20 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
   const [activeImage, setActiveImage] = useState<string | null>(null);
   const [isLargeZoom, setIsLargeZoom] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [scratchNote, setScratchNote] = useState("");
+
+  // ─── 速記本：SessionStorage 暫存，跨 session 保留 ───────────
+  useEffect(() => {
+    const saved = sessionStorage.getItem(`scratch:${item.code}`);
+    if (saved) setScratchNote(saved);
+  }, [item.code]);
+
+  const handleScratchChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setScratchNote(val);
+    sessionStorage.setItem(`scratch:${item.code}`, val);
+  };
+  // ───────────────────────────────────────────────────────────
 
   // ─── 配置查表 ────────────────────────────────────────────
   const questionConfig = QUESTION_CONFIGS[sectionSlug] ?? {
@@ -150,7 +164,7 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
         <header className="modal-header">
           <div className="modal-header-title">
             <span className="modal-badge">{item.code}</span>
-            <h2>{item.title}</h2>
+            <h2>{item.title.replace(new RegExp(`^${item.code}\\s*`), "")}</h2>
           </div>
           <button className="modal-close-btn" onClick={onClose} aria-label="關閉視窗">
             <X size={20} />
@@ -306,6 +320,26 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
                 </a>
               </div>
             )}
+          </section>
+
+          {/* 速記本：作圖時自由記錄，之後彙整 */}
+          <section className="modal-section modal-section--notes">
+            <h3 className="section-title">速記本</h3>
+            <div className="scratch-pad">
+              <textarea
+                className="scratch-pad__input"
+                value={scratchNote}
+                onChange={handleScratchChange}
+                placeholder="作圖時想到什麼就寫什麼——尺寸、比例、扣分點、靈感。有空時再彙整進正式備考筆記。"
+                rows={4}
+                aria-label="速記本"
+              />
+              {scratchNote && (
+                <p className="scratch-pad__meta">
+                  已暫存 · 按「⌘+S」或複製內容保存
+                </p>
+              )}
+            </div>
           </section>
 
           {/* 備考知識面板 */}
