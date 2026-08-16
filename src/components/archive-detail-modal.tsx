@@ -52,16 +52,16 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
   const [mounted, setMounted] = useState(false);
   const [scratchNote, setScratchNote] = useState("");
 
-  // ─── 速記本：SessionStorage 暫存，跨 session 保留 ───────────
+  // ─── 速記本：LocalStorage 暫存，跨 session 保留 ───────────
   useEffect(() => {
-    const saved = sessionStorage.getItem(`scratch:${item.code}`);
+    const saved = localStorage.getItem(`scratch:${item.code}`);
     if (saved) setScratchNote(saved);
   }, [item.code]);
 
   const handleScratchChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     setScratchNote(val);
-    sessionStorage.setItem(`scratch:${item.code}`, val);
+    localStorage.setItem(`scratch:${item.code}`, val);
   };
   // ───────────────────────────────────────────────────────────
 
