@@ -385,6 +385,7 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
               <MarkerPalette />
             </section>
           )}
+        </div>
       </div>
     </div>
 
