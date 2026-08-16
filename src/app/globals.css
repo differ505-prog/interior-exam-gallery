@@ -1360,6 +1360,13 @@ main {
   gap: var(--space-5);
 }
 
+.question-single {
+  display: grid;
+  grid-template-columns: 1fr;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
 .question-image-box {
   background: var(--panel-soft);
   border: 1px solid var(--line);

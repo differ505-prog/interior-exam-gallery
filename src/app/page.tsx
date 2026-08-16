@@ -90,9 +90,16 @@ export default function HomePage() {
             />
           </SurfacePanel>
         ) : (
-          examSections.map((section) => (
-            <ArchiveSectionBlock key={section.slug} section={section} examNotes={examNotes} />
-          ))
+          examSections.map((section) => {
+            const sectionExamNotes = examNotes.filter((cat) => cat.slug === section.slug);
+            return (
+              <ArchiveSectionBlock
+                key={section.slug}
+                section={section}
+                examNotes={sectionExamNotes}
+              />
+            );
+          })
         )}
       </Suspense>
 

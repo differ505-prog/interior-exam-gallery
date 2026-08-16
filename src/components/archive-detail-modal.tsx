@@ -10,6 +10,34 @@ import { TeachingLinks } from "@/components/ui/teaching-links";
 import { MarkerPalette } from "@/components/ui/marker-palette";
 import { ExamNotesPanel } from "@/components/exam-notes-panel";
 
+// ─── 配置驅動：題目區渲染參數 ───────────────────────────────
+type LayoutVariant = "two-col" | "one-col";
+
+type QuestionConfig = {
+  title: string;
+  layout: LayoutVariant;
+};
+
+const QUESTION_CONFIGS: Record<string, QuestionConfig> = {
+  perspective: {
+    title: "題目區（平面圖＋立面圖）",
+    layout: "two-col",
+  },
+  detail: {
+    title: "題目區（大樣圖）",
+    layout: "one-col",
+  },
+  plan: {
+    title: "題目區（平面圖＋立面圖）",
+    layout: "two-col",
+  },
+  "ceiling-elevation": {
+    title: "題目區（平面圖＋立面圖）",
+    layout: "two-col",
+  },
+};
+// ───────────────────────────────────────────────────────────
+
 type ArchiveDetailModalProps = {
   item: ArchiveItem;
   uploads: UploadEntry[];
@@ -23,6 +51,13 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
   const [isLargeZoom, setIsLargeZoom] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  // ─── 配置查表 ────────────────────────────────────────────
+  const questionConfig = QUESTION_CONFIGS[sectionSlug] ?? {
+    title: "題目區（平面圖＋立面圖）",
+    layout: "two-col",
+  };
+  // ─────────────────────────────────────────────────────────
+
   const myPractices = useMemo(() => uploads.filter((u) => u.kind === "我的練習圖"), [uploads]);
   const otherReferences = useMemo(() => uploads.filter((u) => u.kind === "他人範例圖"), [uploads]);
 
@@ -31,10 +66,16 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
     return () => setMounted(false);
   }, []);
 
-  const is208 = item.code.startsWith("208");
-  const is213 = item.code === "213";
-  const planUrl = is208 ? "/images/208/2021021722093353239 (1).jpg" : is213 ? "/images/213/2021021722093353239.jpg" : null;
-  const elevUrl = is208 ? "/images/208/2021021722093353239 (2).jpg" : null;
+  // 圖紙 URL（config-driven，無需 if/else）
+  const planUrl = (() => {
+    if (sectionSlug === "detail") return "/images/213/2021021722093353239.jpg";
+    if (sectionSlug === "perspective") return "/images/208/2021021722093353239 (1).jpg";
+    return null;
+  })();
+
+  const elevUrl = sectionSlug === "perspective"
+    ? "/images/208/2021021722093353239 (2).jpg"
+    : null;
 
   const handlePrefill = (kindVal: "我的練習圖" | "他人作品參考") => {
     let uploadCategory = "平面圖 201-206";
@@ -118,10 +159,10 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
 
         {/* Scrollable Content */}
         <div className="modal-content">
-          {/* Question Reference Area (題目區) */}
+          {/* Question Reference Area */}
           <section className="modal-section">
-            <h3 className="section-title">題目區（平面圖＋立面圖）</h3>
-            {is208 ? (
+            <h3 className="section-title">{questionConfig.title}</h3>
+            {questionConfig.layout === "two-col" && planUrl && elevUrl ? (
               <div className="question-grid">
                 <div className="question-image-box">
                   <div className="question-image-header">
@@ -131,7 +172,7 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
                     </button>
                   </div>
                   <div className="question-image-container" onClick={() => setActiveImage(planUrl)}>
-                    <SafeImage src={planUrl!} alt={`${item.code} 平面配置參考圖`} aspectRatio="4 / 3" />
+                    <SafeImage src={planUrl} alt={`${item.code} 平面配置參考圖`} aspectRatio="4 / 3" />
                   </div>
                 </div>
                 <div className="question-image-box">
@@ -142,7 +183,21 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
                     </button>
                   </div>
                   <div className="question-image-container" onClick={() => setActiveImage(elevUrl)}>
-                    <SafeImage src={elevUrl!} alt={`${item.code} 立面配置參考圖`} aspectRatio="4 / 3" />
+                    <SafeImage src={elevUrl} alt={`${item.code} 立面配置參考圖`} aspectRatio="4 / 3" />
+                  </div>
+                </div>
+              </div>
+            ) : questionConfig.layout === "one-col" && planUrl ? (
+              <div className="question-single">
+                <div className="question-image-box">
+                  <div className="question-image-header">
+                    <h4>大樣圖參考</h4>
+                    <button className="zoom-btn" onClick={() => setActiveImage(planUrl)} aria-label="放大參考圖">
+                      <ZoomIn size={16} /> <span>放大</span>
+                    </button>
+                  </div>
+                  <div className="question-image-container" onClick={() => setActiveImage(planUrl)}>
+                    <SafeImage src={planUrl} alt={`${item.code} 大樣圖參考`} aspectRatio="4 / 3" />
                   </div>
                 </div>
               </div>
@@ -152,8 +207,7 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
                   <FileImage className="placeholder-icon" size={48} />
                   <h4>題目圖紙建置中</h4>
                   <p>
-                    此題目的平面與立面配置圖正在編校上傳中。<br />
-                    您可以點擊檢視 <strong>208甲、208乙 或 208丙</strong>，預覽完整的平面與立面圖配置。
+                    此題目的題目參考圖正在編校上傳中。
                   </p>
                 </div>
               </div>
