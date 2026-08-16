@@ -19,6 +19,7 @@ type TeachingLinksProps = {
 };
 
 const ANON_KEY = "draft-gallery-teaching-links";
+const DEFAULT_LINKS: string[] = [];
 
 function loadLegacyLinks(sheetCode: string): string[] {
   try {
@@ -51,7 +52,7 @@ function isValidUrl(value: string): boolean {
   }
 }
 
-export function TeachingLinks({ sheetCode, initialLinks = [], slots }: TeachingLinksProps) {
+export function TeachingLinks({ sheetCode, initialLinks = DEFAULT_LINKS, slots }: TeachingLinksProps) {
   // 初始化：優先取 user-data sync 層（支援跨裝置），無則用 legacy localStorage，最後用 initialLinks
   const [links, setLinks] = useState<string[]>([]);
   const [initialized, setInitialized] = useState(false);
@@ -59,25 +60,29 @@ export function TeachingLinks({ sheetCode, initialLinks = [], slots }: TeachingL
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      console.info(`[TeachingLinks] 正在載入教學連結 (sheetCode: ${sheetCode})`);
       const data = await getSheetData(sheetCode);
       if (cancelled) return;
       // 有雲端或新 cache：用 teachingLinks；否則遷移 legacy
       const remoteLinks = data.teachingLinks;
       const hasRemote = remoteLinks.length > 0;
       if (hasRemote) {
+        console.info(`[TeachingLinks] 使用遠端同步的連結 (sheetCode: ${sheetCode})`);
         setLinks(remoteLinks);
       } else {
         const legacy = loadLegacyLinks(sheetCode);
         if (legacy.length > 0) {
+          console.info(`[TeachingLinks] 遷移 legacy 連結 (sheetCode: ${sheetCode})`);
           setLinks(legacy);
         } else {
+          console.info(`[TeachingLinks] 使用初始/預設連結 (sheetCode: ${sheetCode})`);
           setLinks(slots.map((_, i) => initialLinks[i] ?? ""));
         }
       }
       setInitialized(true);
     })();
     return () => { cancelled = true; };
-  }, [sheetCode, slots.length, initialLinks]);
+  }, [sheetCode, slots.length]); // 移除 initialLinks 避免 reference equality 造成的無窮迴圈
 
   const [drafts, setDrafts] = useState<string[]>(() => slots.map(() => ""));
   const [errors, setErrors] = useState<string[]>(() => slots.map(() => ""));
