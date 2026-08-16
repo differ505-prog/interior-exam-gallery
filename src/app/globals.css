@@ -2929,7 +2929,8 @@ main {
 
 /* =========================================================================
    Teaching Links — 試卷詳情 Modal 內的教學連結輸入元件
-   透視圖 maxLinks=2，其餘題型 maxLinks=1
+   大樣圖與透視圖：slots=[教學示範影片, 3D渲染模型]，其餘題型：slots=[教學示範影片]
+   每個 slot 為固定標籤的獨立輸入框，slot 填入後替換為連結卡，點 X 可清除重新輸入
    ========================================================================= */
 .teaching-links {
   display: flex;
@@ -3148,6 +3149,32 @@ main {
   padding: var(--space-2) var(--space-3);
   background: var(--danger-soft);
   border-radius: var(--radius-sm);
+}
+
+.teaching-links__slots {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.teaching-links__slot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.teaching-links__slot-label {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: var(--space-1) var(--space-3);
+  background: var(--surface-raised);
+  border-radius: var(--radius-pill);
+  width: fit-content;
 }
 
 @media (max-width: 480px) {

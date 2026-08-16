@@ -271,7 +271,16 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
             <TeachingLinks
               sheetCode={item.code}
               initialLinks={item.links}
-              maxLinks={sectionSlug === "perspective" ? 2 : 1}
+              slots={
+                sectionSlug === "perspective" || sectionSlug === "detail"
+                  ? [
+                      { label: "教學示範影片", placeholder: "貼上 YouTube 或教學影片連結" },
+                      { label: "3D 渲染模型", placeholder: "貼上 SketchFab、Artstation 等 3D 模型連結" },
+                    ]
+                  : [
+                      { label: "教學示範影片", placeholder: "貼上 YouTube 或教學影片連結" },
+                    ]
+              }
             />
           </section>
 

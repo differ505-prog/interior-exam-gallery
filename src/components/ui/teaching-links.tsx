@@ -3,13 +3,18 @@
 import { useState, useRef, KeyboardEvent } from "react";
 import { Link2, Plus, X, ExternalLink } from "lucide-react";
 
+export type TeachingLinkSlot = {
+  label: string;
+  placeholder: string;
+};
+
 type TeachingLinksProps = {
   /** 試卷代碼，用於 localStorage key */
   sheetCode: string;
-  /** 初始連結（來自 Supabase） */
+  /** 初始連結（依序對應每個 slot） */
   initialLinks?: string[];
-  /** 透視圖允許 2 欄，其餘 1 欄 */
-  maxLinks: 1 | 2;
+  /** 每個 slot 有獨立的 label + placeholder */
+  slots: TeachingLinkSlot[];
 };
 
 const STORAGE_KEY = "draft-gallery-teaching-links";
@@ -45,50 +50,88 @@ function isValidUrl(value: string): boolean {
   }
 }
 
-export function TeachingLinks({ sheetCode, initialLinks = [], maxLinks }: TeachingLinksProps) {
+export function TeachingLinks({ sheetCode, initialLinks = [], slots }: TeachingLinksProps) {
+  // 初始化：優先取 localStorage，否則取 initialLinks
   const [links, setLinks] = useState<string[]>(() => {
     const saved = loadLinks(sheetCode);
-    return saved.length > 0 ? saved : initialLinks;
+    if (saved.length > 0) return saved;
+    // 截斷至 slot 數量
+    return slots.map((_, i) => initialLinks[i] ?? "");
   });
-  const [draft, setDraft] = useState("");
-  const [error, setError] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  const canAdd = links.length < maxLinks;
+  const [drafts, setDrafts] = useState<string[]>(() =>
+    slots.map(() => "")
+  );
+  const [errors, setErrors] = useState<string[]>(() =>
+    slots.map(() => "")
+  );
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const handleAdd = () => {
-    const trimmed = draft.trim();
+  const handleAdd = (slotIndex: number) => {
+    const trimmed = drafts[slotIndex].trim();
     if (!trimmed) return;
     if (!isValidUrl(trimmed)) {
-      setError("請輸入有效的網址");
+      setErrors((prev) => {
+        const next = [...prev];
+        next[slotIndex] = "請輸入有效的網址";
+        return next;
+      });
       return;
     }
-    if (links.includes(trimmed)) {
-      setError("連結已存在");
-      return;
-    }
-    const next = [...links, trimmed];
+    const next = [...links];
+    next[slotIndex] = trimmed;
     setLinks(next);
     saveLinks(sheetCode, next);
-    setDraft("");
-    setError("");
+    setDrafts((prev) => {
+      const d = [...prev];
+      d[slotIndex] = "";
+      return d;
+    });
+    setErrors((prev) => {
+      const e = [...prev];
+      e[slotIndex] = "";
+      return e;
+    });
   };
 
-  const handleRemove = (url: string) => {
-    const next = links.filter((l) => l !== url);
+  const handleRemove = (slotIndex: number) => {
+    const next = [...links];
+    next[slotIndex] = "";
     setLinks(next);
     saveLinks(sheetCode, next);
-    setError("");
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>, slotIndex: number) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      handleAdd();
+      handleAdd(slotIndex);
     }
     if (e.key === "Escape") {
-      setDraft("");
-      setError("");
+      setDrafts((prev) => {
+        const d = [...prev];
+        d[slotIndex] = "";
+        return d;
+      });
+      setErrors((prev) => {
+        const e = [...prev];
+        e[slotIndex] = "";
+        return e;
+      });
+    }
+  };
+
+  const handleDraftChange = (value: string, slotIndex: number) => {
+    setDrafts((prev) => {
+      const d = [...prev];
+      d[slotIndex] = value;
+      return d;
+    });
+    if (errors[slotIndex]) {
+      setErrors((prev) => {
+        const e = [...prev];
+        e[slotIndex] = "";
+        return e;
+      });
     }
   };
 
@@ -99,94 +142,101 @@ export function TeachingLinks({ sheetCode, initialLinks = [], maxLinks }: Teachi
           <Link2 size={15} />
         </span>
         <span className="teaching-links__label">教學資源</span>
-        <span className="teaching-links__count">
-          {links.length}/{maxLinks}
-        </span>
       </div>
 
-      {/* 連結清單 */}
-      {links.length > 0 && (
-        <ul className="teaching-links__list">
-          {links.map((url) => (
-            <li key={url} className="teaching-links__item">
-              <a
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="teaching-links__link"
-                title={url}
-              >
-                <ExternalLink size={13} className="teaching-links__link-icon" />
-                <span className="teaching-links__link-text">
-                  {url.replace(/^https?:\/\//, "").slice(0, 48)}
-                  {url.length > 56 ? "…" : ""}
-                </span>
-              </a>
-              <button
-                className="teaching-links__remove"
-                onClick={() => handleRemove(url)}
-                aria-label={`移除連結 ${url}`}
-              >
-                <X size={13} />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <div className="teaching-links__slots">
+        {slots.map((slot, slotIndex) => {
+          const filledUrl = links[slotIndex];
+          const draft = drafts[slotIndex];
+          const error = errors[slotIndex];
 
-      {/* 輸入區 */}
-      {canAdd ? (
-        <div className="teaching-links__input-row">
-          <div className="teaching-links__input-wrap">
-            <input
-              ref={inputRef}
-              type="url"
-              className={`teaching-links__input ${error ? "teaching-links__input--error" : ""}`}
-              value={draft}
-              onChange={(e) => {
-                setDraft(e.target.value);
-                if (error) setError("");
-              }}
-              onKeyDown={handleKeyDown}
-              placeholder="貼上 YouTube 或其他教學連結"
-              enterKeyHint="done"
-            />
-            {draft && (
-              <button
-                className="teaching-links__clear"
-                onClick={() => {
-                  setDraft("");
-                  setError("");
-                  inputRef.current?.focus();
-                }}
-                aria-label="清除輸入"
-                type="button"
-              >
-                <X size={13} />
-              </button>
-            )}
-          </div>
-          <button
-            className="teaching-links__add-btn"
-            onClick={handleAdd}
-            disabled={!draft.trim()}
-            type="button"
-          >
-            <Plus size={15} />
-          </button>
-        </div>
-      ) : (
-        <p className="teaching-links__max-note">
-          已達上限 {maxLinks} 個連結
-        </p>
-      )}
+          return (
+            <div key={slotIndex} className="teaching-links__slot">
+              <div className="teaching-links__slot-label">
+                {slot.label}
+              </div>
 
-      {/* 錯誤訊息 */}
-      {error && (
-        <p className="teaching-links__error" role="alert">
-          {error}
-        </p>
-      )}
+              {filledUrl ? (
+                <div className="teaching-links__item">
+                  <a
+                    href={filledUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="teaching-links__link"
+                    title={filledUrl}
+                  >
+                    <ExternalLink size={13} className="teaching-links__link-icon" />
+                    <span className="teaching-links__link-text">
+                      {filledUrl.replace(/^https?:\/\//, "").slice(0, 48)}
+                      {filledUrl.length > 56 ? "…" : ""}
+                    </span>
+                  </a>
+                  <button
+                    className="teaching-links__remove"
+                    onClick={() => handleRemove(slotIndex)}
+                    aria-label={`移除 ${slot.label}`}
+                    type="button"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              ) : (
+                <div className="teaching-links__input-row">
+                  <div className="teaching-links__input-wrap">
+                    <input
+                      ref={(el) => { inputRefs.current[slotIndex] = el; }}
+                      type="url"
+                      className={`teaching-links__input ${error ? "teaching-links__input--error" : ""}`}
+                      value={draft}
+                      onChange={(e) => handleDraftChange(e.target.value, slotIndex)}
+                      onKeyDown={(e) => handleKeyDown(e, slotIndex)}
+                      placeholder={slot.placeholder}
+                      enterKeyHint="done"
+                    />
+                    {draft && (
+                      <button
+                        className="teaching-links__clear"
+                        onClick={() => {
+                          setDrafts((prev) => {
+                            const d = [...prev];
+                            d[slotIndex] = "";
+                            return d;
+                          });
+                          setErrors((prev) => {
+                            const e = [...prev];
+                            e[slotIndex] = "";
+                            return e;
+                          });
+                          inputRefs.current[slotIndex]?.focus();
+                        }}
+                        aria-label="清除輸入"
+                        type="button"
+                      >
+                        <X size={13} />
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    className="teaching-links__add-btn"
+                    onClick={() => handleAdd(slotIndex)}
+                    disabled={!draft.trim()}
+                    type="button"
+                    aria-label={`新增 ${slot.label}`}
+                  >
+                    <Plus size={15} />
+                  </button>
+                </div>
+              )}
+
+              {error && (
+                <p className="teaching-links__error" role="alert">
+                  {error}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
