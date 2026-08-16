@@ -51,7 +51,6 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
   const [activeImage, setActiveImage] = useState<string | null>(null);
   const [isLargeZoom, setIsLargeZoom] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [scratchNote, setScratchNote] = useState("");
 
   // ─── 速記本：跨裝置雲端同步，localStorage 降級 ──────────
   const [scratchNote, setScratchNote] = useState("");
