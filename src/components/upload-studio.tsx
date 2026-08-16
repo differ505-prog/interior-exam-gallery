@@ -3,18 +3,20 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, Upload, X } from "lucide-react";
+import {
+  UPLOAD_CATEGORIES,
+  UPLOAD_KINDS,
+  type UploadCategoryValue,
+  type UploadKindValue,
+} from "@/lib/upload-constants";
 
-const categoryOptions = [
-  "平面圖 201-206",
-  "天花板圖 / 立面圖",
-  "透視圖 207-212",
-  "大樣圖 213-224",
-] as const;
-
-const kindOptions = ["我的練習圖", "他人作品參考"] as const;
-
-type CategoryOption = (typeof categoryOptions)[number];
-type KindOption = (typeof kindOptions)[number];
+const categoryOptions = Object.values(UPLOAD_CATEGORIES) as [
+  UploadCategoryValue,
+  UploadCategoryValue,
+  UploadCategoryValue,
+  UploadCategoryValue,
+];
+const kindOptions = Object.values(UPLOAD_KINDS) as [UploadKindValue, UploadKindValue];
 
 const MAX_TITLE_LENGTH = 60;
 const MAX_TEXTAREA_LENGTH = 500;
@@ -254,7 +256,7 @@ export function UploadStudio() {
                 }
               }}
             >
-              {kindOptions.map((option: KindOption) => (
+              {kindOptions.map((option: UploadKindValue) => (
                 <option key={option} value={option}>
                   {option}
                 </option>
@@ -402,4 +404,3 @@ function Field({ id, label, required, children }: FieldProps) {
   );
 }
 
-export type { CategoryOption };

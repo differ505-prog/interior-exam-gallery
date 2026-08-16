@@ -10,6 +10,7 @@ import { TeachingLinks } from "@/components/ui/teaching-links";
 import { MarkerPalette } from "@/components/ui/marker-palette";
 import { ExamNotesPanel } from "@/components/exam-notes-panel";
 import { getSheetData, saveScratchNote } from "@/lib/user-data";
+import { UPLOAD_KINDS } from "@/lib/upload-constants";
 
 // ─── 配置驅動：題目區渲染參數 ───────────────────────────────
 type LayoutVariant = "two-col" | "one-col";
@@ -79,8 +80,46 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
   };
   // ─────────────────────────────────────────────────────────
 
-  const myPractices = useMemo(() => uploads.filter((u) => u.kind === "我的練習圖"), [uploads]);
-  const otherReferences = useMemo(() => uploads.filter((u) => u.kind === "他人範例圖"), [uploads]);
+  // 防衛性日誌：開發期追蹤上傳資料與 Modal 篩選狀態
+  if (process.env.NODE_ENV === "development") {
+    // eslint-disable-next-line no-console
+    console.debug("[ArchiveDetailModal] 渲染日誌", {
+      itemCode: item.code,
+      sectionSlug,
+      totalUploads: uploads.length,
+      uploadKinds: [...new Set(uploads.map((u) => u.kind))],
+      myPracticesCount: uploads.filter((u) => u.kind === UPLOAD_KINDS.MY_PRACTICE).length,
+      otherReferencesCount: uploads.filter((u) => u.kind === UPLOAD_KINDS.OTHERS_REFERENCE).length,
+    });
+  }
+
+  const myPractices = useMemo(() => {
+    const matched = uploads.filter((u) => u.kind === UPLOAD_KINDS.MY_PRACTICE);
+    if (matched.length > 0 && process.env.NODE_ENV === "development") {
+      // eslint-disable-next-line no-console
+      console.debug(`[ArchiveDetailModal] 找到 ${matched.length} 張「${UPLOAD_KINDS.MY_PRACTICE}」 for ${item.code}`);
+    }
+    return matched;
+  }, [uploads, item.code]);
+
+  const otherReferences = useMemo(() => {
+    const matched = uploads.filter((u) => u.kind === UPLOAD_KINDS.OTHERS_REFERENCE);
+    if (matched.length > 0 && process.env.NODE_ENV === "development") {
+      // eslint-disable-next-line no-console
+      console.debug(`[ArchiveDetailModal] 找到 ${matched.length} 張「${UPLOAD_KINDS.OTHERS_REFERENCE}」 for ${item.code}`);
+    }
+    // 防衛性偵錯：若 kind 值未被任何 filter 命中，吐出實際 kind 值協助快速定位
+    if (matched.length === 0 && uploads.length > 0 && process.env.NODE_ENV === "development") {
+      const actualKinds = [...new Set(uploads.map((u) => u.kind))];
+      const validKinds = Object.values(UPLOAD_KINDS);
+      const unknownKinds = actualKinds.filter((k) => !validKinds.includes(k as typeof validKinds[number]));
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[ArchiveDetailModal] kind 篩選未命中。期望其一: ${JSON.stringify(validKinds)}，實際 kind 值: ${JSON.stringify(actualKinds)}${unknownKinds.length > 0 ? `（含未知值: ${JSON.stringify(unknownKinds)}）` : ""}。若上傳成功但未顯示，請確認上傳表單的 kind 值是否與 UPLOAD_KINDS 常數一致。`
+      );
+    }
+    return matched;
+  }, [uploads, item.code]);
 
   useEffect(() => {
     setMounted(true);

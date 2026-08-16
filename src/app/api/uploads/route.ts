@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { cloudinary, cloudinaryFolder, hasCloudinaryEnv } from "@/lib/cloudinary";
 import { kvPushEntry, hasKvEnv } from "@/lib/kv-store";
+import { UPLOAD_KIND_OPTIONS, UPLOAD_CATEGORY_OPTIONS, type UploadKindValue, type UploadCategoryValue } from "@/lib/upload-constants";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,15 +12,6 @@ const maxFileSize = 10 * 1024 * 1024;
 const maxRequestSize = 12 * 1024 * 1024;
 const rateLimitWindowMs = 60_000;
 const rateLimitMax = 8;
-
-const categoryOptions = new Set([
-  "平面圖 201-206",
-  "天花板圖 / 立面圖",
-  "透視圖 207-212",
-  "大樣圖 213-224",
-]);
-
-const kindOptions = new Set(["我的練習圖", "他人範例圖", "他人作品參考"]);
 
 const ipBuckets = new Map<string, { count: number; resetAt: number }>();
 
@@ -132,7 +124,7 @@ export async function POST(request: Request) {
     return badRequest("請填寫圖面名稱與題號。");
   }
 
-  if (!categoryOptions.has(category)) {
+  if (!UPLOAD_CATEGORY_OPTIONS.includes(category as UploadCategoryValue)) {
     return badRequest("請選擇有效的類別。");
   }
 
@@ -146,7 +138,7 @@ export async function POST(request: Request) {
     imageType: image.type,
   });
 
-  if (!kindOptions.has(kind)) {
+  if (!UPLOAD_KIND_OPTIONS.includes(kind as UploadKindValue)) {
     return badRequest("請選擇有效的圖像類型。");
   }
 
@@ -185,7 +177,7 @@ export async function POST(request: Request) {
       category,
       sheetCode,
       imageUrl,
-      kind: kind as "我的練習圖" | "他人範例圖" | "他人作品參考",
+      kind: kind as "我的練習圖" | "他人作品參考",
       authorName,
       scoreNote,
       teacherComment,
