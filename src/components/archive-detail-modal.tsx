@@ -32,7 +32,8 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
   }, []);
 
   const is208 = item.code.startsWith("208");
-  const planUrl = is208 ? "/images/208/2021021722093353239 (1).jpg" : null;
+  const is213 = item.code === "213";
+  const planUrl = is208 ? "/images/208/2021021722093353239 (1).jpg" : is213 ? "/images/213/2021021722093353239.jpg" : null;
   const elevUrl = is208 ? "/images/208/2021021722093353239 (2).jpg" : null;
 
   const handlePrefill = (kindVal: "我的練習圖" | "他人作品參考") => {
