@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, ZoomIn, FileImage, Upload, ArrowLeft, ArrowRight } from "lucide-react";
 import { ArchiveItem, UploadEntry } from "@/types/exam";
@@ -55,6 +55,10 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
 
   // ─── 速記本：跨裝置雲端同步，localStorage 降級 ──────────
   const [scratchNote, setScratchNote] = useState("");
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const itemCodeRef = useRef(item.code);
+  itemCodeRef.current = item.code;
 
   useEffect(() => {
     let cancelled = false;
@@ -66,11 +70,26 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
     return () => { cancelled = true; };
   }, [item.code]);
 
-  const handleScratchChange = async (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleScratchChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     setScratchNote(val);
-    await saveScratchNote(item.code, val);
-  };
+    setSaveStatus("saving");
+
+    // 防抖：停止前一個計時器，300ms 後才寫入
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(async () => {
+      await saveScratchNote(itemCodeRef.current, val);
+      setSaveStatus("saved");
+      // 2 秒後回到 idle
+      setTimeout(() => setSaveStatus("idle"), 2000);
+    }, 300);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, []);
   // ───────────────────────────────────────────────────────────
 
   // ─── 配置查表 ────────────────────────────────────────────
@@ -383,11 +402,13 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
                 rows={4}
                 aria-label="速記本"
               />
-              {scratchNote && (
-                <p className="scratch-pad__meta">
-                  已暫存 · 按「⌘+S」或複製內容保存
-                </p>
-              )}
+              {saveStatus === "saving" ? (
+                <p className="scratch-pad__meta">儲存中…</p>
+              ) : saveStatus === "saved" ? (
+                <p className="scratch-pad__meta">已自動暫存</p>
+              ) : scratchNote ? (
+                <p className="scratch-pad__meta">輸入時自動儲存</p>
+              ) : null}
             </div>
           </section>
 
