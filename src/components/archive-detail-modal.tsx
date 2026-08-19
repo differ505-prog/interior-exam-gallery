@@ -27,7 +27,7 @@ const QUESTION_CONFIGS: Record<string, QuestionConfig> = {
   },
   detail: {
     title: "題目區（大樣圖）",
-    layout: "one-col",
+    layout: "two-col",
   },
   plan: {
     title: "題目區（平面圖＋立面圖）",
@@ -145,19 +145,23 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
     return () => setMounted(false);
   }, []);
 
-  // 圖紙 URL：detail 由 item.code + 官方答案圖驅動，其他區塊共用 null
+  // 圖紙 URL：detail / perspective 由 item.code 驅動，其他區塊共用 null
   const planUrl = (() => {
     if (sectionSlug === "detail") {
       // 213–224 各有獨立資料夾，未上傳則回傳 null（顯示建置中 placeholder）
-      return `/images/${item.code}/213-official-answer.jpg`;
+      return `/images/${item.code}/2021021722093353239.jpg`;
     }
     if (sectionSlug === "perspective") return "/images/208/2021021722093353239 (1).jpg";
     return null;
   })();
 
-  const elevUrl = sectionSlug === "perspective"
-    ? "/images/208/2021021722093353239 (2).jpg"
-    : null;
+  const elevUrl = (() => {
+    if (sectionSlug === "detail") {
+      return `/images/${item.code}/213-official-answer.jpg`;
+    }
+    if (sectionSlug === "perspective") return "/images/208/2021021722093353239 (2).jpg";
+    return null;
+  })();
 
   const handlePrefill = (kindVal: "我的練習圖" | "他人作品參考") => {
     let uploadCategory = "平面圖 201-206";
@@ -248,24 +252,24 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
               <div className="question-grid">
                 <div className="question-image-box">
                   <div className="question-image-header">
-                    <h4>平面配置參考圖</h4>
-                    <button className="zoom-btn" onClick={() => setActiveImage(planUrl)} aria-label="放大平面圖">
+                    <h4>{sectionSlug === "detail" ? "題目圖" : "平面配置參考圖"}</h4>
+                    <button className="zoom-btn" onClick={() => setActiveImage(planUrl)} aria-label={sectionSlug === "detail" ? "放大題目圖" : "放大平面圖"}>
                       <ZoomIn size={16} /> <span>放大</span>
                     </button>
                   </div>
                   <div className="question-image-container" onClick={() => setActiveImage(planUrl)}>
-                    <SafeImage src={planUrl} alt={`${item.code} 平面配置參考圖`} aspectRatio="4 / 3" />
+                    <SafeImage src={planUrl} alt={sectionSlug === "detail" ? `${item.code} 題目圖` : `${item.code} 平面配置參考圖`} aspectRatio="4 / 3" />
                   </div>
                 </div>
                 <div className="question-image-box">
                   <div className="question-image-header">
-                    <h4>立面配置參考圖</h4>
-                    <button className="zoom-btn" onClick={() => setActiveImage(elevUrl)} aria-label="放大立面圖">
+                    <h4>{sectionSlug === "detail" ? "官方答案圖" : "立面配置參考圖"}</h4>
+                    <button className="zoom-btn" onClick={() => setActiveImage(elevUrl)} aria-label={sectionSlug === "detail" ? "放大官方答案圖" : "放大立面圖"}>
                       <ZoomIn size={16} /> <span>放大</span>
                     </button>
                   </div>
                   <div className="question-image-container" onClick={() => setActiveImage(elevUrl)}>
-                    <SafeImage src={elevUrl} alt={`${item.code} 立面配置參考圖`} aspectRatio="4 / 3" />
+                    <SafeImage src={elevUrl} alt={sectionSlug === "detail" ? `${item.code} 官方答案圖` : `${item.code} 立面配置參考圖`} aspectRatio="4 / 3" />
                   </div>
                 </div>
               </div>
