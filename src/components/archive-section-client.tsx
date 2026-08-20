@@ -35,11 +35,16 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
 
   // Calculate section stats
   const totalItems = section.items.length;
-  const sectionCodes = new Set(section.items.map((item) => item.code.trim().toLowerCase()));
   
+  const isMatch = (uCode: string, iCode: string) => {
+    const u = uCode.trim().toLowerCase();
+    const i = iCode.trim().toLowerCase();
+    return u === i || u.startsWith(i);
+  };
+
   // Only count student's own practices for completion and upload count
   const myUploads = uploads.filter(
-    (u) => sectionCodes.has(u.sheetCode.trim().toLowerCase()) && u.kind === "我的練習圖"
+    (u) => section.items.some(item => isMatch(u.sheetCode, item.code)) && u.kind === "我的練習圖"
   );
   const uploadedCount = myUploads.length;
   
@@ -200,7 +205,7 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
         <div className="archive-grid">
           {filteredItems.map((item) => {
             const matchedUploads = uploads.filter(
-              (u) => u.sheetCode.trim().toLowerCase() === item.code.trim().toLowerCase()
+              (u) => isMatch(u.sheetCode, item.code)
             );
             return (
               <ArchiveCard
