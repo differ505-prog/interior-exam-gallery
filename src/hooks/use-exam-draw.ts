@@ -29,9 +29,12 @@ export function countPracticePerItem(
 ): Record<string, number> {
   const map: Record<string, number> = {};
   for (const item of items) {
-    map[item.code] = uploads.filter(
-      (u) => u.sheetCode === item.code && u.kind === UPLOAD_KINDS.MY_PRACTICE
-    ).length;
+    const iCode = item.code.trim().toLowerCase();
+    map[item.code] = uploads.filter((u) => {
+      const uCode = u.sheetCode.trim().toLowerCase();
+      const isMatch = uCode === iCode || uCode.startsWith(iCode);
+      return isMatch && u.kind === UPLOAD_KINDS.MY_PRACTICE;
+    }).length;
   }
   return map;
 }
@@ -51,8 +54,14 @@ export function drawExam(
 
   if (eligible.length === 0) return null;
 
+  // 找出目前的最低練習次數
+  const minCount = Math.min(...eligible.map(item => practiceCountMap[item.code] ?? 0));
+
+  // 只保留最低練習次數的題目
+  const leastPracticed = eligible.filter(item => (practiceCountMap[item.code] ?? 0) === minCount);
+
   // Fisher-Yates 洗牌
-  const shuffled = [...eligible];
+  const shuffled = [...leastPracticed];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
@@ -61,6 +70,6 @@ export function drawExam(
   const picked = shuffled[0];
   return {
     item: picked,
-    practiceCount: practiceCountMap[picked.code] ?? 0,
+    practiceCount: minCount,
   };
 }
