@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { cloudinary, cloudinaryFolder, hasCloudinaryEnv } from "@/lib/cloudinary";
-import { kvPushEntry, hasKvEnv } from "@/lib/kv-store";
+import { kvPushEntry, kvDeleteEntry, hasKvEnv } from "@/lib/kv-store";
 import { UPLOAD_KIND_OPTIONS, UPLOAD_CATEGORY_OPTIONS, type UploadKindValue, type UploadCategoryValue } from "@/lib/upload-constants";
 
 export const runtime = "nodejs";
@@ -193,4 +193,28 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ message: "上傳完成。" });
+}
+
+// DELETE /api/uploads?id=xxx — 刪除指定記錄
+export async function DELETE(request: Request) {
+  if (!hasKvEnv()) {
+    return NextResponse.json(
+      { message: "尚未連接 Vercel KV。" },
+      { status: 503 },
+    );
+  }
+
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id");
+  if (!id) {
+    return NextResponse.json({ message: "缺少 id 參數。" }, { status: 400 });
+  }
+
+  try {
+    await kvDeleteEntry(id);
+    return NextResponse.json({ message: "刪除完成。" });
+  } catch (error) {
+    console.error("[uploads] 刪除失敗:", error);
+    return NextResponse.json({ message: "刪除失敗。" }, { status: 500 });
+  }
 }

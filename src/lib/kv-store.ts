@@ -152,3 +152,28 @@ export function hasKvEnv(): boolean {
     process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN,
   );
 }
+
+/**
+ * 刪除指定 id 的練習圖記錄。
+ * 實作：LRANGE 全量讀取 → 過濾目標 → DEL 列表 → RPUSH 重建。
+ */
+export async function kvDeleteEntry(targetId: string): Promise<void> {
+  const raw = await kv.lrange(KV_LIST_KEY, 0, -1);
+  const filtered = raw
+    .map((item) => {
+      try {
+        const parsed = typeof item === "string" ? JSON.parse(item) : item;
+        return parsed as Record<string, unknown>;
+      } catch {
+        return null;
+      }
+    })
+    .filter((r): r is Record<string, unknown> => r !== null && String(r.id) !== targetId);
+
+  await kv.del(KV_LIST_KEY);
+  if (filtered.length > 0) {
+    const jsons = filtered.map((r) => JSON.stringify(r));
+    await kv.rpush(KV_LIST_KEY, ...jsons);
+  }
+  console.log("[kv] 刪除完成:", targetId);
+}

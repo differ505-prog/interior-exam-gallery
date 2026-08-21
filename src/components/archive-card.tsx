@@ -10,6 +10,7 @@ type ArchiveCardProps = {
   sectionSlug: string;
   uploads?: UploadEntry[];
   examNotes?: ExamNoteCategory[];
+  onDeleteEntry?: (id: string) => Promise<void>;
 };
 
 /**
@@ -17,7 +18,7 @@ type ArchiveCardProps = {
  * 從原本 archive-section.tsx 抽離出來的可複用卡片，
  * 加入 hover 微互動 + 流體排版防溢出，並加入點擊開啟題目與練習圖面詳情 Modal 的功能。
  */
-export function ArchiveCard({ item, sectionSlug, uploads = [], examNotes }: ArchiveCardProps) {
+export function ArchiveCard({ item, sectionSlug, uploads = [], examNotes, onDeleteEntry }: ArchiveCardProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -56,6 +57,7 @@ export function ArchiveCard({ item, sectionSlug, uploads = [], examNotes }: Arch
           sectionSlug={sectionSlug}
           examNotes={examNotes}
           onClose={() => setIsOpen(false)}
+          onDelete={onDeleteEntry}
         />
       )}
     </>

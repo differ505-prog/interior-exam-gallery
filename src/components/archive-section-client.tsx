@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { ArchiveSection, UploadEntry } from "@/types/exam";
 import { ExamNoteCategory } from "@/types/exam-note";
@@ -13,7 +14,12 @@ type ArchiveSectionClientProps = {
 };
 
 export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSectionClientProps) {
-  // Default: first section (plan) expanded, others collapsed
+  const router = useRouter();
+
+  const handleDeleteEntry = async (id: string) => {
+    await fetch(`/api/uploads?id=${id}`, { method: "DELETE" });
+    router.refresh();
+  };
   const defaultExpanded = section.slug === "plan";
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
@@ -215,6 +221,7 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
                 sectionSlug={section.slug}
                 uploads={matchedUploads}
                 examNotes={examNotes}
+                onDeleteEntry={handleDeleteEntry}
               />
             );
           })}

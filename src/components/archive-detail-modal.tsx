@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, ZoomIn, FileImage, Upload, ArrowLeft, ArrowRight } from "lucide-react";
+import { X, ZoomIn, FileImage, Upload, ArrowLeft, ArrowRight, Trash2 } from "lucide-react";
 import { ArchiveItem, UploadEntry } from "@/types/exam";
 import { ExamNoteCategory } from "@/types/exam-note";
 import { SafeImage } from "@/components/ui/safe-image";
@@ -46,12 +46,35 @@ type ArchiveDetailModalProps = {
   sectionSlug: string;
   examNotes?: ExamNoteCategory[];
   onClose: () => void;
+  onDelete?: (id: string) => Promise<void>;
 };
 
-export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onClose }: ArchiveDetailModalProps) {
+export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onClose, onDelete }: ArchiveDetailModalProps) {
   const [activeImage, setActiveImage] = useState<string | null>(null);
   const [isLargeZoom, setIsLargeZoom] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  // ─── 刪除確認對話框 ────────────────────────────────────────
+  const [deleteTarget, setDeleteTarget] = useState<UploadEntry | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteClick = (entry: UploadEntry) => {
+    setDeleteTarget(entry);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget || !onDelete) return;
+    setIsDeleting(true);
+    try {
+      await onDelete(deleteTarget.id);
+      setDeleteTarget(null);
+    } catch {
+      // 失敗不關 dialog，讓使用者重試
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+  // ───────────────────────────────────────────────────────────
 
   // ─── 速記本：跨裝置雲端同步，localStorage 降級 ──────────
   const [scratchNote, setScratchNote] = useState("");
@@ -375,6 +398,13 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
                         <span className="modal-upload-date">
                           {new Date(upload.createdAt).toLocaleDateString("zh-TW")}
                         </span>
+                        <button
+                          className="modal-upload-delete"
+                          aria-label={`刪除 ${upload.title}`}
+                          onClick={() => handleDeleteClick(upload)}
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       </div>
                       <h4>{upload.title}</h4>
                       <p className="modal-upload-score">{upload.scoreNote}</p>
@@ -464,7 +494,7 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
       </div>
     </div>
 
-      {/* Lightbox for Zoomed Image */}
+        {/* Lightbox for Zoomed Image */}
       {activeImage && (
         <div 
           className={`lightbox-overlay ${isLargeZoom ? "lightbox-overlay--zoomed" : ""}`}
@@ -524,6 +554,39 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
               setIsLargeZoom(!isLargeZoom);
             }}
           />
+        </div>
+      )}
+
+      {/* 刪除確認對話框 */}
+      {deleteTarget && (
+        <div
+          className="modal-overlay"
+          onClick={() => !isDeleting && setDeleteTarget(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-dialog-title"
+        >
+          <div className="delete-dialog" onClick={(e) => e.stopPropagation()}>
+            <h3 id="delete-dialog-title">確認刪除</h3>
+            <p>即將刪除：<strong>{deleteTarget.title}</strong></p>
+            <p className="delete-dialog__hint">此操作不可撤銷。</p>
+            <div className="delete-dialog__actions">
+              <button
+                className="delete-dialog__cancel"
+                onClick={() => setDeleteTarget(null)}
+                disabled={isDeleting}
+              >
+                取消
+              </button>
+              <button
+                className="delete-dialog__confirm"
+                onClick={confirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? "刪除中…" : "確認刪除"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </>,
