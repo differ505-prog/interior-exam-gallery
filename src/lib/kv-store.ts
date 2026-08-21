@@ -106,16 +106,25 @@ export async function kvPushEntry(payload: KvUploadPayload): Promise<void> {
 export async function kvGetRecentEntries(
   limit = 6,
 ): Promise<UploadEntry[]> {
-  // LRANGE 0 (limit-1) 取出最近 limit 筆記錄
-  const raw: string[] = await kv.lrange(KV_LIST_KEY, 0, limit - 1);
+  const raw = await kv.lrange(KV_LIST_KEY, 0, limit - 1);
+  return parseEntries(raw);
+}
 
-  if (!raw || raw.length === 0) {
-    return [];
-  }
+/**
+ * 取出所有記錄（全量），用於抽題統計練習次數。
+ * 無限長度，連線失敗時回拋錯誤。
+ */
+export async function kvGetAllEntries(): Promise<UploadEntry[]> {
+  const raw = await kv.lrange(KV_LIST_KEY, 0, -1);
+  return parseEntries(raw);
+}
 
-  const entries = raw
+/** 通用解析：string[] → UploadEntry[] */
+function parseEntries(raw: string[]): UploadEntry[] {
+  if (!raw || raw.length === 0) return [];
+
+  return raw
     .map((item) => {
-      // Vercel KV (Upstash) lrange 可能回 string 或直接是物件，統一處理
       if (typeof item === "object" && item !== null) {
         return item as Record<string, unknown>;
       }
@@ -131,8 +140,6 @@ export async function kvGetRecentEntries(
     .filter((r): r is Record<string, unknown> => r !== null)
     .map(mapEntry)
     .filter((e): e is UploadEntry => e !== null);
-
-  return entries;
 }
 
 /**

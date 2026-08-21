@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { ArchiveSectionBlock } from "@/components/archive-section";
+import { ExamDrawSection } from "@/components/exam-draw-section";
 import { UploadStudio } from "@/components/upload-studio";
 import { AsyncUploadsSection } from "@/components/recent-uploads-section";
 import { PracticePlanSection } from "@/components/practice-plan-section";
@@ -74,6 +75,8 @@ export default function HomePage() {
       </SurfacePanel>
 
       <PracticePlanSection />
+
+      <ExamDrawSection />
 
       <Suspense
         fallback={
