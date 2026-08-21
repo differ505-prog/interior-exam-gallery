@@ -11,6 +11,8 @@ import { EmptyState, SkeletonGrid, SurfacePanel } from "@/components/ui/primitiv
 import { examSections } from "@/data/exam-content";
 import { examNotes } from "@/data/exam-notes";
 
+export const dynamic = "force-dynamic";
+
 const HERO_DESCRIPTION =
   "術科練習圖紙備份與對應大類對比系統。";
 
