@@ -239,6 +239,51 @@ export async function deleteDimensionEntry(id: string): Promise<boolean> {
   return true;
 }
 
+// ─── 重新排序 ─────────────────────────────────────────────
+
+/**
+ * 重新排序尺寸對照表（拖曳後觸發）
+ * @param orderedIds 重新排序後的 id 陣列
+ */
+export async function reorderDimensionEntries(orderedIds: string[]): Promise<void> {
+  const localEntries = getLocalDimensionEntries();
+
+  // 建立 id → entry map
+  const entryMap = new Map(localEntries.map((e) => [e.id, e]));
+
+  // 依 orderedIds 順序重建陣列，並重新賦予 sortOrder
+  const nextEntries: DimensionEntry[] = orderedIds
+    .map((id, index) => {
+      const entry = entryMap.get(id);
+      if (!entry) return null;
+      return { ...entry, sortOrder: index };
+    })
+    .filter((e): e is DimensionEntry => e !== null);
+
+  // 寫入 localStorage
+  setLocalDimensionEntries(nextEntries);
+
+  // 同步寫入 Supabase（背景，失敗不阻斷）
+  const { supabase, isSupabaseConfigured } = await import("./supabase");
+  if (!isSupabaseConfigured || !supabase) return;
+
+  // 批量 upsert
+  const updates = nextEntries.map((e) => ({
+    id: e.id,
+    real_size: e.realSize,
+    tool_size: e.toolSize,
+    sort_order: e.sortOrder,
+  }));
+
+  const { error } = await supabase
+    .from("dimension_entries")
+    .upsert(updates, { onConflict: "id" });
+
+  if (error) {
+    console.warn("[dimension-table] Reorder sync failed:", error.message);
+  }
+}
+
 // ─── 匿名簽入初始化 ───────────────────────────────────────
 
 /**

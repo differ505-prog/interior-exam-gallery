@@ -1,14 +1,185 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Ruler, Plus, Trash2, ChevronDown } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { Ruler, Plus, Trash2, ChevronDown, GripVertical } from "lucide-react";
 import {
   type DimensionEntry,
   getDimensionEntries,
   addDimensionEntry,
   updateDimensionEntry,
   deleteDimensionEntry,
+  reorderDimensionEntries,
 } from "@/lib/dimension-table";
+
+// ─── Sortable Row ─────────────────────────────────────────
+
+type SortableRowProps = {
+  entry: DimensionEntry;
+  isEditing: boolean;
+  editReal: string;
+  editTool: string;
+  editRealRef: React.RefObject<HTMLInputElement | null>;
+  editToolRef: React.RefObject<HTMLInputElement | null>;
+  onStartEdit: (e: DimensionEntry) => void;
+  onRealChange: (v: string) => void;
+  onToolChange: (v: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  onDelete: (id: string) => void;
+};
+
+function SortableRow({
+  entry,
+  isEditing,
+  editReal,
+  editTool,
+  editRealRef,
+  editToolRef,
+  onStartEdit,
+  onRealChange,
+  onToolChange,
+  onSave,
+  onCancel,
+  onKeyDown,
+  onDelete,
+}: SortableRowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: entry.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+    zIndex: isDragging ? 10 : "auto",
+  };
+
+  if (isEditing) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className="dimension-row dimension-row--editing"
+        role="listitem"
+      >
+        <div className="dimension-row__drag-handle dimension-row__drag-handle--disabled" aria-hidden="true">
+          <GripVertical size={14} />
+        </div>
+        <input
+          ref={editRealRef}
+          type="text"
+          className="dimension-row__input"
+          value={editReal}
+          onChange={(e) => onRealChange(e.target.value)}
+          onKeyDown={onKeyDown}
+          aria-label="編輯實際尺寸"
+        />
+        <span className="dimension-row__arrow" aria-hidden="true">→</span>
+        <input
+          ref={editToolRef}
+          type="text"
+          className="dimension-row__input"
+          value={editTool}
+          onChange={(e) => onToolChange(e.target.value)}
+          onKeyDown={onKeyDown}
+          aria-label="編輯工具尺寸"
+        />
+        <button
+          className="dimension-row__action dimension-row__action--save"
+          onClick={onSave}
+          aria-label="儲存"
+          type="button"
+        >
+          儲存
+        </button>
+        <button
+          className="dimension-row__action dimension-row__action--cancel"
+          onClick={onCancel}
+          aria-label="取消"
+          type="button"
+        >
+          取消
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="dimension-row"
+      role="listitem"
+    >
+      <button
+        className="dimension-row__drag-handle"
+        {...attributes}
+        {...listeners}
+        aria-label={`拖曳排序 ${entry.realSize} → ${entry.toolSize}`}
+        type="button"
+        title="拖曳排序"
+      >
+        <GripVertical size={14} />
+      </button>
+
+      <span
+        className="dimension-row__real"
+        title="點擊編輯"
+        onClick={() => onStartEdit(entry)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onStartEdit(entry); }}
+        aria-label={`編輯 ${entry.realSize} → ${entry.toolSize}`}
+      >
+        {entry.realSize || <em className="dimension-row__empty">—</em>}
+      </span>
+      <span className="dimension-row__arrow" aria-hidden="true">→</span>
+      <span
+        className="dimension-row__tool"
+        title="點擊編輯"
+        onClick={() => onStartEdit(entry)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onStartEdit(entry); }}
+        aria-label={`編輯 ${entry.realSize} → ${entry.toolSize}`}
+      >
+        {entry.toolSize || <em className="dimension-row__empty">—</em>}
+      </span>
+      <button
+        className="dimension-row__action dimension-row__action--delete"
+        onClick={() => onDelete(entry.id)}
+        aria-label={`刪除 ${entry.realSize} → ${entry.toolSize}`}
+        type="button"
+      >
+        <Trash2 size={13} />
+      </button>
+    </div>
+  );
+}
+
+// ─── DimensionTable ───────────────────────────────────────
 
 export function DimensionTable() {
   const [entries, setEntries] = useState<DimensionEntry[]>([]);
@@ -16,7 +187,7 @@ export function DimensionTable() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
-  // 新增列的 input state
+  // 新增列 input state
   const [draftReal, setDraftReal] = useState("");
   const [draftTool, setDraftTool] = useState("");
   const draftRealRef = useRef<HTMLInputElement>(null);
@@ -28,6 +199,16 @@ export function DimensionTable() {
   const [editTool, setEditTool] = useState("");
   const editRealRef = useRef<HTMLInputElement | null>(null);
   const editToolRef = useRef<HTMLInputElement | null>(null);
+
+  // dnd-kit sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // ─── 讀取資料 ──────────────────────────────────────────
   useEffect(() => {
@@ -48,6 +229,29 @@ export function DimensionTable() {
       setTimeout(() => draftRealRef.current?.focus(), 150);
     }
   }, [isExpanded, isLoaded, entries.length]);
+
+  // ─── 拖曳結束 ──────────────────────────────────────────
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = entries.findIndex((e) => e.id === active.id);
+    const newIndex = entries.findIndex((e) => e.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const next = [...entries];
+    const [moved] = next.splice(oldIndex, 1);
+    next.splice(newIndex, 0, moved);
+
+    setEntries(next);
+    setSaveStatus("saving");
+
+    const orderedIds = next.map((e) => e.id);
+    await reorderDimensionEntries(orderedIds);
+
+    setSaveStatus("saved");
+    setTimeout(() => setSaveStatus("idle"), 2000);
+  }, [entries]);
 
   // ─── 新增列 ──────────────────────────────────────────
   const handleAdd = useCallback(async () => {
@@ -169,26 +373,37 @@ export function DimensionTable() {
               尚無對照項目。直接輸入實際尺寸與工具尺寸，按 Enter 新增。
             </p>
           ) : (
-            <div className="dimension-table-rows" role="list">
-              {entries.map((entry) => (
-                <DimensionRow
-                  key={entry.id}
-                  entry={entry}
-                  isEditing={editingId === entry.id}
-                  editReal={editReal}
-                  editTool={editTool}
-                  editRealRef={editRealRef}
-                  editToolRef={editToolRef}
-                  onStartEdit={handleStartEdit}
-                  onRealChange={setEditReal}
-                  onToolChange={setEditTool}
-                  onSave={handleSaveEdit}
-                  onCancel={handleCancelEdit}
-                  onKeyDown={handleEditKeyDown}
-                  onDelete={handleDelete}
-                />
-              ))}
-            </div>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={entries.map((e) => e.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="dimension-table-rows" role="list">
+                  {entries.map((entry) => (
+                    <SortableRow
+                      key={entry.id}
+                      entry={entry}
+                      isEditing={editingId === entry.id}
+                      editReal={editReal}
+                      editTool={editTool}
+                      editRealRef={editRealRef}
+                      editToolRef={editToolRef}
+                      onStartEdit={handleStartEdit}
+                      onRealChange={setEditReal}
+                      onToolChange={setEditTool}
+                      onSave={handleSaveEdit}
+                      onCancel={handleCancelEdit}
+                      onKeyDown={handleEditKeyDown}
+                      onDelete={handleDelete}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
           )}
 
           {/* 新增列 */}
@@ -237,117 +452,5 @@ export function DimensionTable() {
         </div>
       )}
     </section>
-  );
-}
-
-// ─── 單列元件 ────────────────────────────────────────────
-
-type DimensionRowProps = {
-  entry: DimensionEntry;
-  isEditing: boolean;
-  editReal: string;
-  editTool: string;
-  editRealRef: React.RefObject<HTMLInputElement | null>;
-  editToolRef: React.RefObject<HTMLInputElement | null>;
-  onStartEdit: (e: DimensionEntry) => void;
-  onRealChange: (v: string) => void;
-  onToolChange: (v: string) => void;
-  onSave: () => void;
-  onCancel: () => void;
-  onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-  onDelete: (id: string) => void;
-};
-
-function DimensionRow({
-  entry,
-  isEditing,
-  editReal,
-  editTool,
-  editRealRef,
-  editToolRef,
-  onStartEdit,
-  onRealChange,
-  onToolChange,
-  onSave,
-  onCancel,
-  onKeyDown,
-  onDelete,
-}: DimensionRowProps) {
-  if (isEditing) {
-    return (
-      <div className="dimension-row dimension-row--editing" role="listitem">
-        <input
-          ref={editRealRef}
-          type="text"
-          className="dimension-row__input"
-          value={editReal}
-          onChange={(e) => onRealChange(e.target.value)}
-          onKeyDown={onKeyDown}
-          aria-label="編輯實際尺寸"
-        />
-        <span className="dimension-row__arrow" aria-hidden="true">→</span>
-        <input
-          ref={editToolRef}
-          type="text"
-          className="dimension-row__input"
-          value={editTool}
-          onChange={(e) => onToolChange(e.target.value)}
-          onKeyDown={onKeyDown}
-          aria-label="編輯工具尺寸"
-        />
-        <button
-          className="dimension-row__action dimension-row__action--save"
-          onClick={onSave}
-          aria-label="儲存"
-          type="button"
-        >
-          儲存
-        </button>
-        <button
-          className="dimension-row__action dimension-row__action--cancel"
-          onClick={onCancel}
-          aria-label="取消"
-          type="button"
-        >
-          取消
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="dimension-row" role="listitem">
-      <span
-        className="dimension-row__real"
-        title="點擊編輯"
-        onClick={() => onStartEdit(entry)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onStartEdit(entry); }}
-        aria-label={`編輯 ${entry.realSize} → ${entry.toolSize}`}
-      >
-        {entry.realSize || <em className="dimension-row__empty">—</em>}
-      </span>
-      <span className="dimension-row__arrow" aria-hidden="true">→</span>
-      <span
-        className="dimension-row__tool"
-        title="點擊編輯"
-        onClick={() => onStartEdit(entry)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onStartEdit(entry); }}
-        aria-label={`編輯 ${entry.realSize} → ${entry.toolSize}`}
-      >
-        {entry.toolSize || <em className="dimension-row__empty">—</em>}
-      </span>
-      <button
-        className="dimension-row__action dimension-row__action--delete"
-        onClick={() => onDelete(entry.id)}
-        aria-label={`刪除 ${entry.realSize} → ${entry.toolSize}`}
-        type="button"
-      >
-        <Trash2 size={13} />
-      </button>
-    </div>
   );
 }
