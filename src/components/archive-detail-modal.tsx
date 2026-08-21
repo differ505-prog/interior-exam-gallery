@@ -9,6 +9,7 @@ import { SafeImage } from "@/components/ui/safe-image";
 import { TeachingLinks } from "@/components/ui/teaching-links";
 import { MarkerPalette } from "@/components/ui/marker-palette";
 import { ExamNotesPanel } from "@/components/exam-notes-panel";
+import { DimensionTable } from "@/components/ui/dimension-table";
 import { getSheetData, saveScratchNote } from "@/lib/user-data";
 import { UPLOAD_KINDS } from "@/lib/upload-constants";
 
@@ -330,6 +331,9 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
               </div>
             )}
           </section>
+
+          {/* 尺寸對照表（僅平面圖顯示） */}
+          {sectionSlug === "plan" && <DimensionTable />}
 
           {/* Practice submissions */}
           <section className="modal-section">
