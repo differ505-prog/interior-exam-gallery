@@ -180,7 +180,7 @@ export async function addDimensionEntry(
   const { id, ok } = await saveRemoteDimensionEntry(newEntry);
 
   // 若遠端成功，用 server 返回的 id 更新本地（確保一致性）
-  if (ok && id !== newEntry.id) {
+  if (ok && id && id !== newEntry.id) {
     const updated = nextEntries.map((e) =>
       e.id === newEntry.id ? { ...e, id } : e
     );
@@ -188,7 +188,8 @@ export async function addDimensionEntry(
     return { ...newEntry, id };
   }
 
-  return ok ? newEntry : null;
+  // 無論遠端成功與否，本地已成功，回傳實體以便 UI 即時顯示
+  return newEntry;
 }
 
 // ─── 更新項目 ─────────────────────────────────────────────
@@ -216,9 +217,9 @@ export async function updateDimensionEntry(
   nextEntries[index] = updated;
   setLocalDimensionEntries(nextEntries);
 
-  // 寫入 Supabase
-  const { ok } = await saveRemoteDimensionEntry(updated);
-  return ok;
+  // 寫入 Supabase (不論成功與否，本地都算更新成功)
+  await saveRemoteDimensionEntry(updated);
+  return true;
 }
 
 // ─── 刪除項目 ─────────────────────────────────────────────
@@ -233,9 +234,9 @@ export async function deleteDimensionEntry(id: string): Promise<boolean> {
   // 更新 localStorage
   setLocalDimensionEntries(nextEntries);
 
-  // 刪除 Supabase
-  const ok = await deleteRemoteDimensionEntry(id);
-  return ok;
+  // 刪除 Supabase (不論成功與否，本地都算刪除成功)
+  await deleteRemoteDimensionEntry(id);
+  return true;
 }
 
 // ─── 匿名簽入初始化 ───────────────────────────────────────
