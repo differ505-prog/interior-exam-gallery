@@ -8,6 +8,7 @@
 
 import { ArchiveItem, UploadEntry } from "@/types/exam";
 import { UPLOAD_KINDS } from "@/lib/upload-constants";
+import { examSections } from "@/data/exam-content";
 
 /** 試卷組合區塊 slug */
 export type DrawGroup = "plan-ceiling-elevation" | "perspective-detail";
@@ -40,27 +41,21 @@ export function countPracticePerItem(
 }
 
 /**
- * 從最少練習池中隨機抽取一題
- * Fisher-Yates 洗牌後取第一個
+ * 從指定分類中抽出一題（最少練習優先）
  */
-export function drawExam(
+function drawOneFromItems(
   items: ArchiveItem[],
   practiceCountMap: Record<string, number>
 ): DrawResult | null {
-  // 過濾：排除練習 ≥5 次的題目
   const eligible = items.filter(
     (item) => (practiceCountMap[item.code] ?? 0) < EXCLUDED_THRESHOLD
   );
 
   if (eligible.length === 0) return null;
 
-  // 找出目前的最低練習次數
   const minCount = Math.min(...eligible.map(item => practiceCountMap[item.code] ?? 0));
-
-  // 只保留最低練習次數的題目
   const leastPracticed = eligible.filter(item => (practiceCountMap[item.code] ?? 0) === minCount);
 
-  // Fisher-Yates 洗牌
   const shuffled = [...leastPracticed];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -72,4 +67,41 @@ export function drawExam(
     item: picked,
     practiceCount: minCount,
   };
+}
+
+/**
+ * 依據抽題組合抽出對應的題目陣列
+ */
+export function drawExamGroup(
+  group: DrawGroup,
+  practiceCountMap: Record<string, number>
+): DrawResult[] {
+  const results: DrawResult[] = [];
+  
+  if (group === "perspective-detail") {
+    const perspectiveItems = examSections.find(s => s.slug === "perspective")?.items ?? [];
+    const pResult = drawOneFromItems(perspectiveItems, practiceCountMap);
+    if (pResult) results.push(pResult);
+    
+    const detailItems = examSections.find(s => s.slug === "detail")?.items ?? [];
+    const dResult = drawOneFromItems(detailItems, practiceCountMap);
+    if (dResult) results.push(dResult);
+  } else if (group === "plan-ceiling-elevation") {
+    // 先抽平面圖
+    const planItems = examSections.find(s => s.slug === "plan")?.items ?? [];
+    const planResult = drawOneFromItems(planItems, practiceCountMap);
+    
+    if (planResult) {
+      results.push(planResult);
+      // 再抽同題號的天花/立面圖 (例如 201 -> 201A, 201B)
+      const baseCode = planResult.item.code; // e.g., "201"
+      const ceItems = examSections.find(s => s.slug === "ceiling-elevation")?.items ?? [];
+      const matchingCeItems = ceItems.filter(item => item.code.startsWith(baseCode));
+      
+      const ceResult = drawOneFromItems(matchingCeItems, practiceCountMap);
+      if (ceResult) results.push(ceResult);
+    }
+  }
+  
+  return results;
 }

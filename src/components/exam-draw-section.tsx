@@ -1,12 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Dices } from "lucide-react";
+import { Dices, X } from "lucide-react";
 import { SurfacePanel } from "@/components/ui/primitives";
 import { examSections } from "@/data/exam-content";
-import { drawExam, countPracticePerItem, DrawGroup, DrawResult } from "@/hooks/use-exam-draw";
-import { ArchiveDetailModal } from "@/components/archive-detail-modal";
-import { examNotes } from "@/data/exam-notes";
+import { drawExamGroup, countPracticePerItem, DrawGroup, DrawResult } from "@/hooks/use-exam-draw";
 import { ArchiveItem, UploadEntry } from "@/types/exam";
 
 /** 試卷組合標題 */
@@ -21,15 +19,9 @@ const GROUP_META: Record<DrawGroup, { title: string; subtitle: string }> = {
   },
 };
 
-/** 組合區塊 slug */
-const GROUP_SECTIONS: Record<DrawGroup, string[]> = {
-  "plan-ceiling-elevation": ["plan", "ceiling-elevation"],
-  "perspective-detail": ["perspective", "detail"],
-};
-
 export function ExamDrawSection() {
   const [uploads, setUploads] = useState<UploadEntry[]>([]);
-  const [drawnResult, setDrawnResult] = useState<DrawResult | null>(null);
+  const [drawnResults, setDrawnResults] = useState<DrawResult[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const fetchedRef = useRef(false);
@@ -50,56 +42,38 @@ export function ExamDrawSection() {
       });
   }, []);
 
-  /** 從組合 slug 推斷 sectionSlug（用於 Modal 渲染） */
-  const inferSectionSlug = useCallback((item: ArchiveItem): string => {
-    for (const section of examSections) {
-      if (section.items.some((i) => i.code === item.code)) {
-        return section.slug;
-      }
-    }
-    return "plan";
-  }, []);
-
   /** 點擊抽題按鈕 */
   const handleDraw = useCallback(
     (group: DrawGroup) => {
-      const sectionSlugs = GROUP_SECTIONS[group];
-
-      // 收集該組合所有試卷項目
+      // 收集所有試卷項目
       const allItems: ArchiveItem[] = [];
       for (const section of examSections) {
-        if (sectionSlugs.includes(section.slug)) {
-          allItems.push(...section.items);
-        }
+        allItems.push(...section.items);
       }
 
       const practiceCountMap = countPracticePerItem(allItems, uploads);
-      const result = drawExam(allItems, practiceCountMap);
+      const results = drawExamGroup(group, practiceCountMap);
 
-      if (!result) {
+      if (!results || results.length === 0) {
         alert(
           `${GROUP_META[group].title}\n所有題目練習次數已達 5 次以上，本輪練習完成！\n\n建議：進入備考複盤，整理扣分點。`
         );
         return;
       }
 
-      setDrawnResult(result);
+      setDrawnResults(results);
       setShowModal(true);
 
       if (process.env.NODE_ENV === "development") {
         // eslint-disable-next-line no-console
         console.debug("[ExamDrawSection] 抽出試卷", {
-          code: result.item.code,
-          practiceCount: result.practiceCount,
+          results: results.map(r => ({ code: r.item.code, count: r.practiceCount })),
           group,
         });
       }
     },
     [uploads]
   );
-
-  const sectionSlug = drawnResult ? inferSectionSlug(drawnResult.item) : "plan";
-  const sectionExamNotes = examNotes.filter((cat) => cat.slug === sectionSlug);
 
   return (
     <>
@@ -136,18 +110,47 @@ export function ExamDrawSection() {
         </div>
       </SurfacePanel>
 
-      {/* 抽出結果 Modal */}
-      {showModal && drawnResult && (
-        <ArchiveDetailModal
-          item={drawnResult.item}
-          uploads={uploads}
-          sectionSlug={sectionSlug}
-          examNotes={sectionExamNotes}
-          onClose={() => {
-            setShowModal(false);
-            setDrawnResult(null);
-          }}
-        />
+      {/* 抽出結果 Modal (考試抽題專用，不破梗) */}
+      {showModal && drawnResults.length > 0 && (
+        <div className="modal-overlay" onClick={() => setShowModal(false)} role="dialog" aria-modal="true">
+          <div className="modal-container modal-container--draw-result" onClick={(e) => e.stopPropagation()}>
+            <header className="modal-header">
+              <div className="modal-header-title">
+                <h2>🎲 抽題結果</h2>
+              </div>
+              <button className="modal-close-btn" onClick={() => setShowModal(false)} aria-label="關閉視窗">
+                <X size={20} />
+              </button>
+            </header>
+            
+            <div className="modal-content draw-result-content">
+               <div className="draw-result-list" style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '24px' }}>
+                 {drawnResults.map((res, idx) => (
+                   <div key={idx} className="draw-result-card" style={{ padding: '16px', border: '1px solid var(--color-border)', borderRadius: '12px', background: 'var(--color-theme)' }}>
+                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                        <span className="draw-result-code" style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--color-accent)' }}>{res.item.code}</span>
+                        <span className="draw-result-meta" style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>目前練習次數：{res.practiceCount} 次</span>
+                     </div>
+                     <h3 className="draw-result-title" style={{ fontSize: '1.1rem', margin: '0 0 8px 0', color: 'var(--color-text)' }}>{res.item.title}</h3>
+                     <p className="draw-result-focus" style={{ margin: 0, fontSize: '0.95rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+                        重點提示：{res.item.focus}
+                     </p>
+                   </div>
+                 ))}
+               </div>
+               
+               <div className="draw-result-actions" style={{ padding: '0 24px 24px', display: 'flex', justifyContent: 'center' }}>
+                  <button 
+                    className="modal-cta-btn" 
+                    onClick={() => setShowModal(false)}
+                    style={{ width: '100%', padding: '12px', background: 'var(--color-accent)', color: 'white', borderRadius: '8px', fontWeight: 600 }}
+                  >
+                    開始練習
+                  </button>
+               </div>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
