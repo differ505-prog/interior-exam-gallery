@@ -37,9 +37,10 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
   const totalItems = section.items.length;
   
   const isMatch = (uCode: string, iCode: string) => {
-    const u = uCode.trim().toLowerCase();
-    const i = iCode.trim().toLowerCase();
-    return u === i || u.startsWith(i);
+    // 移除所有空白與連接號、底線，並轉小寫 (全形半形問題暫不處理，通常使用者會打半形)
+    const cleanU = uCode.replace(/[\s\-_]/g, "").toLowerCase();
+    const cleanI = iCode.replace(/[\s\-_]/g, "").toLowerCase();
+    return cleanU === cleanI || cleanU.includes(cleanI);
   };
 
   // Only count student's own practices for completion and upload count

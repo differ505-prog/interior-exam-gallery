@@ -32,8 +32,9 @@ export function countPracticePerItem(
   for (const item of items) {
     const iCode = item.code.trim().toLowerCase();
     map[item.code] = uploads.filter((u) => {
-      const uCode = u.sheetCode.trim().toLowerCase();
-      const isMatch = uCode === iCode || uCode.startsWith(iCode);
+      const uCode = u.sheetCode.replace(/[\s\-_]/g, "").toLowerCase();
+      const cleanI = iCode.replace(/[\s\-_]/g, "").toLowerCase();
+      const isMatch = uCode === cleanI || uCode.includes(cleanI);
       return isMatch && u.kind === UPLOAD_KINDS.MY_PRACTICE;
     }).length;
   }
