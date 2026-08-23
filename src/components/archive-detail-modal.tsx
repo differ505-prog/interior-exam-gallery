@@ -52,7 +52,7 @@ type ArchiveDetailModalProps = {
 
 export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onClose, onDelete }: ArchiveDetailModalProps) {
   const [activeImage, setActiveImage] = useState<string | null>(null);
-  const [isLargeZoom, setIsLargeZoom] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState<"fit" | "medium" | "large">("fit");
   const [mounted, setMounted] = useState(false);
 
   // ─── 刪除確認對話框 ────────────────────────────────────────
@@ -500,47 +500,75 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
 
         {/* Lightbox for Zoomed Image */}
       {activeImage && (
-        <div 
-          className={`lightbox-overlay ${isLargeZoom ? "lightbox-overlay--zoomed" : ""}`}
+        <div
+          className={`lightbox-overlay${zoomLevel !== "fit" ? " lightbox-overlay--zoomed" : ""}`}
           onClick={() => {
             setActiveImage(null);
-            setIsLargeZoom(false);
+            setZoomLevel("fit");
           }}
         >
-          <button 
-            className="lightbox-close" 
+          <button
+            className="lightbox-close"
             onClick={() => {
               setActiveImage(null);
-              setIsLargeZoom(false);
-            }} 
+              setZoomLevel("fit");
+            }}
             aria-label="關閉放大圖"
           >
             <X size={24} />
           </button>
-          
+
+          {/* 三段式縮放控制 */}
+          <div className="lightbox-zoom-controls" onClick={(e) => e.stopPropagation()}>
+            <button
+              className={`lightbox-zoom-btn${zoomLevel === "fit" ? " lightbox-zoom-btn--active" : ""}`}
+              onClick={() => setZoomLevel("fit")}
+              aria-label="符合視窗"
+              title="符合視窗"
+            >
+              <span className="lightbox-zoom-btn__label">現況</span>
+            </button>
+            <button
+              className={`lightbox-zoom-btn${zoomLevel === "medium" ? " lightbox-zoom-btn--active" : ""}`}
+              onClick={() => setZoomLevel("medium")}
+              aria-label="放大至 1400px"
+              title="放大至 1400px"
+            >
+              <span className="lightbox-zoom-btn__label">1400</span>
+            </button>
+            <button
+              className={`lightbox-zoom-btn${zoomLevel === "large" ? " lightbox-zoom-btn--active" : ""}`}
+              onClick={() => setZoomLevel("large")}
+              aria-label="放大至 2200px"
+              title="放大至 2200px"
+            >
+              <span className="lightbox-zoom-btn__label">超大</span>
+            </button>
+          </div>
+
           {zoomableImages.length > 1 && (
             <>
-              <button 
-                className="lightbox-nav-btn lightbox-nav-btn--left" 
+              <button
+                className="lightbox-nav-btn lightbox-nav-btn--left"
                 onClick={(e) => {
                   e.stopPropagation();
                   const currentIndex = zoomableImages.indexOf(activeImage);
                   const prevIndex = (currentIndex - 1 + zoomableImages.length) % zoomableImages.length;
                   setActiveImage(zoomableImages[prevIndex]);
-                  setIsLargeZoom(false);
+                  setZoomLevel("fit");
                 }}
                 aria-label="上一張"
               >
                 <ArrowLeft size={28} />
               </button>
-              <button 
-                className="lightbox-nav-btn lightbox-nav-btn--right" 
+              <button
+                className="lightbox-nav-btn lightbox-nav-btn--right"
                 onClick={(e) => {
                   e.stopPropagation();
                   const currentIndex = zoomableImages.indexOf(activeImage);
                   const nextIndex = (currentIndex + 1) % zoomableImages.length;
                   setActiveImage(zoomableImages[nextIndex]);
-                  setIsLargeZoom(false);
+                  setZoomLevel("fit");
                 }}
                 aria-label="下一張"
               >
@@ -549,14 +577,10 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
             </>
           )}
 
-          <img 
-            src={activeImage} 
-            alt="放大圖面" 
-            className={isLargeZoom ? "img-zoomed-large" : "img-zoomed-fit"}
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsLargeZoom(!isLargeZoom);
-            }}
+          <img
+            src={activeImage}
+            alt="放大圖面"
+            className={`img-zoomed-${zoomLevel === "fit" ? "fit" : zoomLevel === "medium" ? "medium" : "large"}`}
           />
         </div>
       )}

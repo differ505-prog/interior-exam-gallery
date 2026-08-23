@@ -1720,6 +1720,18 @@ main {
   flex-shrink: 0;
 }
 
+.img-zoomed-medium {
+  width: 1400px;
+  max-width: none;
+  height: auto;
+  display: block;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 24px 72px rgba(0, 0, 0, 0.65);
+  cursor: zoom-in;
+  margin: var(--space-12) auto;
+  flex-shrink: 0;
+}
+
 .img-zoomed-large {
   width: 2200px;
   max-width: none;
@@ -1753,6 +1765,56 @@ main {
 .lightbox-close:hover {
   background: rgba(0, 0, 0, 0.85);
   opacity: 1;
+}
+
+/* 三段式縮放控制列 */
+.lightbox-zoom-controls {
+  position: fixed;
+  bottom: var(--space-6);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 99px;
+  padding: 4px;
+  z-index: 2020;
+}
+
+.lightbox-zoom-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 99px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+  white-space: nowrap;
+}
+
+.lightbox-zoom-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.lightbox-zoom-btn--active {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-weight: 600;
+}
+
+.lightbox-zoom-btn--active:hover {
+  background: rgba(255, 255, 255, 0.22);
 }
 
 .lightbox-nav-btn {
