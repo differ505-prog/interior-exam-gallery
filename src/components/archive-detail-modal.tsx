@@ -229,7 +229,7 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
       if (e.key === "Escape") {
         if (activeImage) {
           setActiveImage(null);
-          setIsLargeZoom(false);
+          setZoomLevel("fit");
         } else {
           onClose();
         }
@@ -239,14 +239,14 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
           if (currentIndex !== -1) {
             const nextIndex = (currentIndex + 1) % zoomableImages.length;
             setActiveImage(zoomableImages[nextIndex]);
-            setIsLargeZoom(false);
+            setZoomLevel("fit");
           }
         } else if (e.key === "ArrowLeft" || e.key === "Left") {
           const currentIndex = zoomableImages.indexOf(activeImage);
           if (currentIndex !== -1) {
             const prevIndex = (currentIndex - 1 + zoomableImages.length) % zoomableImages.length;
             setActiveImage(zoomableImages[prevIndex]);
-            setIsLargeZoom(false);
+            setZoomLevel("fit");
           }
         }
       }
