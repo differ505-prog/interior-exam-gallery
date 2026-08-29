@@ -323,7 +323,7 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
         }
       })
     );
-    onClose();
+    // 不主動關閉 Modal，讓 UploadStudio 的事件監聽器滑動到上傳區域
   };
 
   // Build the list of all zoomable images in order

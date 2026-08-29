@@ -106,6 +106,9 @@ export function UploadStudio() {
           } else {
             setAuthorName("");
           }
+
+          // 滑動到上傳表單區
+          formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
         }
       }
     };
