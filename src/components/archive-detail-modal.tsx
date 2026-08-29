@@ -315,15 +315,8 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
     if (sectionSlug === "detail") uploadCategory = "大樣圖 213-224";
 
     window.dispatchEvent(
-      new CustomEvent("prefill-upload", {
-        detail: {
-          sheetCode: item.code,
-          category: uploadCategory,
-          kind: kindVal
-        }
-      })
+      new CustomEvent("dismiss-modal", { detail: { sheetCode: item.code, category: uploadCategory, kind: kindVal } })
     );
-    // 不主動關閉 Modal，讓 UploadStudio 的事件監聽器滑動到上傳區域
   };
 
   // Build the list of all zoomable images in order

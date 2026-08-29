@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArchiveItem, UploadEntry } from "@/types/exam";
 import { ExamNoteCategory } from "@/types/exam-note";
 import { ArchiveDetailModal } from "@/components/archive-detail-modal";
@@ -27,6 +27,13 @@ export function ArchiveCard({ item, sectionSlug, uploads = [], examNotes, onDele
       setIsOpen(true);
     }
   };
+
+  // Listen for dismiss-modal events from ArchiveDetailModal and close the modal
+  useEffect(() => {
+    const handler = () => setIsOpen(false);
+    window.addEventListener("dismiss-modal", handler);
+    return () => window.removeEventListener("dismiss-modal", handler);
+  }, []);
 
   return (
     <>

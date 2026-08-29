@@ -77,44 +77,41 @@ export function UploadStudio() {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
   }, [previewUrl]);
-  // Listen for prefill events to automatically configure the upload fields
+  // Listen for dismiss-modal events (fired by ArchiveDetailModal when user clicks "新增").
+  // The modal close animation takes ~300ms, so we delay the scroll until after it completes.
   useEffect(() => {
-    const handlePrefill = (e: Event) => {
+    const handleDismiss = (e: Event) => {
       const { sheetCode, category, kind: kindVal } = (e as CustomEvent).detail;
-      if (sheetCode) {
-        if (formRef.current) {
-          const titleInput = formRef.current.querySelector("#title") as HTMLInputElement;
-          const sheetCodeInput = formRef.current.querySelector("#sheetCode") as HTMLInputElement;
-          const categorySelect = formRef.current.querySelector("#category") as HTMLSelectElement;
-          const kindSelect = formRef.current.querySelector("#kind") as HTMLSelectElement;
-          
-          if (sheetCodeInput) sheetCodeInput.value = sheetCode;
-          if (categorySelect) categorySelect.value = category;
-          if (kindSelect) {
-            kindSelect.value = kindVal;
-            setKind(kindVal);
-          }
-          
-          // Prefill default title
-          if (titleInput) {
-            titleInput.value = `${sheetCode} ${kindVal === "我的練習圖" ? "個人練習" : "作品參考"}`;
-          }
+      if (!sheetCode || !formRef.current) return;
 
-          // Prepopulate authorName default for personal practice
-          if (kindVal === "我的練習圖") {
-            setAuthorName("我自己");
-          } else {
-            setAuthorName("");
-          }
+      const titleInput = formRef.current.querySelector("#title") as HTMLInputElement;
+      const sheetCodeInput = formRef.current.querySelector("#sheetCode") as HTMLInputElement;
+      const categorySelect = formRef.current.querySelector("#category") as HTMLSelectElement;
+      const kindSelect = formRef.current.querySelector("#kind") as HTMLSelectElement;
 
-          // 滑動到上傳表單區
-          formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
+      if (sheetCodeInput) sheetCodeInput.value = sheetCode;
+      if (categorySelect) categorySelect.value = category;
+      if (kindSelect) {
+        kindSelect.value = kindVal;
+        setKind(kindVal);
       }
+      if (titleInput) {
+        titleInput.value = `${sheetCode} ${kindVal === "我的練習圖" ? "個人練習" : "作品參考"}`;
+      }
+      if (kindVal === "我的練習圖") {
+        setAuthorName("我自己");
+      } else {
+        setAuthorName("");
+      }
+
+      // Wait for modal close animation (~300ms) before scrolling so the form is visible
+      setTimeout(() => {
+        formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 350);
     };
 
-    window.addEventListener("prefill-upload", handlePrefill);
-    return () => window.removeEventListener("prefill-upload", handlePrefill);
+    window.addEventListener("dismiss-modal", handleDismiss);
+    return () => window.removeEventListener("dismiss-modal", handleDismiss);
   }, []);
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
