@@ -497,7 +497,17 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
 
           {/* Others' Reference Submissions */}
           <section className="modal-section">
-            <h3 className="section-title">他人優秀作品參考 ({otherReferences.length})</h3>
+            <div className="section-header-row">
+              <h3 className="section-title">他人優秀作品參考 ({otherReferences.length})</h3>
+              <button
+                className="modal-upload-add-btn"
+                aria-label="上傳更多他人作品參考"
+                onClick={() => handlePrefill("他人作品參考")}
+              >
+                <Plus size={14} />
+                <span>新增</span>
+              </button>
+            </div>
             {otherReferences.length > 0 ? (
               <div className="modal-uploads-grid">
                 {otherReferences.map((upload) => (
