@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, ChangeEvent, FormEvent } from "react";
 import { createPortal } from "react-dom";
-import { X, ZoomIn, FileImage, Upload, ArrowLeft, ArrowRight, Trash2 } from "lucide-react";
+import { X, ZoomIn, FileImage, Upload, ArrowLeft, ArrowRight, Trash2, LoaderCircle, Plus, Check, AlertCircle } from "lucide-react";
 import { ArchiveItem, UploadEntry } from "@/types/exam";
 import { ExamNoteCategory } from "@/types/exam-note";
 import { SafeImage } from "@/components/ui/safe-image";
@@ -114,6 +114,119 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
   }, []);
+  // ───────────────────────────────────────────────────────────
+
+  // ─── 內嵌他人作品上傳器 ───────────────────────────────────
+  const [refUploaderOpen, setRefUploaderOpen] = useState(false);
+  const [refFile, setRefFile] = useState<File | null>(null);
+  const [refPreview, setRefPreview] = useState<string | null>(null);
+  const [refAuthor, setRefAuthor] = useState("");
+  const [refScore, setRefScore] = useState("");
+  const [refWeaknesses, setRefWeaknesses] = useState<string[]>([]);
+  const [refWeaknessInput, setRefWeaknessInput] = useState("");
+  const [refUploading, setRefUploading] = useState(false);
+  const [refMessage, setRefMessage] = useState<{ text: string; tone: "info" | "error" } | null>(null);
+  const refFormRef = useRef<HTMLFormElement>(null);
+
+  // 載入已記憶的作者名
+  const [savedAuthors, setSavedAuthors] = useState<string[]>([]);
+  const [showAuthorSuggestions, setShowAuthorSuggestions] = useState(false);
+  const refAuthorWrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("saved_authors");
+      if (saved) setSavedAuthors(JSON.parse(saved));
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (refAuthorWrapperRef.current && !refAuthorWrapperRef.current.contains(e.target as Node)) {
+        setShowAuthorSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const handleRefFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (refPreview) URL.revokeObjectURL(refPreview);
+    const url = URL.createObjectURL(file);
+    setRefFile(file);
+    setRefPreview(url);
+  };
+
+  const addRefWeakness = () => {
+    const trimmed = refWeaknessInput.trim();
+    if (trimmed && !refWeaknesses.includes(trimmed) && refWeaknesses.length < 5) {
+      setRefWeaknesses([...refWeaknesses, trimmed]);
+      setRefWeaknessInput("");
+    }
+  };
+
+  const removeRefWeakness = (idx: number) => {
+    setRefWeaknesses(refWeaknesses.filter((_, i) => i !== idx));
+  };
+
+  const handleRefSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!refFile) {
+      setRefMessage({ text: "請選擇一張完稿圖片。", tone: "error" });
+      return;
+    }
+    if (!refAuthor.trim()) {
+      setRefMessage({ text: "請填寫作者名稱。", tone: "error" });
+      return;
+    }
+
+    setRefUploading(true);
+    setRefMessage(null);
+
+    let uploadCategory = "平面圖 201-206";
+    if (sectionSlug === "ceiling-elevation") uploadCategory = "天花板圖 / 立面圖";
+    if (sectionSlug === "perspective") uploadCategory = "透視圖 207-212";
+    if (sectionSlug === "detail") uploadCategory = "大樣圖 213-224";
+
+    const formData = new FormData();
+    formData.append("image", refFile);
+    formData.append("title", `${item.code} - ${refAuthor.trim()} 作品參考`);
+    formData.append("sheetCode", item.code);
+    formData.append("category", uploadCategory);
+    formData.append("kind", UPLOAD_KINDS.OTHERS_REFERENCE);
+    formData.append("authorName", refAuthor.trim());
+    formData.append("scoreNote", refScore.trim());
+    formData.append("weaknesses", JSON.stringify(refWeaknesses));
+
+    try {
+      const res = await fetch("/api/uploads", { method: "POST", body: formData });
+      if (!res.ok) throw new Error("上傳失敗");
+      // 記憶作者
+      const trimmed = refAuthor.trim();
+      if (!savedAuthors.includes(trimmed)) {
+        const updated = [trimmed, ...savedAuthors].slice(0, 15);
+        setSavedAuthors(updated);
+        localStorage.setItem("saved_authors", JSON.stringify(updated));
+      }
+      setRefMessage({ text: "上傳成功。", tone: "info" });
+      setTimeout(() => {
+        setRefUploaderOpen(false);
+        setRefFile(null);
+        if (refPreview) URL.revokeObjectURL(refPreview);
+        setRefPreview(null);
+        setRefAuthor("");
+        setRefScore("");
+        setRefWeaknesses([]);
+        setRefMessage(null);
+      }, 1200);
+    } catch {
+      setRefMessage({ text: "上傳失敗，請稍後再試。", tone: "error" });
+    } finally {
+      setRefUploading(false);
+    }
+  };
   // ───────────────────────────────────────────────────────────
 
   // ─── 配置查表 ────────────────────────────────────────────
