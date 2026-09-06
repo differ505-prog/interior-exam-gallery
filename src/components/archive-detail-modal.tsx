@@ -319,14 +319,32 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
     );
   };
 
-  // Build the list of all zoomable images in order
+  // Build the list of all zoomable images in order (展開每筆的 imageUrls)
   const zoomableImages = useMemo(() => {
-    return [
-      questionImageUrl,
-      referenceImageUrl,
-      ...uploads.map((u) => u.imageUrl),
-    ].filter((url): url is string => !!url);
+    const urls: string[] = [];
+    if (questionImageUrl) urls.push(questionImageUrl);
+    if (referenceImageUrl) urls.push(referenceImageUrl);
+    for (const u of uploads) {
+      if (u.imageUrls && u.imageUrls.length > 0) {
+        urls.push(...u.imageUrls);
+      } else {
+        urls.push(u.imageUrl);
+      }
+    }
+    return urls;
   }, [questionImageUrl, referenceImageUrl, uploads]);
+
+  // 將上傳列表攤平為「每張圖一筆」，並保留指向該筆 UploadEntry 的引用（供多圖徽章/刪除用）
+  const uploadImageUnits = useMemo(() => {
+    const units: { id: string; key: string; url: string; entry: UploadEntry }[] = [];
+    for (const u of uploads) {
+      const urls = u.imageUrls && u.imageUrls.length > 0 ? u.imageUrls : [u.imageUrl];
+      urls.forEach((url, idx) => {
+        units.push({ id: u.id, key: `${u.id}-${idx}`, url, entry: u });
+      });
+    }
+    return units;
+  }, [uploads]);
 
   // Lock scroll on body and manage keyboard events when modal is open
   useEffect(() => {
@@ -446,36 +464,21 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
             <h3 className="section-title">我的練習成果 ({myPractices.length})</h3>
             {myPractices.length > 0 ? (
               <div className="modal-uploads-grid">
-                {myPractices.map((upload) => (
-                  <div className="modal-upload-card" key={upload.id}>
-                    <div className="modal-upload-img-wrap" onClick={() => setActiveImage(upload.imageUrl)}>
-                      <SafeImage src={upload.imageUrl} alt={upload.title} aspectRatio="4 / 3" />
-                      <span className="modal-upload-kind">{upload.kind}</span>
-                      <button className="modal-upload-zoom" aria-label="放大圖面">
-                        <ZoomIn size={16} />
-                      </button>
-                    </div>
-                    <div className="modal-upload-details">
-                      <div className="modal-upload-meta">
-                        <span className="modal-upload-author">{upload.authorName}</span>
-                        <span className="modal-upload-date">
-                          {new Date(upload.createdAt).toLocaleDateString("zh-TW")}
-                        </span>
-                      </div>
-                      <h4>{upload.title}</h4>
-                      <p className="modal-upload-score">{upload.scoreNote}</p>
-                      {upload.weaknesses.length > 0 && (
-                        <div className="modal-upload-weaknesses">
-                          {upload.weaknesses.map((w, idx) => (
-                            <span className="modal-weakness-tag" key={idx}>
-                              {w}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                {myPractices.map((upload) => {
+                  const units = uploadImageUnits.filter((u) => u.id === upload.id);
+                  const urls = units.length > 0 ? units.map((u) => u.url) : (upload.imageUrls && upload.imageUrls.length > 0 ? upload.imageUrls : [upload.imageUrl]);
+                  const hasMultiple = urls.length > 1;
+                  return (
+                    <ModalUploadCard
+                      key={upload.id}
+                      upload={upload}
+                      urls={urls}
+                      hasMultiple={hasMultiple}
+                      showDelete={false}
+                      onZoom={setActiveImage}
+                    />
+                  );
+                })}
               </div>
             ) : (
               <div className="no-uploads-box">
@@ -503,43 +506,22 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
             </div>
             {otherReferences.length > 0 ? (
               <div className="modal-uploads-grid">
-                {otherReferences.map((upload) => (
-                  <div className="modal-upload-card" key={upload.id}>
-                    <div className="modal-upload-img-wrap" onClick={() => setActiveImage(upload.imageUrl)}>
-                      <SafeImage src={upload.imageUrl} alt={upload.title} aspectRatio="4 / 3" />
-                      <span className="modal-upload-kind">他人作品參考</span>
-                      <button className="modal-upload-zoom" aria-label="放大圖面">
-                        <ZoomIn size={16} />
-                      </button>
-                    </div>
-                    <div className="modal-upload-details">
-                      <div className="modal-upload-meta">
-                        <span className="modal-upload-author">{upload.authorName}</span>
-                        <span className="modal-upload-date">
-                          {new Date(upload.createdAt).toLocaleDateString("zh-TW")}
-                        </span>
-                        <button
-                          className="modal-upload-delete"
-                          aria-label={`刪除 ${upload.title}`}
-                          onClick={() => handleDeleteClick(upload)}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                      <h4>{upload.title}</h4>
-                      <p className="modal-upload-score">{upload.scoreNote}</p>
-                      {upload.weaknesses.length > 0 && (
-                        <div className="modal-upload-weaknesses">
-                          {upload.weaknesses.map((w, idx) => (
-                            <span className="modal-weakness-tag" key={idx}>
-                              {w}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                {otherReferences.map((upload) => {
+                  const units = uploadImageUnits.filter((u) => u.id === upload.id);
+                  const urls = units.length > 0 ? units.map((u) => u.url) : (upload.imageUrls && upload.imageUrls.length > 0 ? upload.imageUrls : [upload.imageUrl]);
+                  const hasMultiple = urls.length > 1;
+                  return (
+                    <ModalUploadCard
+                      key={upload.id}
+                      upload={upload}
+                      urls={urls}
+                      hasMultiple={hasMultiple}
+                      showDelete
+                      onZoom={setActiveImage}
+                      onDeleteClick={handleDeleteClick}
+                    />
+                  );
+                })}
               </div>
             ) : (
               <div className="no-uploads-box no-uploads-box--neutral">
@@ -735,5 +717,86 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
       )}
     </>,
     document.body
+  );
+}
+
+// ─── ModalUploadCard：Modal 內的上傳卡（含多圖切換） ───────────────
+type ModalUploadCardProps = {
+  upload: UploadEntry;
+  urls: string[];
+  hasMultiple: boolean;
+  showDelete: boolean;
+  onZoom: (url: string) => void;
+  onDeleteClick?: (entry: UploadEntry) => void;
+};
+
+function ModalUploadCard({ upload, urls, hasMultiple, showDelete, onZoom, onDeleteClick }: ModalUploadCardProps) {
+  const [activeIdx, setActiveIdx] = useState(0);
+  const safeIdx = Math.min(activeIdx, urls.length - 1);
+  const activeUrl = urls[safeIdx] ?? urls[0];
+
+  return (
+    <div className="modal-upload-card" key={upload.id}>
+      <div className="modal-upload-img-wrap" onClick={() => onZoom(activeUrl)}>
+        <SafeImage src={activeUrl} alt={upload.title} aspectRatio="4 / 3" />
+        <span className="modal-upload-kind">{upload.kind}</span>
+        {hasMultiple ? (
+          <>
+            <span className="upload-multi-badge" aria-label={`共 ${urls.length} 張圖`}>
+              {safeIdx + 1} / {urls.length}
+            </span>
+            <ol className="modal-upload-card__thumbs" aria-label={`${upload.title} 圖片切換`}>
+              {urls.map((url, idx) => (
+                <li key={`${upload.id}-${idx}`}>
+                  <button
+                    aria-current={idx === safeIdx ? "true" : undefined}
+                    aria-label={`切換至第 ${idx + 1} 張`}
+                    className={`upload-card__thumb${idx === safeIdx ? " upload-card__thumb--active" : ""}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveIdx(idx);
+                    }}
+                    type="button"
+                  >
+                    <SafeImage alt="" aspectRatio="1 / 1" fallbackLabel="" src={url} />
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </>
+        ) : null}
+        <button className="modal-upload-zoom" aria-label="放大圖面">
+          <ZoomIn size={16} />
+        </button>
+      </div>
+      <div className="modal-upload-details">
+        <div className="modal-upload-meta">
+          <span className="modal-upload-author">{upload.authorName}</span>
+          <span className="modal-upload-date">
+            {new Date(upload.createdAt).toLocaleDateString("zh-TW")}
+          </span>
+          {showDelete && onDeleteClick ? (
+            <button
+              className="modal-upload-delete"
+              aria-label={`刪除 ${upload.title}`}
+              onClick={() => onDeleteClick(upload)}
+            >
+              <Trash2 size={14} />
+            </button>
+          ) : null}
+        </div>
+        <h4>{upload.title}</h4>
+        <p className="modal-upload-score">{upload.scoreNote}</p>
+        {upload.weaknesses.length > 0 && (
+          <div className="modal-upload-weaknesses">
+            {upload.weaknesses.map((w, idx) => (
+              <span className="modal-weakness-tag" key={idx}>
+                {w}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

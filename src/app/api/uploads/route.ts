@@ -9,9 +9,10 @@ export const dynamic = "force-dynamic";
 
 const allowedMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const maxFileSize = 10 * 1024 * 1024;
-const maxRequestSize = 12 * 1024 * 1024;
+const maxRequestSize = 50 * 1024 * 1024;
 const rateLimitWindowMs = 60_000;
 const rateLimitMax = 8;
+const MAX_IMAGES_PER_SUBMISSION = 6;
 
 const ipBuckets = new Map<string, { count: number; resetAt: number }>();
 
@@ -90,6 +91,8 @@ export async function POST(request: Request) {
   }
 
   const image = formData.get("image");
+  // 多張上傳：僅「我的練習圖」支援，「他人作品參考」仍維持單張以維持信任鏈一致
+  const multiImages = formData.getAll("images").filter((f): f is File => f instanceof File && f.size > 0);
   const title = String(formData.get("title") ?? "").trim().slice(0, 120);
   const category = String(formData.get("category") ?? "").trim();
   const sheetCodeRaw = String(formData.get("sheetCode") ?? "").trim();
@@ -104,20 +107,29 @@ export async function POST(request: Request) {
     .filter(Boolean)
     .slice(0, 12);
 
-  if (!(image instanceof File)) {
-    return badRequest("請選擇一張圖片。");
+  // 收集要上傳的檔案：「我的練習圖」支援多張（最多 6 張），「他人作品參考」維持單張
+  const filesToUpload: File[] = [];
+  if (kind === "我的練習圖") {
+    if (multiImages.length > 0) {
+      filesToUpload.push(...multiImages.slice(0, MAX_IMAGES_PER_SUBMISSION));
+    } else if (image instanceof File) {
+      filesToUpload.push(image);
+    }
+  } else if (image instanceof File) {
+    filesToUpload.push(image);
   }
 
-  if (!allowedMimeTypes.has(image.type)) {
-    return badRequest("僅支援 JPG、PNG、WEBP。");
+  if (filesToUpload.length === 0) {
+    return badRequest("請選擇至少一張圖片。");
   }
 
-  if (image.size <= 0) {
-    return badRequest("圖片內容為空，請重新選擇。");
-  }
-
-  if (image.size > maxFileSize) {
-    return badRequest("圖片大小不可超過 10MB。");
+  for (const file of filesToUpload) {
+    if (!allowedMimeTypes.has(file.type)) {
+      return badRequest("僅支援 JPG、PNG、WEBP。");
+    }
+    if (file.size > maxFileSize) {
+      return badRequest("單張圖片大小不可超過 10MB。");
+    }
   }
 
   if (!title || !sheetCode) {
@@ -134,8 +146,7 @@ export async function POST(request: Request) {
     sheetCode,
     kind,
     authorName,
-    imageSize: image.size,
-    imageType: image.type,
+    fileCount: filesToUpload.length,
   });
 
   if (!UPLOAD_KIND_OPTIONS.includes(kind as UploadKindValue)) {
@@ -146,37 +157,51 @@ export async function POST(request: Request) {
     return badRequest("請填寫作者名稱。");
   }
 
-  // 1. Upload image to Cloudinary
-  const arrayBuffer = await image.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
+  // 1. 上傳所有圖片至 Cloudinary（並行）
+  const uploadOne = (file: File) =>
+    file.arrayBuffer().then((arrayBuffer) => {
+      const buffer = Buffer.from(arrayBuffer);
+      return new Promise<string>((resolve, reject) => {
+        cloudinary.uploader
+          .upload_stream(
+            {
+              folder: `${cloudinaryFolder}/${sheetCode}`,
+              public_id: `${Date.now()}-${randomUUID()}`,
+              resource_type: "image",
+            },
+            (error, result) => {
+              if (error || !result)
+                return reject(error ?? new Error("Cloudinary upload failed"));
+              resolve(result.secure_url);
+            },
+          )
+          .end(buffer);
+      });
+    });
 
-  const cloudinaryResult = await new Promise<{ secure_url: string }>((resolve, reject) => {
-    cloudinary.uploader
-      .upload_stream(
-        {
-          folder: `${cloudinaryFolder}/${sheetCode}`,
-          public_id: `${Date.now()}-${randomUUID()}`,
-          resource_type: "image",
-        },
-        (error, result) => {
-          if (error || !result)
-            return reject(error ?? new Error("Cloudinary upload failed"));
-          resolve({ secure_url: result.secure_url });
-        },
-      )
-      .end(buffer);
-  });
+  let uploadedUrls: string[];
+  try {
+    uploadedUrls = await Promise.all(filesToUpload.map(uploadOne));
+  } catch (error) {
+    console.error("[uploads] Cloudinary 上傳失敗:", error);
+    return NextResponse.json(
+      { message: "圖片上傳失敗，請稍後再試。" },
+      { status: 502 },
+    );
+  }
 
-  const imageUrl = cloudinaryResult.secure_url;
+  const imageUrl = uploadedUrls[0];
+  const imageUrls = uploadedUrls.length > 1 ? uploadedUrls : undefined;
 
   // 2. Save metadata to Vercel KV
-  console.log("[uploads] 圖片上傳成功，準備寫入 KV:", { title, sheetCode, imageUrl });
+  console.log("[uploads] 圖片上傳成功，準備寫入 KV:", { title, sheetCode, imageUrl, total: uploadedUrls.length });
   try {
     await kvPushEntry({
       title,
       category,
       sheetCode,
       imageUrl,
+      imageUrls,
       kind: kind as "我的練習圖" | "他人作品參考",
       authorName,
       scoreNote,

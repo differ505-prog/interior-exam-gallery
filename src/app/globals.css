@@ -25,6 +25,10 @@
   --danger: #b94545;
   --danger-soft: rgba(185, 69, 69, 0.12);
 
+  /* Overlay（半透明遮罩，深色 = 文字/UI 元素的浮動層） */
+  --overlay-deep: rgba(20, 18, 14, 0.68);
+  --surface-frosted: rgba(255, 255, 255, 0.92);
+
   /* Elevation */
   --shadow: 0 24px 70px rgba(29, 25, 20, 0.08);
   --shadow-sm: 0 6px 24px rgba(29, 25, 20, 0.06);
@@ -888,6 +892,76 @@ main {
   padding: 0;
 }
 
+.preview-thumbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-3, 12px);
+  padding: var(--space-4, 16px);
+}
+
+.preview-thumb {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--color-theme, #f5f1ea);
+  aspect-ratio: 4 / 3;
+  transition: transform 200ms ease-out, box-shadow 200ms ease-out;
+}
+
+.preview-thumb:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm, 0 6px 24px rgba(29, 25, 20, 0.06));
+}
+
+.preview-thumb img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  display: block;
+}
+
+.preview-thumb__remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--overlay-deep, rgba(20, 18, 14, 0.68));
+  color: var(--on-accent, #f7f1e8);
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 150ms ease-out;
+}
+
+.preview-thumb__remove:hover {
+  background: var(--accent, #876f49);
+}
+
+.preview-thumb__index {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  padding: 2px 8px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  color: var(--text-strong, #0e0d0b);
+  background: var(--surface-frosted, rgba(255, 255, 255, 0.92));
+  border-radius: var(--radius-pill, 999px);
+}
+
+.form-field__hint {
+  display: block;
+  margin-top: var(--space-2, 8px);
+  font-size: 12px;
+  color: var(--color-text-muted, #6b6560);
+  line-height: 1.5;
+}
+
 .preview-box img {
   width: 100%;
   aspect-ratio: 4 / 3;
@@ -964,6 +1038,97 @@ main {
   color: #fff8ef;
   font-size: 0.78rem;
   backdrop-filter: blur(8px);
+}
+
+/* 多張上傳徽章（左上角，避免與右上 upload-kind 衝突） */
+.upload-multi-badge {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  padding: 2px var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(8px);
+  z-index: 2;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 縮圖 strip：浮於主圖底部、跨卡片共用樣式 */
+.upload-card__thumbs {
+  position: absolute;
+  left: var(--space-3);
+  right: var(--space-3);
+  bottom: var(--space-3);
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding: var(--space-1);
+  background: rgba(20, 18, 14, 0.42);
+  backdrop-filter: blur(10px);
+  border-radius: var(--radius-sm);
+  z-index: 2;
+  -webkit-overflow-scrolling: touch;
+}
+
+.upload-card__thumbs li {
+  flex: 0 0 auto;
+}
+
+.upload-card__thumb {
+  display: block;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  cursor: pointer;
+  background: var(--bg-deep);
+  padding: 0;
+  transition: transform var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+}
+
+.upload-card__thumb:hover {
+  transform: translateY(-1px);
+}
+
+.upload-card__thumb--active {
+  border-color: var(--accent);
+}
+
+.upload-card__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* 縮圖 strip：Modal 卡片內，置於主圖下方（不重疊 zoom 按鈕） */
+.modal-upload-card__thumbs {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  overflow-x: auto;
+  scrollbar-width: thin;
+  border-top: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.45);
+  -webkit-overflow-scrolling: touch;
+}
+
+.modal-upload-card__thumbs li {
+  flex: 0 0 auto;
+}
+
+/* Modal 內的縮圖按鈕略大（與較大的主圖協調） */
+.modal-upload-card__thumbs .upload-card__thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
 }
 
 .upload-body {

@@ -20,6 +20,7 @@ const kindOptions = Object.values(UPLOAD_KINDS) as [UploadKindValue, UploadKindV
 
 const MAX_TITLE_LENGTH = 60;
 const MAX_TEXTAREA_LENGTH = 500;
+const MAX_IMAGES_PER_SUBMISSION = 6;
 
 function truncate(value: string, max: number) {
   return value.length > max ? `${value.slice(0, max)}…` : value;
@@ -30,7 +31,7 @@ export function UploadStudio() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [messageTone, setMessageTone] = useState<"info" | "error">("info");
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [isReady, setIsReady] = useState<boolean | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -74,9 +75,9 @@ export function UploadStudio() {
 
   useEffect(() => {
     return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      previewUrls.forEach((u) => URL.revokeObjectURL(u));
     };
-  }, [previewUrl]);
+  }, [previewUrls]);
   // Listen for dismiss-modal events (fired by ArchiveDetailModal when user clicks "新增").
   // The modal close animation takes ~300ms, so we delay the scroll until after it completes.
   useEffect(() => {
@@ -145,10 +146,8 @@ export function UploadStudio() {
 
       form.reset();
       setAuthorName(""); // Reset controlled input
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-        setPreviewUrl(null);
-      }
+      previewUrls.forEach((u) => URL.revokeObjectURL(u));
+      setPreviewUrls([]);
       setMessageTone("info");
       setMessage("完成。已加入圖庫。");
       router.refresh();
@@ -161,13 +160,24 @@ export function UploadStudio() {
   };
 
   const handlePreviewChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
+    const files = Array.from(event.target.files ?? []);
+    previewUrls.forEach((u) => URL.revokeObjectURL(u));
+    if (files.length === 0) {
+      setPreviewUrls([]);
       return;
     }
-    setPreviewUrl(URL.createObjectURL(file));
+    const sliced = files.slice(0, MAX_IMAGES_PER_SUBMISSION);
+    setPreviewUrls(sliced.map((f) => URL.createObjectURL(f)));
+  };
+
+  const handleRemovePreview = (idx: number) => {
+    const target = previewUrls[idx];
+    if (target) URL.revokeObjectURL(target);
+    const next = previewUrls.filter((_, i) => i !== idx);
+    setPreviewUrls(next);
+    // 同步清空 input value，否則使用者移除後無法再次挑選同一檔案
+    const input = document.getElementById("image") as HTMLInputElement | null;
+    if (input) input.value = "";
   };
 
   if (isReady === null) {
@@ -313,15 +323,19 @@ export function UploadStudio() {
               )}
             </div>
           </Field>
-          <Field id="image" label="圖片檔案" required>
+          <Field id="image" label={kind === "我的練習圖" ? "練習圖（最多 6 張）" : "圖片檔案"} required>
             <input
               accept="image/png,image/jpeg,image/webp"
               id="image"
-              name="image"
+              name={kind === "我的練習圖" ? "images" : "image"}
+              multiple={kind === "我的練習圖"}
               onChange={handlePreviewChange}
               required
               type="file"
             />
+            {kind === "我的練習圖" ? (
+              <span className="form-field__hint">可一次選多張；總和不超過 60MB，單張 ≤ 10MB。</span>
+            ) : null}
           </Field>
         </div>
 
@@ -355,9 +369,22 @@ export function UploadStudio() {
           />
         </Field>
 
-        {previewUrl ? (
-          <div className="preview-box" aria-label="選擇圖片預覽">
-            <img alt="已選擇的圖片預覽" decoding="async" src={previewUrl} />
+        {previewUrls.length > 0 ? (
+          <div className="preview-box preview-thumbs" aria-label="選擇圖片預覽">
+            {previewUrls.map((src, idx) => (
+              <div className="preview-thumb" key={src}>
+                <img alt={`已選擇的第 ${idx + 1} 張圖片預覽`} decoding="async" src={src} />
+                <button
+                  aria-label={`移除第 ${idx + 1} 張預覽`}
+                  className="preview-thumb__remove"
+                  onClick={() => handleRemovePreview(idx)}
+                  type="button"
+                >
+                  <X aria-hidden="true" size={14} />
+                </button>
+                <span className="preview-thumb__index">{idx + 1}/{previewUrls.length}</span>
+              </div>
+            ))}
           </div>
         ) : null}
 

@@ -44,6 +44,9 @@ function mapEntry(raw: Record<string, unknown>): UploadEntry | null {
     category: String(raw.category ?? "").trim() || "未分類",
     sheetCode: String(raw.sheetCode ?? "").trim() || "—",
     imageUrl: String(raw.imageUrl ?? "").trim(),
+    imageUrls: Array.isArray(raw.imageUrls)
+      ? raw.imageUrls.filter((u): u is string => typeof u === "string" && u.trim().length > 0)
+      : undefined,
     kind: mappedKind,
     authorName: String(raw.authorName ?? "").trim() || "匿名",
     scoreNote: String(raw.scoreNote ?? "").trim(),
@@ -63,6 +66,7 @@ export interface KvUploadPayload {
   category: string;
   sheetCode: string;
   imageUrl: string;
+  imageUrls?: string[];
   kind: UploadEntry["kind"];
   authorName: string;
   scoreNote: string;
