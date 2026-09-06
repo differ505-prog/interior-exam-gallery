@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { cloudinary, cloudinaryFolder, hasCloudinaryEnv } from "@/lib/cloudinary";
 import { kvPushEntry, kvDeleteEntry, hasKvEnv } from "@/lib/kv-store";
-import { UPLOAD_KIND_OPTIONS, UPLOAD_CATEGORY_OPTIONS, type UploadKindValue, type UploadCategoryValue } from "@/lib/upload-constants";
+import { UPLOAD_KIND_OPTIONS, UPLOAD_CATEGORY_OPTIONS, SECTION_SLUG_TO_CATEGORY, type UploadKindValue, type UploadCategoryValue } from "@/lib/upload-constants";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -98,6 +98,7 @@ export async function POST(request: Request) {
   const sheetCodeRaw = String(formData.get("sheetCode") ?? "").trim();
   const sheetCode = sanitizeSheetCode(sheetCodeRaw).slice(0, 40);
   const kind = String(formData.get("kind") ?? "").trim();
+  const sectionSlug = String(formData.get("sectionSlug") ?? "").trim();
   const authorName = String(formData.get("authorName") ?? "").trim().slice(0, 60);
   const scoreNote = String(formData.get("scoreNote") ?? "").trim().slice(0, 600);
   const teacherComment = String(formData.get("teacherComment") ?? "").trim().slice(0, 600);
@@ -138,6 +139,18 @@ export async function POST(request: Request) {
 
   if (!UPLOAD_CATEGORY_OPTIONS.includes(category as UploadCategoryValue)) {
     return badRequest("請選擇有效的類別。");
+  }
+
+  // sectionSlug 是新版的鎖死欄位：有帶就覆寫 category（雙鍵決定歸屬，避免 202B 平面/立面互相污染）
+  if (sectionSlug) {
+    if (!SECTION_SLUG_TO_CATEGORY[sectionSlug]) {
+      return badRequest("章節參數無效。");
+    }
+    // 鎖死：後端以 sectionSlug 為準，忽略前端送來的 category
+    // 但保留驗證 category 仍合法，避免前端誤傳
+    if (SECTION_SLUG_TO_CATEGORY[sectionSlug] !== category) {
+      console.warn("[uploads] category 與 sectionSlug 不一致，以 sectionSlug 為準", { receivedCategory: category, sectionSlug });
+    }
   }
 
   console.log("[uploads] 接收參數:", {
@@ -200,6 +213,7 @@ export async function POST(request: Request) {
       title,
       category,
       sheetCode,
+      sectionSlug: sectionSlug || undefined,
       imageUrl,
       imageUrls,
       kind: kind as "我的練習圖" | "他人作品參考",

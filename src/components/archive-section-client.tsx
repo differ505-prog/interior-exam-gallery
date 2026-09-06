@@ -50,13 +50,18 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
   };
 
   // Only count student's own practices for completion and upload count
-  const myUploads = uploads.filter(
-    (u) => section.items.some(item => isMatch(u.sheetCode, item.code)) && u.kind === "我的練習圖"
-  );
+  // 雙鍵比對：(sheetCode) + (sectionSlug)，避免 202B 平面圖抓到 202B 客廳立面圖
+  const myUploads = uploads.filter((u) => {
+    const matchesSheet = section.items.some((item) => isMatch(u.sheetCode, item.code));
+    const matchesSection = !u.sectionSlug || u.sectionSlug === section.slug;
+    return matchesSheet && matchesSection && u.kind === "我的練習圖";
+  });
   const uploadedCount = myUploads.length;
-  
-  const completedCodes = new Set(myUploads.map((u) => u.sheetCode.trim().toLowerCase()));
-  const completedCount = completedCodes.size;
+
+  const completedKeys = new Set(
+    myUploads.map((u) => `${u.sheetCode.trim().toLowerCase()}::${u.sectionSlug ?? section.slug}`)
+  );
+  const completedCount = completedKeys.size;
   const completionRate = totalItems > 0 ? Math.round((completedCount / totalItems) * 100) : 0;
 
   // Filter logic
@@ -212,7 +217,9 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
         <div className="archive-grid">
           {filteredItems.map((item) => {
             const matchedUploads = uploads.filter(
-              (u) => isMatch(u.sheetCode, item.code)
+              (u) =>
+                isMatch(u.sheetCode, item.code) &&
+                (!u.sectionSlug || u.sectionSlug === section.slug)
             );
             return (
               <ArchiveCard

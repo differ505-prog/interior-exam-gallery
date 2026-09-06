@@ -25,6 +25,18 @@ export const UPLOAD_CATEGORIES = {
 
 export type UploadCategoryValue = (typeof UPLOAD_CATEGORIES)[keyof typeof UPLOAD_CATEGORIES];
 
+/** 章節 slug 與 category 的雙向映射，作為資料鎖死層，避免 category 字串被竄改 */
+export const SECTION_SLUG_TO_CATEGORY: Record<string, UploadCategoryValue> = {
+  plan: UPLOAD_CATEGORIES.PLAN,
+  "ceiling-elevation": UPLOAD_CATEGORIES.CEILING_ELEVATION,
+  perspective: UPLOAD_CATEGORIES.PERSPECTIVE,
+  detail: UPLOAD_CATEGORIES.DETAIL,
+};
+
+export function resolveCategoryBySectionSlug(slug: string): UploadCategoryValue | null {
+  return SECTION_SLUG_TO_CATEGORY[slug] ?? null;
+}
+
 // ─── 驗證工具（供 API 與表單使用）────────────────────────────
 export const UPLOAD_KIND_OPTIONS = Object.values(UPLOAD_KINDS) as [UploadKindValue, UploadKindValue];
 export const UPLOAD_CATEGORY_OPTIONS = Object.values(UPLOAD_CATEGORIES) as [

@@ -38,11 +38,13 @@ function mapEntry(raw: Record<string, unknown>): UploadEntry | null {
     mappedKind = "他人作品參考";
   }
 
+  const rawSectionSlug = typeof raw.sectionSlug === "string" ? raw.sectionSlug.trim() : "";
   return {
     id: String(raw.id ?? randomUUID()),
     title: String(raw.title ?? "").trim() || "未命名圖面",
     category: String(raw.category ?? "").trim() || "未分類",
     sheetCode: String(raw.sheetCode ?? "").trim() || "—",
+    sectionSlug: rawSectionSlug.length > 0 ? rawSectionSlug : undefined,
     imageUrl: String(raw.imageUrl ?? "").trim(),
     imageUrls: Array.isArray(raw.imageUrls)
       ? raw.imageUrls.filter((u): u is string => typeof u === "string" && u.trim().length > 0)
@@ -65,6 +67,7 @@ export interface KvUploadPayload {
   title: string;
   category: string;
   sheetCode: string;
+  sectionSlug?: string;
   imageUrl: string;
   imageUrls?: string[];
   kind: UploadEntry["kind"];

@@ -6,6 +6,7 @@ import { LoaderCircle, Upload, X } from "lucide-react";
 import {
   UPLOAD_CATEGORIES,
   UPLOAD_KINDS,
+  SECTION_SLUG_TO_CATEGORY,
   type UploadCategoryValue,
   type UploadKindValue,
 } from "@/lib/upload-constants";
@@ -82,16 +83,22 @@ export function UploadStudio() {
   // The modal close animation takes ~300ms, so we delay the scroll until after it completes.
   useEffect(() => {
     const handleDismiss = (e: Event) => {
-      const { sheetCode, category, kind: kindVal } = (e as CustomEvent).detail;
+      const { sheetCode, sectionSlug, category, kind: kindVal } = (e as CustomEvent).detail;
       if (!sheetCode || !formRef.current) return;
+
+      // 優先採用 sectionSlug 鎖死的 category，否則退回 event 帶的 category
+      const finalCategory =
+        (sectionSlug && SECTION_SLUG_TO_CATEGORY[sectionSlug]) || category;
 
       const titleInput = formRef.current.querySelector("#title") as HTMLInputElement;
       const sheetCodeInput = formRef.current.querySelector("#sheetCode") as HTMLInputElement;
       const categorySelect = formRef.current.querySelector("#category") as HTMLSelectElement;
       const kindSelect = formRef.current.querySelector("#kind") as HTMLSelectElement;
+      const sectionSlugInput = formRef.current.querySelector("#sectionSlug") as HTMLInputElement | null;
 
       if (sheetCodeInput) sheetCodeInput.value = sheetCode;
-      if (categorySelect) categorySelect.value = category;
+      if (categorySelect && finalCategory) categorySelect.value = finalCategory;
+      if (sectionSlugInput && sectionSlug) sectionSlugInput.value = sectionSlug;
       if (kindSelect) {
         kindSelect.value = kindVal;
         setKind(kindVal);
@@ -251,6 +258,7 @@ export function UploadStudio() {
                 </option>
               ))}
             </select>
+            <input id="sectionSlug" name="sectionSlug" type="hidden" />
           </Field>
           <Field id="kind" label="圖像類型" required>
             <select

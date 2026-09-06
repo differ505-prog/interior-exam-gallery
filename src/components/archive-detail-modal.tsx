@@ -194,6 +194,7 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
     formData.append("image", refFile);
     formData.append("title", `${item.code} - ${refAuthor.trim()} 作品參考`);
     formData.append("sheetCode", item.code);
+    formData.append("sectionSlug", sectionSlug);
     formData.append("category", uploadCategory);
     formData.append("kind", UPLOAD_KINDS.OTHERS_REFERENCE);
     formData.append("authorName", refAuthor.trim());
@@ -315,7 +316,7 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
     if (sectionSlug === "detail") uploadCategory = "大樣圖 213-224";
 
     window.dispatchEvent(
-      new CustomEvent("dismiss-modal", { detail: { sheetCode: item.code, category: uploadCategory, kind: kindVal } })
+      new CustomEvent("dismiss-modal", { detail: { sheetCode: item.code, sectionSlug, category: uploadCategory, kind: kindVal } })
     );
   };
 
@@ -461,7 +462,19 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
 
           {/* Practice submissions */}
           <section className="modal-section">
-            <h3 className="section-title">我的練習成果 ({myPractices.length})</h3>
+            <div className="section-header-row">
+              <h3 className="section-title">我的練習成果 ({myPractices.length})</h3>
+              {myPractices.length > 0 ? (
+                <button
+                  className="modal-upload-add-btn"
+                  aria-label="再多上傳一張我的練習圖"
+                  onClick={() => handlePrefill("我的練習圖")}
+                >
+                  <Plus size={14} />
+                  <span>再多上傳一張</span>
+                </button>
+              ) : null}
+            </div>
             {myPractices.length > 0 ? (
               <div className="modal-uploads-grid">
                 {myPractices.map((upload) => {
