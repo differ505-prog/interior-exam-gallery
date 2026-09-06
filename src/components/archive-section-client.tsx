@@ -27,6 +27,22 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
   const isCeilingElevation = section.slug === "ceiling-elevation";
   const isPerspective = section.slug === "perspective";
 
+  // 將上傳紀錄歸屬到當前章節：
+  //   - 優先採 sectionSlug（新資料，鎖死）
+  //   - 否則用 category 字串對應到章節（向後相容舊資料，避免 202B 立面跑到平面）
+  //   - 兩者皆無 → 落入「未分類」，不歸屬任何章節
+  const CATEGORY_TO_SECTION_SLUG: Record<string, string> = {
+    "平面圖 201-206": "plan",
+    "天花板圖 / 立面圖": "ceiling-elevation",
+    "透視圖 207-212": "perspective",
+    "大樣圖 213-224": "detail",
+  };
+  const belongsToThisSection = (u: UploadEntry) => {
+    if (u.sectionSlug) return u.sectionSlug === section.slug;
+    const fromCategory = CATEGORY_TO_SECTION_SLUG[u.category];
+    return fromCategory === section.slug;
+  };
+
   // Filter states
   const [selectedPlanQuestion, setSelectedPlanQuestion] = useState<string>("201");
   const [selectedQuestion, setSelectedQuestion] = useState<string>("201");
@@ -50,10 +66,10 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
   };
 
   // Only count student's own practices for completion and upload count
-  // 雙鍵比對：(sheetCode) + (sectionSlug)，避免 202B 平面圖抓到 202B 客廳立面圖
+  // 雙鍵比對：(sheetCode) + (sectionSlug 或 category 推斷)，避免 202B 平面圖抓到 202B 客廳立面圖
   const myUploads = uploads.filter((u) => {
     const matchesSheet = section.items.some((item) => isMatch(u.sheetCode, item.code));
-    const matchesSection = !u.sectionSlug || u.sectionSlug === section.slug;
+    const matchesSection = belongsToThisSection(u);
     return matchesSheet && matchesSection && u.kind === "我的練習圖";
   });
   const uploadedCount = myUploads.length;
@@ -219,7 +235,7 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
             const matchedUploads = uploads.filter(
               (u) =>
                 isMatch(u.sheetCode, item.code) &&
-                (!u.sectionSlug || u.sectionSlug === section.slug)
+                belongsToThisSection(u)
             );
             return (
               <ArchiveCard
