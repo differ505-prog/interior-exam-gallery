@@ -7,35 +7,60 @@ import { getSheetData, saveTeachingLinks } from "@/lib/user-data";
 export type TeachingLinkSlot = {
   label: string;
   placeholder: string;
+  /** 允许多个链接（默认只允许一个） */
+  multiple?: boolean;
 };
 
 type TeachingLinksProps = {
-  /** 試卷代碼，用於快取 key */
+  /** 试卷代码，用于快取 key */
   sheetCode: string;
-  /** 初始連結（由 exam-content.ts 靜態提供，作為 fallback） */
+  /** 初始连结（由 exam-content.ts 静态提供，作为 fallback） */
   initialLinks?: string[];
-  /** 每個 slot 有獨立的 label + placeholder */
+  /** 每个 slot 有独立的 label + placeholder */
   slots: TeachingLinkSlot[];
 };
 
-const ANON_KEY = "draft-gallery-teaching-links";
-const DEFAULT_LINKS: string[] = [];
+/** localStorage 索引键（旧格式：扁平数组） */
+const LEGACY_ANON_KEY = "draft-gallery-teaching-links";
+/** localStorage 索引键（新格式：Record<slotIndex, string[]>） */
+const ANON_KEY = "draft-gallery-teaching-links-v2";
 
-function loadLegacyLinks(sheetCode: string): string[] {
+/** 旧格式搬迁：将 string[] 迁移为 Record<number, string[]> */
+function migrateLegacyLinks(sheetCode: string): Record<number, string[]> {
   try {
-    const stored = localStorage.getItem(ANON_KEY);
-    if (!stored) return [];
+    const stored = localStorage.getItem(LEGACY_ANON_KEY);
+    if (!stored) return {};
     const all: Record<string, string[]> = JSON.parse(stored);
-    return all[sheetCode] ?? [];
+    const legacy = all[sheetCode];
+    if (!legacy || !Array.isArray(legacy)) return {};
+    // 将扁平数组每个元素放入对应 slot 索引
+    const migrated: Record<number, string[]> = {};
+    legacy.forEach((url, i) => {
+      if (url) migrated[i] = [url];
+    });
+    return migrated;
   } catch {
-    return [];
+    return {};
   }
 }
 
-function saveLegacyLinks(sheetCode: string, links: string[]) {
+function loadLinks(sheetCode: string): Record<number, string[]> {
   try {
     const stored = localStorage.getItem(ANON_KEY);
-    const all: Record<string, string[]> = stored ? JSON.parse(stored) : {};
+    if (!stored) return migrateLegacyLinks(sheetCode);
+    const all: Record<string, Record<number, string[]>> = JSON.parse(stored);
+    const found = all[sheetCode];
+    if (found && typeof found === "object") return found;
+    return migrateLegacyLinks(sheetCode);
+  } catch {
+    return migrateLegacyLinks(sheetCode);
+  }
+}
+
+function saveLinks(sheetCode: string, links: Record<number, string[]>) {
+  try {
+    const stored = localStorage.getItem(ANON_KEY);
+    const all: Record<string, Record<number, string[]>> = stored ? JSON.parse(stored) : {};
     all[sheetCode] = links;
     localStorage.setItem(ANON_KEY, JSON.stringify(all));
   } catch {
@@ -52,65 +77,88 @@ function isValidUrl(value: string): boolean {
   }
 }
 
-export function TeachingLinks({ sheetCode, initialLinks = DEFAULT_LINKS, slots }: TeachingLinksProps) {
-  // 初始化：優先取 user-data sync 層（支援跨裝置），無則用 legacy localStorage，最後用 initialLinks
-  const [links, setLinks] = useState<string[]>([]);
+/** 将 Record<number, string[]> 摊平为 string[]（slot 顺序保持） */
+function flattenLinks(links: Record<number, string[]>): string[] {
+  const maxSlot = Math.max(...Object.keys(links).map(Number), -1);
+  const result: string[] = [];
+  for (let i = 0; i <= maxSlot; i++) {
+    result.push(...(links[i] ?? []));
+  }
+  return result;
+}
+
+export function TeachingLinks({ sheetCode, initialLinks = [], slots }: TeachingLinksProps) {
+  // links: 每个 slot index 对应一个 string[]（支援多连结）
+  const [links, setLinks] = useState<Record<number, string[]>>({});
   const [initialized, setInitialized] = useState(false);
+
+  // drafts / errors 仍以 slot 为单位（每个 slot 一个输入框）
+  const [drafts, setDrafts] = useState<string[]>(() => slots.map(() => ""));
+  const [errors, setErrors] = useState<string[]>(() => slots.map(() => ""));
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      console.info(`[TeachingLinks] 正在載入教學連結 (sheetCode: ${sheetCode})`);
+      console.info(`[TeachingLinks] 正在载入教学连结 (sheetCode: ${sheetCode})`);
       const data = await getSheetData(sheetCode);
       if (cancelled) return;
-      // 有雲端或新 cache：用 teachingLinks；否則遷移 legacy
+
       const remoteLinks = data.teachingLinks;
-      const hasRemote = remoteLinks.length > 0;
-      if (hasRemote) {
-        console.info(`[TeachingLinks] 使用遠端同步的連結 (sheetCode: ${sheetCode})`);
-        setLinks(remoteLinks);
+
+      if (remoteLinks.length > 0) {
+        // 远端数据是旧格式 string[]，迁移为新格式
+        console.info(`[TeachingLinks] 使用远端同步的连结 (sheetCode: ${sheetCode})`);
+        const migrated: Record<number, string[]> = {};
+        remoteLinks.forEach((url, i) => {
+          if (url) migrated[i] = [url];
+        });
+        setLinks(migrated);
       } else {
-        const legacy = loadLegacyLinks(sheetCode);
-        if (legacy.length > 0) {
-          console.info(`[TeachingLinks] 遷移 legacy 連結 (sheetCode: ${sheetCode})`);
-          setLinks(legacy);
+        // 尝试本地新格式 → 旧格式
+        const local = loadLinks(sheetCode);
+        if (Object.keys(local).length > 0) {
+          console.info(`[TeachingLinks] 使用本地连结 (sheetCode: ${sheetCode})`);
+          setLinks(local);
         } else {
-          console.info(`[TeachingLinks] 使用初始/預設連結 (sheetCode: ${sheetCode})`);
-          setLinks(slots.map((_, i) => initialLinks[i] ?? ""));
+          // fallback：使用 initialLinks 初始化 slot 0
+          console.info(`[TeachingLinks] 使用初始/预设连结 (sheetCode: ${sheetCode})`);
+          const init: Record<number, string[]> = {};
+          if (initialLinks[0]) init[0] = [initialLinks[0]];
+          setLinks(init);
         }
       }
       setInitialized(true);
     })();
     return () => { cancelled = true; };
-  }, [sheetCode, slots.length]); // 移除 initialLinks 避免 reference equality 造成的無窮迴圈
-
-  const [drafts, setDrafts] = useState<string[]>(() => slots.map(() => ""));
-  const [errors, setErrors] = useState<string[]>(() => slots.map(() => ""));
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  }, [sheetCode, slots.length]);
 
   const handleAdd = async (slotIndex: number) => {
     const trimmed = drafts[slotIndex].trim();
     if (!trimmed) return;
     if (!isValidUrl(trimmed)) {
-      setErrors((prev) => { const next = [...prev]; next[slotIndex] = "請輸入有效的網址"; return next; });
+      setErrors((prev) => { const next = [...prev]; next[slotIndex] = "请输入有效的网址"; return next; });
       return;
     }
-    const next = [...links];
-    next[slotIndex] = trimmed;
+    const next: Record<number, string[]> = { ...links };
+    if (!next[slotIndex]) next[slotIndex] = [];
+    next[slotIndex] = [...next[slotIndex], trimmed];
     setLinks(next);
     setDrafts((prev) => { const d = [...prev]; d[slotIndex] = ""; return d; });
     setErrors((prev) => { const e = [...prev]; e[slotIndex] = ""; return e; });
-    // 寫入雲端 + localStorage
+    // 写入云端（摊平格式） + localStorage（新格式）
     await saveTeachingLinks(sheetCode, next);
-    saveLegacyLinks(sheetCode, next);
+    saveLinks(sheetCode, next);
   };
 
-  const handleRemove = async (slotIndex: number) => {
-    const next = [...links];
-    next[slotIndex] = "";
+  const handleRemove = async (slotIndex: number, linkIndex: number) => {
+    const next: Record<number, string[]> = { ...links };
+    if (!next[slotIndex]) return;
+    next[slotIndex] = next[slotIndex].filter((_, i) => i !== linkIndex);
+    if (next[slotIndex].length === 0) delete next[slotIndex];
     setLinks(next);
     await saveTeachingLinks(sheetCode, next);
-    saveLegacyLinks(sheetCode, next);
+    saveLinks(sheetCode, next);
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>, slotIndex: number) => {
@@ -126,20 +174,33 @@ export function TeachingLinks({ sheetCode, initialLinks = DEFAULT_LINKS, slots }
     if (errors[slotIndex]) setErrors((prev) => { const e = [...prev]; e[slotIndex] = ""; return e; });
   };
 
+  if (!initialized) {
+    return (
+      <div className="teaching-links">
+        <div className="teaching-links__header">
+          <span className="teaching-links__icon"><Link2 size={15} /></span>
+          <span className="teaching-links__label">教学资源</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="teaching-links">
       <div className="teaching-links__header">
         <span className="teaching-links__icon">
           <Link2 size={15} />
         </span>
-        <span className="teaching-links__label">教學資源</span>
+        <span className="teaching-links__label">教学资源</span>
       </div>
 
       <div className="teaching-links__slots">
         {slots.map((slot, slotIndex) => {
-          const filledUrl = links[slotIndex];
+          const slotLinks = links[slotIndex] ?? [];
           const draft = drafts[slotIndex];
           const error = errors[slotIndex];
+          const isMultiple = slot.multiple ?? false;
+          const hasAnyLink = slotLinks.length > 0;
 
           return (
             <div key={slotIndex} className="teaching-links__slot">
@@ -147,31 +208,35 @@ export function TeachingLinks({ sheetCode, initialLinks = DEFAULT_LINKS, slots }
                 {slot.label}
               </div>
 
-              {filledUrl ? (
+              {/* 单一连结 slot：有连结时显示连结；无连结或 multiple slot 时始终显示输入框 */}
+              {hasAnyLink && !isMultiple ? (
                 <div className="teaching-links__item">
                   <a
-                    href={filledUrl}
+                    href={slotLinks[0]}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="teaching-links__link"
-                    title={filledUrl}
+                    title={slotLinks[0]}
                   >
                     <ExternalLink size={13} className="teaching-links__link-icon" />
                     <span className="teaching-links__link-text">
-                      {filledUrl.replace(/^https?:\/\//, "").slice(0, 48)}
-                      {filledUrl.length > 56 ? "…" : ""}
+                      {slotLinks[0].replace(/^https?:\/\//, "").slice(0, 48)}
+                      {slotLinks[0].length > 56 ? "…" : ""}
                     </span>
                   </a>
                   <button
                     className="teaching-links__remove"
-                    onClick={() => handleRemove(slotIndex)}
+                    onClick={() => handleRemove(slotIndex, 0)}
                     aria-label={`移除 ${slot.label}`}
                     type="button"
                   >
                     <X size={13} />
                   </button>
                 </div>
-              ) : (
+              ) : null}
+
+              {/* 多连结 slot 或 单一 slot 无连结时 → 输入框始终可见 */}
+              {(!hasAnyLink || isMultiple) && (
                 <div className="teaching-links__input-row">
                   <div className="teaching-links__input-wrap">
                     <input
@@ -188,19 +253,11 @@ export function TeachingLinks({ sheetCode, initialLinks = DEFAULT_LINKS, slots }
                       <button
                         className="teaching-links__clear"
                         onClick={() => {
-                          setDrafts((prev) => {
-                            const d = [...prev];
-                            d[slotIndex] = "";
-                            return d;
-                          });
-                          setErrors((prev) => {
-                            const e = [...prev];
-                            e[slotIndex] = "";
-                            return e;
-                          });
+                          setDrafts((prev) => { const d = [...prev]; d[slotIndex] = ""; return d; });
+                          setErrors((prev) => { const e = [...prev]; e[slotIndex] = ""; return e; });
                           inputRefs.current[slotIndex]?.focus();
                         }}
-                        aria-label="清除輸入"
+                        aria-label="清除输入"
                         type="button"
                       >
                         <X size={13} />

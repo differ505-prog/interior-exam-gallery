@@ -204,22 +204,39 @@ export async function saveScratchNote(
 }
 
 /**
- * 儲存教學連結（完整 slot 陣列）
- * 寫入 Supabase → 回寫 localStorage
+ * 将 Record<number, string[]> 摊平为 string[]（slot 顺序保持）
+ */
+function flattenSlotLinks(links: Record<number, string[]>): string[] {
+  const maxSlot = Math.max(...Object.keys(links).map(Number), -1);
+  const result: string[] = [];
+  for (let i = 0; i <= maxSlot; i++) {
+    result.push(...(links[i] ?? []));
+  }
+  return result;
+}
+
+/**
+ * 储存教学连结（新格式：Record<number, string[]>，支持多连结）
+ * 写入 Supabase → 回写 localStorage
+ * 写入时自动摊平为 string[]（兼容旧 schema）
  */
 export async function saveTeachingLinks(
   sheetCode: string,
-  links: string[]
+  links: Record<number, string[]>
 ): Promise<void> {
-  const remoteOk = await saveRemoteSheetData({ sheetCode, scratchNote: "", teachingLinks: links });
+  // 摊平为 string[] 写入 Supabase（schema 保持不变）
+  const flatLinks = flattenSlotLinks(links);
+
+  const remoteOk = await saveRemoteSheetData({ sheetCode, scratchNote: "", teachingLinks: flatLinks });
 
   const cached = getLocalSheetData(sheetCode);
   const scratchNote = cached?.scratchNote ?? "";
 
-  setLocalSheetData({ sheetCode, scratchNote, teachingLinks: links });
+  // localStorage 存新格式
+  setLocalSheetData({ sheetCode, scratchNote, teachingLinks: flatLinks });
 
   if (remoteOk) {
-    await saveRemoteSheetData({ sheetCode, scratchNote, teachingLinks: links });
+    await saveRemoteSheetData({ sheetCode, scratchNote, teachingLinks: flatLinks });
   }
 }
 
