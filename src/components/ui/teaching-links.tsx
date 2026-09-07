@@ -208,35 +208,68 @@ export function TeachingLinks({ sheetCode, initialLinks = [], slots }: TeachingL
                 {slot.label}
               </div>
 
-              {/* 单一连结 slot：有连结时显示连结；无连结或 multiple slot 时始终显示输入框 */}
-              {hasAnyLink && !isMultiple ? (
-                <div className="teaching-links__item">
-                  <a
-                    href={slotLinks[0]}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="teaching-links__link"
-                    title={slotLinks[0]}
-                  >
-                    <ExternalLink size={13} className="teaching-links__link-icon" />
-                    <span className="teaching-links__link-text">
-                      {slotLinks[0].replace(/^https?:\/\//, "").slice(0, 48)}
-                      {slotLinks[0].length > 56 ? "…" : ""}
-                    </span>
-                  </a>
-                  <button
-                    className="teaching-links__remove"
-                    onClick={() => handleRemove(slotIndex, 0)}
-                    aria-label={`移除 ${slot.label}`}
-                    type="button"
-                  >
-                    <X size={13} />
-                  </button>
-                </div>
-              ) : null}
+              {/* 单一连结 slot：已有连结时直接显示，无连结时显示输入框 */}
+              {!isMultiple && (
+                hasAnyLink ? (
+                  <div className="teaching-links__item">
+                    <a
+                      href={slotLinks[0]}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="teaching-links__link"
+                      title={slotLinks[0]}
+                    >
+                      <ExternalLink size={13} className="teaching-links__link-icon" />
+                      <span className="teaching-links__link-text">
+                        {slotLinks[0].replace(/^https?:\/\//, "").slice(0, 48)}
+                        {slotLinks[0].length > 56 ? "…" : ""}
+                      </span>
+                    </a>
+                    <button
+                      className="teaching-links__remove"
+                      onClick={() => handleRemove(slotIndex, 0)}
+                      aria-label={`移除 ${slot.label}`}
+                      type="button"
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                ) : null
+              )}
 
-              {/* 多连结 slot 或 单一 slot 无连结时 → 输入框始终可见 */}
-              {(!hasAnyLink || isMultiple) && (
+              {/* 多连结 slot：列出所有已存连结 + 输入框 */}
+              {isMultiple && hasAnyLink && (
+                <ul className="teaching-links__list" aria-label={`${slot.label} 列表`}>
+                  {slotLinks.map((url, linkIndex) => (
+                    <li key={`${slotIndex}-${linkIndex}`} className="teaching-links__item">
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="teaching-links__link"
+                        title={url}
+                      >
+                        <ExternalLink size={13} className="teaching-links__link-icon" />
+                        <span className="teaching-links__link-text">
+                          {url.replace(/^https?:\/\//, "").slice(0, 48)}
+                          {url.length > 56 ? "…" : ""}
+                        </span>
+                      </a>
+                      <button
+                        className="teaching-links__remove"
+                        onClick={() => handleRemove(slotIndex, linkIndex)}
+                        aria-label={`移除第 ${linkIndex + 1} 個 ${slot.label}`}
+                        type="button"
+                      >
+                        <X size={13} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {/* 输入框：单一 slot 无连结时 或 multiple slot 始终显示 */}
+              {(!isMultiple && !hasAnyLink) || isMultiple ? (
                 <div className="teaching-links__input-row">
                   <div className="teaching-links__input-wrap">
                     <input
@@ -274,7 +307,7 @@ export function TeachingLinks({ sheetCode, initialLinks = [], slots }: TeachingL
                     <Plus size={15} />
                   </button>
                 </div>
-              )}
+              ) : null}
 
               {error && (
                 <p className="teaching-links__error" role="alert">
