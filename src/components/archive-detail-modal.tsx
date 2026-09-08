@@ -487,8 +487,9 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
                       upload={upload}
                       urls={urls}
                       hasMultiple={hasMultiple}
-                      showDelete={false}
+                      showDelete
                       onZoom={setActiveImage}
+                      onDeleteClick={handleDeleteClick}
                     />
                   );
                 })}
