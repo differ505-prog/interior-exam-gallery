@@ -47,13 +47,23 @@ export function ProgressTracker() {
         uploads.forEach((u) => {
           if (u.kind !== "我的練習圖") return;
           const code = normalizeCode(u.sheetCode);
+          // 透視圖：207–212 + 中文版本（甲/乙/丙）
+          if (/^(207|208|209|210|211|212)(甲|乙|丙)$/.test(code)) {
+            uploadsByCategory.perspective.add(code);
+            return;
+          }
+          // 天花板與立面圖：201–206 + A–E + (天花/客立/餐立/臥立)
+          if (/^(201|202|203|204|205|206)[a-e](天花|客立|餐立|臥立)$/i.test(code)) {
+            uploadsByCategory["ceiling-elevation"].add(code);
+            return;
+          }
+          // 平面圖 201–206 + A–E（純英文字母版本）
           if (/^(201|202|203|204|205|206)[a-e]$/i.test(code)) {
             uploadsByCategory.plan.add(code);
-          } else if (/^(201|202|203|204|205|206)[a-e](天花|客立|餐立|臥立)$/.test(code)) {
-            uploadsByCategory["ceiling-elevation"].add(code);
-          } else if (/^(207|208|209|210|211|212)[甲乙丙]$/.test(code)) {
-            uploadsByCategory.perspective.add(code);
-          } else if (/^2(13|14|15|16|17|18|19|20|21|22|23|24)$/.test(code)) {
+            return;
+          }
+          // 大樣圖 213–224
+          if (/^2(13|14|15|16|17|18|19|20|21|22|23|24)$/.test(code)) {
             uploadsByCategory.detail.add(code);
           }
         });

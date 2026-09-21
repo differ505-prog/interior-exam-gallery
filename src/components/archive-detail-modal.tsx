@@ -53,7 +53,12 @@ type ArchiveDetailModalProps = {
 export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onClose, onDelete }: ArchiveDetailModalProps) {
   const [activeImage, setActiveImage] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState<"fit" | "medium" | "large">("fit");
+  // Modal 使用 createPortal 渲染到 document.body；SSR 階段 document 尚未存在，
+  // 因此需要在 hydration 完成後才掛載 portal，避免「點卡片卻沒有任何反應」。
   const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // ─── 刪除確認對話框 ────────────────────────────────────────
   const [deleteTarget, setDeleteTarget] = useState<UploadEntry | null>(null);
@@ -281,10 +286,6 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
   const markedSheets = useMemo(() => {
     return uploads.filter((u) => u.kind === UPLOAD_KINDS.MARKED_SHEET);
   }, [uploads]);
-
-  useEffect(() => {
-    return () => setMounted(false);
-  }, []);
 
   // ─── 題目圖 URL 解析（共用）：根據 sectionSlug + item.code 決定兩張圖紙 URL ────
   // plan：題目圖（按數字前綴）+ 需求圖（按字母末位）
