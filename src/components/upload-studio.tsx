@@ -161,6 +161,9 @@ export function UploadStudio() {
       setPreviewUrls([]);
       setMessageTone("info");
       setMessage("完成。已加入圖庫。");
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("uploads-changed"));
+      }
       router.refresh();
     } catch (error) {
       setMessageTone("error");

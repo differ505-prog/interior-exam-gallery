@@ -18,6 +18,9 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
 
   const handleDeleteEntry = async (id: string) => {
     await fetch(`/api/uploads?id=${id}`, { method: "DELETE" });
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("uploads-changed"));
+    }
     router.refresh();
   };
   const defaultExpanded = section.slug === "plan";
