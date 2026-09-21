@@ -20,6 +20,7 @@ const ALLOWED_KINDS: ReadonlySet<string> = new Set([
   "我的練習圖",
   "他人範例圖",
   "他人作品參考",
+  "標記試卷",
 ]);
 
 function mapEntry(raw: Record<string, unknown>): UploadEntry | null {

@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { cloudinary, cloudinaryFolder, hasCloudinaryEnv } from "@/lib/cloudinary";
 import { kvPushEntry, kvDeleteEntry, hasKvEnv } from "@/lib/kv-store";
-import { UPLOAD_KIND_OPTIONS, UPLOAD_CATEGORY_OPTIONS, SECTION_SLUG_TO_CATEGORY, type UploadKindValue, type UploadCategoryValue } from "@/lib/upload-constants";
+import { UPLOAD_CATEGORY_OPTIONS, SECTION_SLUG_TO_CATEGORY, type UploadKindValue, type UploadCategoryValue } from "@/lib/upload-constants";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -141,6 +141,10 @@ export async function POST(request: Request) {
     return badRequest("請選擇有效的類別。");
   }
 
+  if (kind === "標記試卷" && category !== "透視圖 207-212") {
+    return badRequest("標記試卷僅能歸入透視圖專區。");
+  }
+
   // sectionSlug 是新版的鎖死欄位：有帶就覆寫 category（雙鍵決定歸屬，避免 202B 平面/立面互相污染）
   if (sectionSlug) {
     if (!SECTION_SLUG_TO_CATEGORY[sectionSlug]) {
@@ -161,10 +165,6 @@ export async function POST(request: Request) {
     authorName,
     fileCount: filesToUpload.length,
   });
-
-  if (!UPLOAD_KIND_OPTIONS.includes(kind as UploadKindValue)) {
-    return badRequest("請選擇有效的圖像類型。");
-  }
 
   if (!authorName) {
     return badRequest("請填寫作者名稱。");
@@ -216,7 +216,7 @@ export async function POST(request: Request) {
       sectionSlug: sectionSlug || undefined,
       imageUrl,
       imageUrls,
-      kind: kind as "我的練習圖" | "他人作品參考",
+      kind: kind as UploadKindValue,
       authorName,
       scoreNote,
       teacherComment,

@@ -28,10 +28,12 @@ export function ProgressTracker() {
         const res = await fetch("/api/uploads");
         if (!res.ok) return;
         const data = await res.json();
-        const uploads: Array<{ sheetCode: string; category: string }> = data.uploads ?? [];
+        const uploads: Array<{ sheetCode: string; category: string; kind: string }> = data.uploads ?? [];
 
         const practicedCodes = new Set(
-          uploads.map((u) => normalizeCode(u.sheetCode))
+          uploads
+            .filter((u) => u.kind === "我的練習圖")
+            .map((u) => normalizeCode(u.sheetCode))
         );
         setStats({ practiced: practicedCodes.size, total: TOTAL_EXAMS });
 
@@ -43,6 +45,7 @@ export function ProgressTracker() {
         };
 
         uploads.forEach((u) => {
+          if (u.kind !== "我的練習圖") return;
           const code = normalizeCode(u.sheetCode);
           if (/^(201|202|203|204|205|206)[a-e]$/i.test(code)) {
             uploadsByCategory.plan.add(code);

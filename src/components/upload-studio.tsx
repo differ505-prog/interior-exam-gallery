@@ -17,7 +17,7 @@ const categoryOptions = Object.values(UPLOAD_CATEGORIES) as [
   UploadCategoryValue,
   UploadCategoryValue,
 ];
-const kindOptions = Object.values(UPLOAD_KINDS) as [UploadKindValue, UploadKindValue];
+const kindOptions = Object.values(UPLOAD_KINDS) as [UploadKindValue, UploadKindValue, UploadKindValue];
 
 const MAX_TITLE_LENGTH = 60;
 const MAX_TEXTAREA_LENGTH = 500;
@@ -45,7 +45,7 @@ export function UploadStudio() {
   }, []);
 
   // Autocomplete and suggestion dropdown states
-  const [kind, setKind] = useState<string>("我的練習圖");
+  const [kind, setKind] = useState<string>(UPLOAD_KINDS.MY_PRACTICE);
   const [authorName, setAuthorName] = useState<string>("");
   const [savedAuthors, setSavedAuthors] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
@@ -103,10 +103,14 @@ export function UploadStudio() {
         kindSelect.value = kindVal;
         setKind(kindVal);
       }
-      if (titleInput) {
-        titleInput.value = `${sheetCode} ${kindVal === "我的練習圖" ? "個人練習" : "作品參考"}`;
-      }
       if (kindVal === "我的練習圖") {
+        titleInput.value = `${sheetCode} 個人練習`;
+      } else if (kindVal === "標記試卷") {
+        titleInput.value = `${sheetCode} 標記試卷`;
+      } else {
+        titleInput.value = `${sheetCode} 作品參考`;
+      }
+      if (kindVal === "我的練習圖" || kindVal === "標記試卷") {
         setAuthorName("我自己");
       } else {
         setAuthorName("");
@@ -331,7 +335,7 @@ export function UploadStudio() {
               )}
             </div>
           </Field>
-          <Field id="image" label={kind === "我的練習圖" ? "練習圖（最多 6 張）" : "圖片檔案"} required>
+          <Field id="image" label={kind === "我的練習圖" ? "練習圖（最多 6 張）" : kind === "標記試卷" ? "標記試卷圖片" : "圖片檔案"} required>
             <input
               accept="image/png,image/jpeg,image/webp"
               id="image"
@@ -343,6 +347,8 @@ export function UploadStudio() {
             />
             {kind === "我的練習圖" ? (
               <span className="form-field__hint">可一次選多張；總和不超過 60MB，單張 ≤ 10MB。</span>
+            ) : kind === "標記試卷" ? (
+              <span className="form-field__hint">題目卷上的格線、比例與計算數據會獨立保存，不計入完成度。</span>
             ) : null}
           </Field>
         </div>

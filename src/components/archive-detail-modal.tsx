@@ -278,8 +278,11 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
     return matched;
   }, [uploads, item.code]);
 
+  const markedSheets = useMemo(() => {
+    return uploads.filter((u) => u.kind === UPLOAD_KINDS.MARKED_SHEET);
+  }, [uploads]);
+
   useEffect(() => {
-    setMounted(true);
     return () => setMounted(false);
   }, []);
 
@@ -309,7 +312,7 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
     return null;
   })();
 
-  const handlePrefill = (kindVal: "我的練習圖" | "他人作品參考") => {
+  const handlePrefill = (kindVal: "我的練習圖" | "他人作品參考" | "標記試卷") => {
     let uploadCategory = "平面圖 201-206";
     if (sectionSlug === "ceiling-elevation") uploadCategory = "天花板圖 / 立面圖";
     if (sectionSlug === "perspective") uploadCategory = "透視圖 207-212";
@@ -504,6 +507,53 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
               </div>
             )}
           </section>
+
+        {/* 標記試卷專區：僅供透視圖的格線與計算資料使用，不計入完成度 */}
+          {sectionSlug === "perspective" && (
+            <section className="modal-section modal-section--notes">
+              <div className="section-header-row">
+                <div>
+                  <h3 className="section-title">標記試卷 ({markedSheets.length})</h3>
+                  <p className="modal-section__hint">格線、比例與計算數據獨立保存，不計入練習完成度。</p>
+                </div>
+                <button
+                  className="modal-upload-add-btn"
+                  aria-label="上傳標記試卷"
+                  onClick={() => handlePrefill("標記試卷")}
+                >
+                  <Plus size={14} />
+                  <span>新增</span>
+                </button>
+              </div>
+              {markedSheets.length > 0 ? (
+                <div className="modal-uploads-grid">
+                  {markedSheets.map((upload) => {
+                    const units = uploadImageUnits.filter((u) => u.id === upload.id);
+                    const urls = units.length > 0 ? units.map((u) => u.url) : (upload.imageUrls && upload.imageUrls.length > 0 ? upload.imageUrls : [upload.imageUrl]);
+                    return (
+                      <ModalUploadCard
+                        key={upload.id}
+                        upload={upload}
+                        urls={urls}
+                        hasMultiple={urls.length > 1}
+                        showDelete
+                        onZoom={setActiveImage}
+                        onDeleteClick={handleDeleteClick}
+                      />
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="no-uploads-box no-uploads-box--neutral">
+                  <p>尚未上傳這份透視圖的標記試卷。</p>
+                  <button className="modal-cta-btn modal-cta-btn--secondary" onClick={() => handlePrefill("標記試卷")} type="button">
+                    <Upload size={16} />
+                    <span>上傳標記試卷</span>
+                  </button>
+                </div>
+              )}
+            </section>
+          )}
 
           {/* Others' Reference Submissions */}
           <section className="modal-section">

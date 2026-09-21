@@ -11,6 +11,7 @@
 export const UPLOAD_KINDS = {
   MY_PRACTICE: "我的練習圖",
   OTHERS_REFERENCE: "他人作品參考",
+  MARKED_SHEET: "標記試卷",
 } as const;
 
 export type UploadKindValue = (typeof UPLOAD_KINDS)[keyof typeof UPLOAD_KINDS];
@@ -38,7 +39,11 @@ export function resolveCategoryBySectionSlug(slug: string): UploadCategoryValue 
 }
 
 // ─── 驗證工具（供 API 與表單使用）────────────────────────────
-export const UPLOAD_KIND_OPTIONS = Object.values(UPLOAD_KINDS) as [UploadKindValue, UploadKindValue];
+export const UPLOAD_KIND_OPTIONS = Object.values(UPLOAD_KINDS) as [
+  UploadKindValue,
+  UploadKindValue,
+  UploadKindValue,
+];
 export const UPLOAD_CATEGORY_OPTIONS = Object.values(UPLOAD_CATEGORIES) as [
   UploadCategoryValue,
   UploadCategoryValue,
