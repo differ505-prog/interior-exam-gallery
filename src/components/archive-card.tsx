@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Check } from "lucide-react";
 import { ArchiveItem, UploadEntry } from "@/types/exam";
 import { ExamNoteCategory } from "@/types/exam-note";
 import { ArchiveDetailModal } from "@/components/archive-detail-modal";
@@ -20,6 +21,8 @@ type ArchiveCardProps = {
  */
 export function ArchiveCard({ item, sectionSlug, uploads = [], examNotes, onDeleteEntry }: ArchiveCardProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const hasUpload = uploads.length > 0;
+  const uploadCount = uploads.length;
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -38,7 +41,7 @@ export function ArchiveCard({ item, sectionSlug, uploads = [], examNotes, onDele
   return (
     <>
       <article
-        className="archive-card clickable-card"
+        className={`archive-card clickable-card${hasUpload ? " archive-card--uploaded" : ""}`}
         key={`${sectionSlug}-${item.code}`}
         onClick={() => setIsOpen(true)}
         onKeyDown={handleKeyDown}
@@ -46,11 +49,20 @@ export function ArchiveCard({ item, sectionSlug, uploads = [], examNotes, onDele
         tabIndex={0}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
+        aria-label={`${item.code} ${hasUpload ? `已上傳 ${uploadCount} 張練習圖` : "尚未上傳練習圖"}`}
         style={{ cursor: "pointer" }}
       >
         <div className="archive-card-top">
           <p className="archive-card__code">{item.code}</p>
-          <span className="archive-card__variants">{item.variants.join(" / ")}</span>
+          <div className="archive-card-top-right">
+            {hasUpload && (
+              <span className="archive-card__upload-badge" aria-hidden="true">
+                <Check size={10} strokeWidth={2.5} />
+                {uploadCount}
+              </span>
+            )}
+            <span className="archive-card__variants">{item.variants.join(" / ")}</span>
+          </div>
         </div>
         <h3 className="archive-card__title">{item.title}</h3>
         <p className="archive-card__focus">{item.focus}</p>
