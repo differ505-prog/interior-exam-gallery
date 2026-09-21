@@ -298,7 +298,7 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
       if (!/^\d{3}$/.test(numPart)) return null;
       return `/images/plan/question-${numPart}.jpg`;
     }
-    if (sectionSlug === "detail") return `/images/${item.code}/213-question.jpg`;
+    if (sectionSlug === "detail") return `/images/${item.code}/${item.code}-question.jpg`;
     if (sectionSlug === "perspective") return "/images/208/2021021722093353239 (1).jpg";
     return null;
   })();
@@ -308,7 +308,7 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
       const letterPart = item.code.slice(3, 4);
       return `/images/plan/requirement-${letterPart}.jpg`;
     }
-    if (sectionSlug === "detail") return `/images/${item.code}/213-answer.jpg`;
+    if (sectionSlug === "detail") return `/images/${item.code}/${item.code}-answer.jpg`;
     if (sectionSlug === "perspective") return "/images/208/2021021722093353239 (2).jpg";
     return null;
   })();
