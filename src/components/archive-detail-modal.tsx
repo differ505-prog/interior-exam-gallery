@@ -509,52 +509,50 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
             )}
           </section>
 
-        {/* 標記試卷專區：僅供透視圖的格線與計算資料使用，不計入完成度 */}
-          {sectionSlug === "perspective" && (
-            <section className="modal-section modal-section--notes">
-              <div className="section-header-row">
-                <div>
-                  <h3 className="section-title">標記試卷 ({markedSheets.length})</h3>
-                  <p className="modal-section__hint">格線、比例與計算數據獨立保存，不計入練習完成度。</p>
-                </div>
-                <button
-                  className="modal-upload-add-btn"
-                  aria-label="上傳標記試卷"
-                  onClick={() => handlePrefill("標記試卷")}
-                >
-                  <Plus size={14} />
-                  <span>新增</span>
+        {/* 標記試卷專區：格線、比例與計算數據獨立保存，不計入練習完成度 */}
+          <section className="modal-section modal-section--notes">
+            <div className="section-header-row">
+              <div>
+                <h3 className="section-title">標記試卷 ({markedSheets.length})</h3>
+                <p className="modal-section__hint">格線、比例與計算數據獨立保存，不計入練習完成度。</p>
+              </div>
+              <button
+                className="modal-upload-add-btn"
+                aria-label="上傳標記試卷"
+                onClick={() => handlePrefill("標記試卷")}
+              >
+                <Plus size={14} />
+                <span>新增</span>
+              </button>
+            </div>
+            {markedSheets.length > 0 ? (
+              <div className="modal-uploads-grid">
+                {markedSheets.map((upload) => {
+                  const units = uploadImageUnits.filter((u) => u.id === upload.id);
+                  const urls = units.length > 0 ? units.map((u) => u.url) : (upload.imageUrls && upload.imageUrls.length > 0 ? upload.imageUrls : [upload.imageUrl]);
+                  return (
+                    <ModalUploadCard
+                      key={upload.id}
+                      upload={upload}
+                      urls={urls}
+                      hasMultiple={urls.length > 1}
+                      showDelete
+                      onZoom={setActiveImage}
+                      onDeleteClick={handleDeleteClick}
+                    />
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="no-uploads-box no-uploads-box--neutral">
+                <p>尚未上傳這份試卷的標記圖。</p>
+                <button className="modal-cta-btn modal-cta-btn--secondary" onClick={() => handlePrefill("標記試卷")} type="button">
+                  <Upload size={16} />
+                  <span>上傳標記試卷</span>
                 </button>
               </div>
-              {markedSheets.length > 0 ? (
-                <div className="modal-uploads-grid">
-                  {markedSheets.map((upload) => {
-                    const units = uploadImageUnits.filter((u) => u.id === upload.id);
-                    const urls = units.length > 0 ? units.map((u) => u.url) : (upload.imageUrls && upload.imageUrls.length > 0 ? upload.imageUrls : [upload.imageUrl]);
-                    return (
-                      <ModalUploadCard
-                        key={upload.id}
-                        upload={upload}
-                        urls={urls}
-                        hasMultiple={urls.length > 1}
-                        showDelete
-                        onZoom={setActiveImage}
-                        onDeleteClick={handleDeleteClick}
-                      />
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="no-uploads-box no-uploads-box--neutral">
-                  <p>尚未上傳這份透視圖的標記試卷。</p>
-                  <button className="modal-cta-btn modal-cta-btn--secondary" onClick={() => handlePrefill("標記試卷")} type="button">
-                    <Upload size={16} />
-                    <span>上傳標記試卷</span>
-                  </button>
-                </div>
-              )}
-            </section>
-          )}
+            )}
+          </section>
 
           {/* Others' Reference Submissions */}
           <section className="modal-section">

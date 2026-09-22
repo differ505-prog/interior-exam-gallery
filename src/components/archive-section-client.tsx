@@ -178,7 +178,7 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
             {/* 使用引導：標記試卷上傳流程 */}
             <div className="guide-hint" role="note" aria-label="標記試卷上傳說明">
               <p className="guide-hint__text">
-                想上傳標記試卷？點擊任一試卷卡 → 右上角「新增」按鈕 → 滑至表單選擇「標記試卷」
+                想上傳標記試卷？點擊任一試卷卡 → 詳情 Modal 右側面板「標記試卷」區 → 新增
               </p>
             </div>
           </>
