@@ -2236,6 +2236,25 @@ main {
   border-color: var(--accent-strong);
 }
 
+/* 使用引導提示：標記試卷上傳流程 */
+.guide-hint {
+  margin-bottom: var(--space-6);
+  padding: var(--space-4) var(--space-5);
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--accent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.guide-hint__text {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.6;
+}
+
 .archive-empty {
   text-align: center;
   padding: var(--space-12) var(--space-4);

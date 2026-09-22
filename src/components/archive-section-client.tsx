@@ -156,23 +156,32 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
       >
         {/* Foldable/Collapsible Filters for Plan */}
         {isPlan && isExpanded && (
-          <div className="archive-filters" aria-label="平面圖篩選面板">
-            <div className="filter-group">
-              <span className="filter-label">選擇題號：</span>
-              <div className="filter-options">
-                {questions.map((q) => (
-                  <button
-                    key={q}
-                    className={`filter-btn ${selectedPlanQuestion === q ? "filter-btn--active" : ""}`}
-                    onClick={() => setSelectedPlanQuestion(q)}
-                    type="button"
-                  >
-                    {q} 題
-                  </button>
-                ))}
+          <>
+            <div className="archive-filters" aria-label="平面圖篩選面板">
+              <div className="filter-group">
+                <span className="filter-label">選擇題號：</span>
+                <div className="filter-options">
+                  {questions.map((q) => (
+                    <button
+                      key={q}
+                      className={`filter-btn ${selectedPlanQuestion === q ? "filter-btn--active" : ""}`}
+                      onClick={() => setSelectedPlanQuestion(q)}
+                      type="button"
+                    >
+                      {q} 題
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+
+            {/* 使用引導：標記試卷上傳流程 */}
+            <div className="guide-hint" role="note" aria-label="標記試卷上傳說明">
+              <p className="guide-hint__text">
+                想上傳標記試卷？點擊任一試卷卡 → 右上角「新增」按鈕 → 滑至表單選擇「標記試卷」
+              </p>
+            </div>
+          </>
         )}
 
         {/* Foldable/Collapsible Filters for Ceiling & Elevation */}
