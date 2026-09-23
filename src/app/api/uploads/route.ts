@@ -142,8 +142,8 @@ export async function POST(request: Request) {
     return badRequest("請選擇有效的類別。");
   }
 
-  if (kind === "標記試卷" && category !== "透視圖 207-212") {
-    return badRequest("標記試卷僅能歸入透視圖專區。");
+  if (kind === "標記試卷" && !UPLOAD_CATEGORY_OPTIONS.includes(category as UploadCategoryValue)) {
+    return badRequest("請選擇有效的類別。");
   }
 
   // sectionSlug 是新版的鎖死欄位：有帶就覆寫 category（雙鍵決定歸屬，避免 202B 平面/立面互相污染）
