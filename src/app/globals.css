@@ -4752,6 +4752,276 @@ main {
   color: var(--accent-strong);
 }
 
+/* ─── 共用需求圖上傳區 ──────────────────────────────── */
+.shared-requirement-section {
+  margin-top: var(--space-8);
+  padding: var(--space-6);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.shared-requirement-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.shared-requirement-header h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.shared-tooltip-wrapper {
+  position: relative;
+}
+
+.shared-tooltip-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-theme);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 150ms ease-out;
+}
+
+.shared-tooltip-trigger:hover {
+  background: var(--color-surface);
+}
+
+.shared-tooltip {
+  position: absolute;
+  bottom: calc(100% + var(--space-2));
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-text);
+  color: var(--color-surface);
+  padding: var(--space-3) var(--space-4);
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  white-space: nowrap;
+  z-index: 10;
+  display: none;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.shared-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--color-text);
+}
+
+.shared-tooltip-trigger:focus + .shared-tooltip,
+.shared-tooltip-wrapper:hover .shared-tooltip {
+  display: flex;
+}
+
+.shared-tooltip-dismiss {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 2px var(--space-3);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.shared-requirement-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+}
+
+@media (max-width: 768px) {
+  .shared-requirement-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.shared-requirement-settings {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.shared-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.shared-field label {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.shared-field select {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-theme);
+  color: var(--color-text);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.shared-scope-preview {
+  background: var(--color-theme);
+  border-radius: 8px;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.shared-scope-label {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.shared-scope-codes {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  margin: 0;
+  font-family: monospace;
+}
+
+.shared-scope-count {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.shared-upload-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.shared-upload-area input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.shared-upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-6);
+  border: 2px dashed var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: border-color 150ms ease-out, color 150ms ease-out;
+  width: 100%;
+  max-width: 300px;
+}
+
+.shared-upload-placeholder:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.shared-preview {
+  position: relative;
+  width: 100%;
+  max-width: 300px;
+}
+
+.shared-preview img {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+}
+
+.shared-preview-remove {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.submit-button--secondary {
+  background: var(--color-theme);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+.submit-button--secondary:hover:not(:disabled) {
+  background: var(--color-surface);
+  border-color: var(--color-accent);
+  transform: translateY(-1px);
+}
+
+/* ─── 共用需求圖徽章 ────────────────────────────────── */
+.shared-req-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px var(--space-2);
+  background: var(--color-accent);
+  color: white;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+}
+
+/* ─── 刪除對話框警告樣式 ───────────────────────────── */
+.delete-dialog__hint--warn {
+  color: var(--color-accent);
+  background: rgba(135, 111, 73, 0.08);
+  padding: var(--space-3);
+  border-radius: 6px;
+  font-size: 0.875rem;
+}
+
+.delete-dialog__confirm--warn {
+  background: #b91c1c;
+  color: white;
+  border-color: #b91c1c;
+}
+
+.delete-dialog__confirm--warn:hover:not(:disabled) {
+  background: #991b1b;
+}
+
 /* Responsive */
 @media (max-width: 480px) {
   .dimension-row {
@@ -4771,6 +5041,11 @@ main {
 
   .marker-card__note {
     display: none;
+  }
+
+  .shared-requirement-settings {
+    flex-direction: column;
+    gap: var(--space-3);
   }
 }
 }

@@ -1,8 +1,9 @@
 import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { cloudinary, cloudinaryFolder, hasCloudinaryEnv } from "@/lib/cloudinary";
-import { kvPushEntry, kvDeleteEntry, hasKvEnv } from "@/lib/kv-store";
+import { kvPushEntry, kvDeleteEntry, kvGetAllEntries, hasKvEnv } from "@/lib/kv-store";
 import { UPLOAD_CATEGORY_OPTIONS, SECTION_SLUG_TO_CATEGORY, type UploadKindValue, type UploadCategoryValue } from "@/lib/upload-constants";
+import { buildSharedRequirementKey, parseSharedRequirementKey } from "@/lib/requirement-resolver";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -157,6 +158,34 @@ export async function POST(request: Request) {
     }
   }
 
+  // ─── 共用需求圖 409 Conflict 檢查 ───────────────────────
+  // 若為共用 key（即 sheetCode 為 plan-A、ceiling-elevation-B 格式），
+  // 需檢查是否已有記錄，若有則回傳 409 衝突，要求前端確認覆寫
+  const parsedKey = parseSharedRequirementKey(sheetCode);
+  const confirmOverride = formData.get("confirmOverride") === "true";
+
+  if (parsedKey && !confirmOverride && hasKvEnv()) {
+    try {
+      const allEntries = await kvGetAllEntries();
+      const existing = allEntries.find(
+        (e) => e.sheetCode === sheetCode && e.kind === "標記試卷",
+      );
+      if (existing) {
+        console.log("[uploads] 已有共用需求圖，回傳 409:", { sheetCode, existingId: existing.id });
+        return NextResponse.json(
+          {
+            message: `已有上傳記錄（${new Date(existing.createdAt).toLocaleString("zh-TW")}）。新圖將取代舊圖。`,
+            existingId: existing.id,
+          },
+          { status: 409 },
+        );
+      }
+    } catch {
+      // 忽略檢查錯誤，讓上傳流程繼續
+      console.warn("[uploads] KV 檢查失敗，忽略:", sheetCode);
+    }
+  }
+
   console.log("[uploads] 接收參數:", {
     title,
     category,
@@ -205,6 +234,22 @@ export async function POST(request: Request) {
 
   const imageUrl = uploadedUrls[0];
   const imageUrls = uploadedUrls.length > 1 ? uploadedUrls : undefined;
+
+  // ─── 覆寫模式：先刪除舊的共用需求圖 ─────────────────────
+  if (confirmOverride && parsedKey && hasKvEnv()) {
+    try {
+      const allEntries = await kvGetAllEntries();
+      const existing = allEntries.find(
+        (e) => e.sheetCode === sheetCode && e.kind === "標記試卷",
+      );
+      if (existing) {
+        await kvDeleteEntry(existing.id);
+        console.log("[uploads] 已刪除舊的共用需求圖:", existing.id);
+      }
+    } catch {
+      console.warn("[uploads] 刪除舊記錄失敗，繼續寫入新記錄");
+    }
+  }
 
   // 2. Save metadata to Vercel KV
   console.log("[uploads] 圖片上傳成功，準備寫入 KV:", { title, sheetCode, imageUrl, total: uploadedUrls.length });

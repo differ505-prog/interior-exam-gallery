@@ -2,7 +2,7 @@
 
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LoaderCircle, Upload, X } from "lucide-react";
+import { LoaderCircle, Upload, X, Info, AlertTriangle, CheckCircle } from "lucide-react";
 import {
   UPLOAD_CATEGORIES,
   UPLOAD_KINDS,
@@ -10,6 +10,13 @@ import {
   type UploadCategoryValue,
   type UploadKindValue,
 } from "@/lib/upload-constants";
+import {
+  buildSharedRequirementKey,
+  parseSharedRequirementKey,
+  listAffectedSheetCodes,
+  getSharedRequirementSummary,
+  type SharedRequirementKey,
+} from "@/lib/requirement-resolver";
 
 const categoryOptions = Object.values(UPLOAD_CATEGORIES) as [
   UploadCategoryValue,
@@ -35,6 +42,42 @@ export function UploadStudio() {
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [isReady, setIsReady] = useState<boolean | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+
+  // ─── 共用需求圖上傳狀態 ────────────────────────────────
+  const [sharedVariant, setSharedVariant] = useState<string>("A");
+  const [sharedSection, setSharedSection] = useState<string>("plan");
+  const [sharedPreview, setSharedPreview] = useState<string | null>(null);
+  const [sharedFile, setSharedFile] = useState<File | null>(null);
+  const [sharedSubmitting, setSharedSubmitting] = useState(false);
+  const [sharedMessage, setSharedMessage] = useState<{ text: string; tone: "info" | "error" | "warn" } | null>(null);
+  // 409 覆寫確認
+  const [pendingOverride, setPendingOverride] = useState<{
+    existingUploadAt: string;
+    sectionSlug: string;
+    variant: string;
+    file: File;
+    preview: string;
+  } | null>(null);
+  const sharedVariantRef = useRef<HTMLSelectElement>(null);
+
+  // 檢查是否是第一次使用共用需求圖功能
+  const [hasSeenSharedTooltip, setHasSeenSharedTooltip] = useState(false);
+  useEffect(() => {
+    const seen = localStorage.getItem("shared_req_seen");
+    if (seen) setHasSeenSharedTooltip(true);
+  }, []);
+
+  const dismissSharedTooltip = () => {
+    setHasSeenSharedTooltip(true);
+    localStorage.setItem("shared_req_seen", "1");
+  };
+
+  // 共用需求圖 variant 選項
+  const variantOptions = ["A", "B", "C", "D", "E"];
+  const sectionOptions = [
+    { value: "plan", label: "平面圖 201-206" },
+    { value: "ceiling-elevation", label: "天花板與立面圖" },
+  ];
 
   // Check Supabase readiness before rendering form
   useEffect(() => {
@@ -193,6 +236,128 @@ export function UploadStudio() {
     const input = document.getElementById("image") as HTMLInputElement | null;
     if (input) input.value = "";
   };
+
+  // ─── 共用需求圖處理 ───────────────────────────────────
+  const handleSharedFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (sharedPreview) URL.revokeObjectURL(sharedPreview);
+    const preview = URL.createObjectURL(file);
+    setSharedFile(file);
+    setSharedPreview(preview);
+    setSharedMessage(null);
+  };
+
+  const handleSharedRemove = () => {
+    if (sharedPreview) URL.revokeObjectURL(sharedPreview);
+    setSharedFile(null);
+    setSharedPreview(null);
+    const input = document.getElementById("shared-requirement-image") as HTMLInputElement | null;
+    if (input) input.value = "";
+  };
+
+  const handleSharedSubmit = async () => {
+    if (!sharedFile) {
+      setSharedMessage({ text: "請選擇一張圖片。", tone: "error" });
+      return;
+    }
+
+    const sectionSlug = sharedSection;
+    const variant = sharedVariant;
+    const sheetCode = buildSharedRequirementKey({ sectionSlug, variant });
+
+    // 先檢查是否已有共用需求圖（GET /api/uploads/all）
+    try {
+      const checkRes = await fetch("/api/uploads/all");
+      if (checkRes.ok) {
+        const data = await checkRes.json() as { entries?: { sheetCode: string }[] };
+        const existing = data.entries?.find((e) => e.sheetCode === sheetCode);
+        if (existing) {
+          // 已有記錄，顯示 409 確認
+          setPendingOverride({
+            existingUploadAt: "已存在",
+            sectionSlug,
+            variant,
+            file: sharedFile,
+            preview: sharedPreview!,
+          });
+          return;
+        }
+      }
+    } catch {
+      // 忽略檢查錯誤，直接上傳
+    }
+
+    await doSharedUpload(sectionSlug, variant, sharedFile);
+  };
+
+  const doSharedUpload = async (
+    sectionSlug: string,
+    variant: string,
+    file: File,
+    confirmOverride = false,
+  ) => {
+    setSharedSubmitting(true);
+    setSharedMessage(null);
+
+    const formData = new FormData();
+    formData.append("image", file);
+    formData.append("title", `${sectionSlug} ${variant} 共用需求圖`);
+    formData.append("sheetCode", buildSharedRequirementKey({ sectionSlug, variant }));
+    formData.append("sectionSlug", sectionSlug);
+    formData.append("category", SECTION_SLUG_TO_CATEGORY[sectionSlug] || "平面圖 201-206");
+    formData.append("kind", UPLOAD_KINDS.MARKED_SHEET);
+    formData.append("authorName", "系統管理員");
+    formData.append("confirmOverride", String(confirmOverride));
+
+    try {
+      const res = await fetch("/api/uploads", { method: "POST", body: formData });
+      const result = await res.json() as { message?: string };
+
+      if (res.status === 409) {
+        // 已有舊圖，需確認覆寫
+        setPendingOverride({
+          existingUploadAt: result.message || "已存在",
+          sectionSlug,
+          variant,
+          file,
+          preview: sharedPreview!,
+        });
+        return;
+      }
+
+      if (!res.ok) {
+        throw new Error(result.message || "上傳失敗。");
+      }
+
+      setSharedMessage({ text: `已上傳至 ${sectionSlug} ${variant} 共用需求圖，受影響試卷已更新。`, tone: "info" });
+      handleSharedRemove();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("uploads-changed"));
+      }
+      router.refresh();
+    } catch (err) {
+      setSharedMessage({ text: err instanceof Error ? err.message : "上傳失敗。", tone: "error" });
+    } finally {
+      setSharedSubmitting(false);
+    }
+  };
+
+  const confirmSharedOverride = () => {
+    if (!pendingOverride) return;
+    const { sectionSlug, variant, file } = pendingOverride;
+    setPendingOverride(null);
+    doSharedUpload(sectionSlug, variant, file, true);
+  };
+
+  // 共用需求圖受影響範圍摘要
+  const sharedSummary = (() => {
+    try {
+      return getSharedRequirementSummary({ sectionSlug: sharedSection, variant: sharedVariant });
+    } catch {
+      return { count: 0, preview: "" };
+    }
+  })();
 
   if (isReady === null) {
     return (
@@ -425,6 +590,170 @@ export function UploadStudio() {
           </p>
         ) : null}
       </form>
+
+      {/* ─── 共用需求圖上傳區 ─────────────────────────── */}
+      <div className="shared-requirement-section" aria-labelledby="shared-req-title">
+        <div className="shared-requirement-header">
+          <h3 id="shared-req-title">需求圖上傳</h3>
+          {!hasSeenSharedTooltip && (
+            <div className="shared-tooltip-wrapper">
+              <button
+                className="shared-tooltip-trigger"
+                type="button"
+                aria-label="查看說明"
+                onClick={() => setHasSeenSharedTooltip(true)}
+              >
+                <Info size={14} />
+              </button>
+              <div className="shared-tooltip" role="tooltip">
+                <p>上傳一次，所有{sharedVariant}版共用。刪除可還原為原始靜態圖。</p>
+                <button
+                  className="shared-tooltip-dismiss"
+                  type="button"
+                  onClick={dismissSharedTooltip}
+                >
+                  了解
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="shared-requirement-grid">
+          {/* 左：設定區 */}
+          <div className="shared-requirement-settings">
+            <div className="shared-field">
+              <label htmlFor="shared-section">章節</label>
+              <select
+                id="shared-section"
+                value={sharedSection}
+                onChange={(e) => setSharedSection(e.target.value)}
+              >
+                {sectionOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="shared-field">
+              <label htmlFor="shared-variant">版本</label>
+              <select
+                id="shared-variant"
+                ref={sharedVariantRef}
+                value={sharedVariant}
+                onChange={(e) => setSharedVariant(e.target.value)}
+              >
+                {variantOptions.map((v) => (
+                  <option key={v} value={v}>
+                    {v} 版
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* 右：受影響範圍預覽 */}
+          <div className="shared-scope-preview">
+            <p className="shared-scope-label">將出現在</p>
+            <p className="shared-scope-codes">
+              {sharedSummary.preview}
+              {sharedSummary.count > 3 && <span className="shared-scope-more">…</span>}
+            </p>
+            <p className="shared-scope-count">共 {sharedSummary.count} 張試卷</p>
+          </div>
+        </div>
+
+        {/* 圖片選擇 */}
+        <div className="shared-upload-area">
+          <input
+            accept="image/png,image/jpeg,image/webp"
+            id="shared-requirement-image"
+            onChange={handleSharedFileChange}
+            type="file"
+          />
+          {sharedPreview ? (
+            <div className="shared-preview">
+              <img alt="需求圖預覽" src={sharedPreview} />
+              <button
+                className="shared-preview-remove"
+                type="button"
+                aria-label="移除圖片"
+                onClick={handleSharedRemove}
+              >
+                <X size={16} />
+              </button>
+            </div>
+          ) : (
+            <label className="shared-upload-placeholder" htmlFor="shared-requirement-image">
+              <Upload size={24} />
+              <span>選擇需求圖</span>
+            </label>
+          )}
+        </div>
+
+        {/* 提交按鈕 */}
+        <button
+          className="submit-button submit-button--secondary"
+          disabled={!sharedFile || sharedSubmitting}
+          onClick={handleSharedSubmit}
+          type="button"
+        >
+          {sharedSubmitting ? (
+            <LoaderCircle aria-hidden="true" className="spin" size={18} />
+          ) : (
+            <Upload aria-hidden="true" size={18} />
+          )}
+          <span>{sharedSubmitting ? "上傳中" : "上傳為共用需求圖"}</span>
+        </button>
+
+        {sharedMessage && (
+          <p
+            className={`form-message form-message--${sharedMessage.tone === "warn" ? "info" : sharedMessage.tone}`}
+            role={sharedMessage.tone === "error" ? "alert" : "status"}
+          >
+            {sharedMessage.tone === "warn" && <AlertTriangle aria-hidden="true" size={14} style={{ marginRight: "6px", verticalAlign: "middle" }} />}
+            {sharedMessage.text}
+          </p>
+        )}
+      </div>
+
+      {/* ─── 覆寫確認對話框 ──────────────────────────── */}
+      {pendingOverride && (
+        <div
+          className="modal-overlay"
+          onClick={() => setPendingOverride(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="override-dialog-title"
+        >
+          <div className="delete-dialog" onClick={(e) => e.stopPropagation()}>
+            <h3 id="override-dialog-title">已有共用需求圖</h3>
+            <p>
+              <strong>{pendingOverride.sectionSlug} {pendingOverride.variant}</strong> 已存在一張共用需求圖。
+            </p>
+            <p className="delete-dialog__hint">新圖將取代舊圖，原圖將自動失效。</p>
+            <div className="delete-dialog__actions">
+              <button
+                className="delete-dialog__cancel"
+                onClick={() => setPendingOverride(null)}
+                disabled={sharedSubmitting}
+                type="button"
+              >
+                取消
+              </button>
+              <button
+                className="delete-dialog__confirm"
+                onClick={confirmSharedOverride}
+                disabled={sharedSubmitting}
+                type="button"
+              >
+                {sharedSubmitting ? "上傳中…" : "是，覆寫並取代舊圖"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

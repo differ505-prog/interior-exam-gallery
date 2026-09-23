@@ -12,6 +12,12 @@ import { ExamNotesPanel } from "@/components/exam-notes-panel";
 import { DimensionTable } from "@/components/ui/dimension-table";
 import { getSheetData, saveScratchNote } from "@/lib/user-data";
 import { UPLOAD_KINDS } from "@/lib/upload-constants";
+import {
+  resolveRequirementImageUrl,
+  parseSharedRequirementKey,
+  listAffectedSheetCodes,
+  isSharedRequirement,
+} from "@/lib/requirement-resolver";
 
 // ─── 配置驅動：題目區渲染參數 ───────────────────────────────
 type LayoutVariant = "two-col" | "one-col";
@@ -303,7 +309,15 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
     return null;
   })();
 
-  const referenceImageUrl = (() => {
+  // ─── 需求圖 URL 解析（使用 resolver）────────────────────
+  const { url: referenceImageUrl, isOverride: isRequirementOverride } = resolveRequirementImageUrl(
+    sectionSlug,
+    item.code,
+    uploads,
+  );
+
+  // ─── 備用：靜態需求圖（當無 KV 共用覆寫時使用）───────────
+  const staticRequirementUrl = (() => {
     if (sectionSlug === "plan" || sectionSlug === "ceiling-elevation") {
       const letterPart = item.code.slice(3, 4);
       return `/images/plan/requirement-${letterPart}.jpg`;
@@ -312,6 +326,9 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
     if (sectionSlug === "perspective") return "/images/208/2021021722093353239 (2).jpg";
     return null;
   })();
+
+  // 最終使用的 URL：有 override 用 override URL；否則用靜態 URL
+  const finalRequirementUrl = isRequirementOverride ? referenceImageUrl : staticRequirementUrl;
 
   const handlePrefill = (kindVal: "我的練習圖" | "他人作品參考" | "標記試卷") => {
     let uploadCategory = "平面圖 201-206";
@@ -425,12 +442,15 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
                 <div className="question-image-box">
                   <div className="question-image-header">
                     <h4>{sectionSlug === "detail" ? "官方答案圖" : sectionSlug === "plan" ? "需求圖" : "立面配置參考圖"}</h4>
-                    <button className="zoom-btn" onClick={() => setActiveImage(referenceImageUrl)} aria-label={sectionSlug === "detail" ? "放大官方答案圖" : sectionSlug === "plan" ? "放大需求圖" : "放大立面圖"}>
+                    {isRequirementOverride && (
+                      <span className="shared-req-badge">共用需求圖（已上傳）</span>
+                    )}
+                    <button className="zoom-btn" onClick={() => setActiveImage(finalRequirementUrl)} aria-label={sectionSlug === "detail" ? "放大官方答案圖" : sectionSlug === "plan" ? "放大需求圖" : "放大立面圖"}>
                       <ZoomIn size={16} /> <span>放大</span>
                     </button>
                   </div>
-                  <div className="question-image-container" onClick={() => setActiveImage(referenceImageUrl)}>
-                    <SafeImage src={referenceImageUrl} alt={sectionSlug === "detail" ? `${item.code} 官方答案圖` : sectionSlug === "plan" ? `${item.code} 需求圖` : `${item.code} 立面配置參考圖`} aspectRatio="4 / 3" />
+                  <div className="question-image-container" onClick={() => setActiveImage(finalRequirementUrl)}>
+                    <SafeImage src={finalRequirementUrl} alt={sectionSlug === "detail" ? `${item.code} 官方答案圖` : sectionSlug === "plan" ? `${item.code} 需求圖` : `${item.code} 立面配置參考圖`} aspectRatio="4 / 3" />
                   </div>
                 </div>
               </div>
@@ -760,25 +780,64 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
           aria-labelledby="delete-dialog-title"
         >
           <div className="delete-dialog" onClick={(e) => e.stopPropagation()}>
-            <h3 id="delete-dialog-title">確認刪除</h3>
-            <p>即將刪除：<strong>{deleteTarget.title}</strong></p>
-            <p className="delete-dialog__hint">此操作不可撤銷。</p>
-            <div className="delete-dialog__actions">
-              <button
-                className="delete-dialog__cancel"
-                onClick={() => setDeleteTarget(null)}
-                disabled={isDeleting}
-              >
-                取消
-              </button>
-              <button
-                className="delete-dialog__confirm"
-                onClick={confirmDelete}
-                disabled={isDeleting}
-              >
-                {isDeleting ? "刪除中…" : "確認刪除"}
-              </button>
-            </div>
+            {isSharedRequirement(deleteTarget) ? (
+              <>
+                <h3 id="delete-dialog-title">刪除共用需求圖</h3>
+                <p>
+                  即將刪除：<strong>{deleteTarget.title}</strong>
+                </p>
+                {(() => {
+                  const parsed = parseSharedRequirementKey(deleteTarget.sheetCode);
+                  if (!parsed) return null;
+                  const affectedCount = listAffectedSheetCodes(parsed.sectionSlug, parsed.variant).length;
+                  return (
+                    <p className="delete-dialog__hint delete-dialog__hint--warn">
+                      這是「{parsed.sectionSlug} {parsed.variant} 共用需求圖」。刪除後 {affectedCount} 張試卷的需求圖將退回到原始靜態圖。
+                    </p>
+                  );
+                })()}
+                <div className="delete-dialog__actions">
+                  <button
+                    className="delete-dialog__cancel"
+                    onClick={() => setDeleteTarget(null)}
+                    disabled={isDeleting}
+                  >
+                    取消
+                  </button>
+                  <button
+                    className="delete-dialog__confirm delete-dialog__confirm--warn"
+                    onClick={confirmDelete}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? "刪除中…" : "確認刪除"}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 id="delete-dialog-title">確認刪除</h3>
+                <p>
+                  即將刪除：<strong>{deleteTarget.title}</strong>
+                </p>
+                <p className="delete-dialog__hint">此操作不可撤銷。</p>
+                <div className="delete-dialog__actions">
+                  <button
+                    className="delete-dialog__cancel"
+                    onClick={() => setDeleteTarget(null)}
+                    disabled={isDeleting}
+                  >
+                    取消
+                  </button>
+                  <button
+                    className="delete-dialog__confirm"
+                    onClick={confirmDelete}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? "刪除中…" : "確認刪除"}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
