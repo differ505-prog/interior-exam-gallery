@@ -146,9 +146,19 @@ function extractVariant(itemCode: string): string | null {
 
 /**
  * 建立靜態需求圖 URL。
+ *
+ * 優先順序（由上而下）：
+ * 1. 205 A-F 有專屬題目圖（question-205.jpg），優先使用
+ * 2. 透視圖 207-212 共用 208 題目圖
+ * 3. 大樣圖使用各題號資料夾
+ * 4. 其餘平面圖使用共用 requirement-{variant}.jpg
  */
 function buildStaticRequirementUrl(sectionSlug: string, itemCode: string, variant: string): string {
   if (sectionSlug === "plan") {
+    // 205 A-F 專屬題目圖
+    if (itemCode.startsWith("205") && /^[A-Z]$/.test(variant)) {
+      return `/images/plan/question-205.jpg`;
+    }
     return `/images/plan/requirement-${variant}.jpg`;
   }
   if (sectionSlug === "ceiling-elevation") {
