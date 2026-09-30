@@ -286,8 +286,8 @@ grep -rEn "font-size: [0-9]+\.[5-9]rem|font-size: [1-9][0-9]rem" src/
 
 | 區塊 | Slug | 題號 | 版本 | 總計 |
 |------|------|------|------|------|
-| 平面圖 | `plan` | 201–206 | A, B, C, D, E | 30 張 |
-| 天花板與立面圖 | `ceiling-elevation` | 201–206 | A–E × (天花/客立/餐立/臥立) | 120 張 |
+| 平面圖 | `plan` | 201–206 | A, B, C, D, E, F | 36 張 |
+| 天花板與立面圖 | `ceiling-elevation` | 201–206 | A–F × (天花/客立/餐立/臥立) | 144 張 |
 | 透視圖 | `perspective` | 207–212 | 甲 / 乙 / 丙 | 18 張 |
 | 大樣圖 | `detail` | 213–224 | 尺度/材質/做法 | 12 張 |
 
@@ -351,9 +351,9 @@ grep -rEn "font-size: [0-9]+\.[5-9]rem|font-size: [1-9][0-9]rem" src/
 # 附錄 D：信任錨點紀律（Trust Anchor Lock）
 
 本專案作為教育備考工具，首屏必須具備以下信任錨點之一：
-- **量化數字**：歷屆報考人數、通過率（本專案試卷題數 180 張）
+- **量化數字**：歷屆報考人數、通過率（本專案試卷題數 210 張）
 - **第三方認證**：勞動部技能檢定標章
-- **內容完整性聲明**：180 張試卷完整收錄
+- **內容完整性聲明**：210 張試卷完整收錄
 
 不得以「純視覺」包裝而無實際可驗證的信任背書。
 
@@ -419,7 +419,7 @@ grep -rEn "font-size: [0-9]+\.[5-9]rem|font-size: [1-9][0-9]rem" src/
 | `.cursorrules` | 快速入口 | 引用至 AGENTS.md，80 行精簡版 |
 | `.cursor/rules/global.mdc` | Cursor 規則 | 與 .cursorrules 同步，全域適用 |
 | `.cursor/rules/exam-content.mdc` | 內容標準 | 題庫內容管理標準，含 Gemini 整合 SOP、雙軌並行工作流、型別一致性約束 |
-| `src/data/exam-content.ts` | 內容鎖定白名單 | 180 張試卷原始內容 |
+| `src/data/exam-content.ts` | 內容鎖定白名單 | 210 張試卷原始內容 |
 | `src/data/exam-notes.ts` | 備考知識庫 | Gemini 整合備考 SOP、公式、速查表 |
 | `src/types/exam-note.ts` | 型別定義 | 備考知識庫型別 |
 | `src/lib/site-config.ts` | 品牌設定 | 品牌名、色票、SEO 關鍵字 |

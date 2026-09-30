@@ -73,7 +73,7 @@ export function UploadStudio() {
   };
 
   // 共用需求圖 variant 選項
-  const variantOptions = ["A", "B", "C", "D", "E"];
+  const variantOptions = ["A", "B", "C", "D", "E", "F"];
   const sectionOptions = [
     { value: "plan", label: "平面圖 201-206" },
     { value: "ceiling-elevation", label: "天花板與立面圖" },

@@ -3,7 +3,7 @@ import { ArchiveSection, UploadEntry } from "@/types/exam";
 const planItems: ArchiveSection["items"] = [];
 const ceilingElevationItems: ArchiveSection["items"] = [];
 const questions = ["201", "202", "203", "204", "205", "206"];
-const variants = ["A", "B", "C", "D", "E"];
+const variants = ["A", "B", "C", "D", "E", "F"];
 
 questions.forEach((q) => {
   variants.forEach((v) => {
@@ -56,7 +56,7 @@ export const examSections: ArchiveSection[] = [
     slug: "plan",
     eyebrow: "Plan Archive",
     title: "平面圖 201-206",
-    summary: "收錄 201-206 各版型（A-E）的平面配置圖，搭配家具尺度與應考節奏。",
+    summary: "收錄 201-206 各版型（A-F）的平面配置圖，搭配家具尺度與應考節奏。",
     visualNote: "像畫冊一樣閱讀平面配置，先看格局節奏，再看尺寸與動線。",
     items: planItems,
   },
@@ -64,7 +64,7 @@ export const examSections: ArchiveSection[] = [
     slug: "ceiling-elevation",
     eyebrow: "Ceiling & Elevation Archive",
     title: "天花板圖與立面圖",
-    summary: "收錄 201-206 各版型（A-E）的天花板配置圖與立面圖。",
+    summary: "收錄 201-206 各版型（A-F）的天花板配置圖與立面圖。",
     visualNote: "您可以點擊上方題號標籤切換檢視，對照天花照明迴路與立面圖櫃體投影設計。",
     items: ceilingElevationItems,
   },

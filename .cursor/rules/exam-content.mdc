@@ -1,5 +1,5 @@
 ---
-description: 題庫內容管理標準 — 試卷 180 張不得任意修改
+description: 題庫內容管理標準 — 試卷 210 張不得任意修改
 globs:
   - "src/data/exam-content.ts"
   - "src/components/archive-card.tsx"
@@ -18,7 +18,7 @@ alwaysApply: false
 src/data/exam-content.ts
 ├── Section: plan (平面圖)
 │   ├── Questions 201–206
-│   └── Variants: A, B, C, D, E
+│   └── Variants: A, B, C, D, E, F
 ├── Section: ceiling-elevation (天花板與立面圖)
 │   ├── Questions 201–206
 │   └── Variants × 視角 (天花/客立/餐立/臥立)
@@ -80,7 +80,7 @@ src/data/exam-content.ts
 
 試卷卡片支援以下維度篩選：
 - **Section 篩選**：平面圖 / 天花板與立面圖 / 透視圖 / 大樣圖
-- **版本篩選**（室內平面圖限定）：A / B / C / D / E
+- **版本篩選**（室內平面圖限定）：A / B / C / D / E / F
 - **視角篩選**（天花板與立面圖限定）：天花 / 客立 / 餐立 / 臥立
 - **方向篩選**（透視圖限定）：甲 / 乙 / 丙
 
