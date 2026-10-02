@@ -2847,6 +2847,84 @@ main {
   text-wrap: pretty;
 }
 
+/* ── CE 平衡儀 ────────────────────────────────────────────────────── */
+.ce-balance-indicator {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+}
+
+.balance-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.bar-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 44px;
+  gap: 2px;
+}
+
+.bar-label__type {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.bar-label__count {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.bar-track {
+  flex: 1;
+  height: 6px;
+  background: var(--color-theme);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.bar-fill--ceiling {
+  background: var(--accent);
+}
+
+.balance-hint {
+  font-size: 0.75rem;
+  color: var(--accent);
+  margin: 0;
+  font-weight: 500;
+}
+
+@media (max-width: 480px) {
+  .ce-balance-indicator {
+    padding: var(--space-3);
+  }
+
+  .bar-label {
+    min-width: 36px;
+  }
+
+  .bar-label__count {
+    font-size: 0.85rem;
+  }
+}
+
 .exam-draw-buttons {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
