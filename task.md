@@ -1,107 +1,238 @@
-# 任務：Category Balance Draw — 天花板圖與立面圖練習總量平衡
+# 任務：CE 區塊對稱化（A++ 簡化版，9.2/10）
 
-## 目標
-
-在「平面圖試卷」抽題時，追蹤使用者「天花板圖」與「立面圖」的練習總張數差距，動態調整抽題權重，讓兩類型練習次數趨於平衡。
-
----
-
-## 前置確認
-
-- [ ] 使用者已確認方案（2026-10-02 11:56）
-- [ ] 理解現有抽題邏輯：`drawExamGroup` 先抽平面、再抽 CE（天花板/立面）
-- [ ] 理解 CE code 命名規則：`201A天花`、`201A客立`、`201A餐立`、`201A臥立`
-- [ ] 理解 `UPLOAD_KINDS.MY_PRACTICE` 用於過濾「我的練習圖」
+> 採用方案：A++ 簡化版（池級平衡 + 視角隨機 + UI 視角化）
+> 評分：9.2/10
+> 建立日期：2026-10-02
+> 基於：使用者確認簡化原則——視角在池內純隨機，不追蹤每個視角的練習量
 
 ---
 
-## 實作清單
+## 0. 任務目標
 
-### Step 0：Pre-flight 驗證（不改任何檔案）
+將天花板圖從「1 視角 × 36 張」擴展為「3 視角（客廳天花 / 餐廳天花 / 主臥天花）× 36 張」，使天花板與立面圖資料池完全對稱（各 108 張）。抽題加權以「池」（天花板 vs 立面）為單位計數，視角（客廳 / 餐廳 / 主臥）在池內純隨機，均勻分布。
 
-執行以下命令確認現有 codebase 無違規：
+**資料量變化**：
+- 現有 CE 項目：144 張（天花板 36 + 立面 108）
+- 新增天花板項目：72 張（201–206 × B–F × 3 視角）
+- 目標 CE 總數：**216 張**（天花板 108 + 立面 108）
 
-```bash
-# 確認 use-exam-draw.ts 現有邏輯位置
-grep -n "drawExamGroup\|drawOneFromItems\|countPracticePerItem" src/hooks/use-exam-draw.ts
+---
 
-# 確認 exam-draw-section.tsx 的 import 語句
-grep -n "import.*use-exam-draw\|import.*UploadEntry\|import.*UPLOAD_KINDS" src/components/exam-draw-section.tsx
+## 1. 方案評分對照
 
-# 確認 upload-constants.ts 的 MY_PRACTICE 定義
-grep -n "MY_PRACTICE" src/lib/upload-constants.ts
+| 方案 | 評分 | 採用 |
+|------|------|------|
+| A — 天花板 1 視角、1:3 不對稱 | 7.5 | ✗ |
+| A+ — 天花板隨機 1 視角、1:3 不對稱 | 8.3 | ✗ |
+| A++ — 對稱化 + **池級平衡** + 視角**隨機** + UI 視角化 | **9.2** | ✓ |
+| B — 立面對稱天花板（原版，視角獨立計數） | 8.6 | ✗ |
+
+---
+
+## 2. 核心邏輯摘要
+
+### 抽題決策樹（新）
+
+```
+80% 平面圖
+ └─ 抽中 → 取 baseCode（如 "201"）
+          └─ 同 baseCode 找 CE 池
+                    └─ 20% CE
+                          ├─ ceiling_total > elevation_total → 抽天花板池
+                          ├─ elevation_total > ceiling_total → 抽立面池
+                          └─ 兩者相等 → 隨機 50/50
+                                    └─ 池內：均勻隨機抽任一視角任一題
 ```
 
----
+### 池級追蹤（2 變數）
 
-### Step 1：修改 `src/hooks/use-exam-draw.ts`
-
-#### 1-1. 在檔案頂部現有 import 區塊，新增 1 行（若尚未 import ArchiveItem）
-
-```ts
-// 確認現有 import 區塊是否已有 ArchiveItem，若無則加上
-// import { ArchiveItem, UploadEntry } from "@/types/exam";
+```
+ceiling_total    = 天花板池已練習張數（所有 view 含 "天" 的 code）
+elevation_total  = 立面池已練習張數（所有 view 含 "立" 的 code）
 ```
 
-#### 1-2. 在 `EXCLUDED_THRESHOLD` 常數之後，新增 CE 類型分類函式
+### 視角隨機（池內均勻）
+
+- 進入天花板池後，36 張 A 版本的客廳 / 餐廳 / 主臥 均勻隨機抽出 1 張
+- 進入立面池後，36 張 A 版本的客廳 / 餐廳 / 主臥 均勻隨機抽出 1 張
+- **視角不影響下次加權**（每次抽題都是池內均勻隨機）
+
+### UI 呈現
+
+- 平衡條：「天花板 X 張 / 立面 Y 張」
+- 圓餅圖：2 切片（天花 vs 立面），不細分 6 視角
+- view chip：保留作為視覺標籤與篩選器，純裝飾用途
+
+---
+
+## 3. 憲法合規檢查（Pre-flight）
+
+- [ ] 3.1 工作樹乾淨（`git status` 無未提交檔案；若不乾淨先 commit）
+- [ ] 3.2 執行 `npm run dev` 確認 `http://localhost:3000` 可運行
+- [ ] 3.3 讀取 `AGENTS.md` 第六章「試卷架構鎖定」與附錄 E「豁免登記表」
+- [ ] 3.4 讀取 `src/types/exam.ts`（`ArchiveItem` 型別、`notes` 為 `string` 非 `string[]`）
+- [ ] 3.5 確認 `src/data/exam-content.ts` 為內容鎖定白名單
+
+---
+
+## 4. 詳細實作步驟
+
+### Step 4.1 — 環境備份與驗證
+
+- [ ] 4.1.1 執行 `git status` 確認工作樹狀態
+- [ ] 4.1.2 若有未提交變更，執行 `git add -A && git commit -m "chore: pre-symmetry snapshot"`
+- [ ] 4.1.3 執行 `npm run dev` 確認目前 `http://localhost:3000` 可運行
+- [ ] 4.1.4 截圖當前 CE 區塊狀態存證
+
+### Step 4.2 — 讀取現有檔案
+
+- [ ] 4.2.1 讀取 `AGENTS.md` 第六章、附錄 E、附錄 G
+- [ ] 4.2.2 讀取 `src/data/exam-content.ts` 全文（了解 144 張現有項目結構）
+- [ ] 4.2.3 讀取 `src/types/exam.ts`（`ArchiveItem` 型別）
+- [ ] 4.2.4 讀取 `src/hooks/use-exam-draw.ts`（抽題加權邏輯）
+- [ ] 4.2.5 讀取 `src/components/exam-draw-section.tsx`（抽題 UI）
+- [ ] 4.2.6 讀取 `src/components/archive-card.tsx`（試卷卡 UI）
+- [ ] 4.2.7 讀取 `src/components/archive-filter.tsx`（篩選器）
+- [ ] 4.2.8 讀取 `src/components/archive-detail-modal.tsx`（試卷詳情）
+
+### Step 4.3 — 更新 AGENTS.md 憲法
+
+- [ ] 4.3.1 **第六章試卷架構表**天花列：由「A–F（6 視角不拆）」改為「A–F × (客廳天花 / 餐廳天花 / 主臥天花)」
+- [ ] 4.3.2 **第六章天花列總計**：36 → 108 張
+- [ ] 4.3.3 **第六章天花板與立面圖總計**：144 → 216 張
+- [ ] 4.3.4 **第六章試卷總計表**：30 + 216 + 18 + 12 = **276 張**（同步更新）
+- [ ] 4.3.5 **附錄 E 豁免登記表新增 #3**：
+
+| # | 位置 | 違規值 | 豁免理由 |
+|---|------|--------|----------|
+| 3 | `src/data/exam-content.ts` | 72 張天花板視角衍生項由 AI 推論生成（無原始政府公告對應） | 方案 A++ 採對稱化設計，允許 AI 基於立面視角邏輯推論天花視角內容 |
+
+- [ ] 4.3.6 **附錄 G 試卷總數統計同步更新**
+
+### Step 4.4 — 擴充 src/data/exam-content.ts（核心實作）
+
+#### 4.4.1 命名規則
+
+| 類型 | Code 格式 | 範例 | 總數 |
+|------|-----------|------|------|
+| 客廳天花 | `${q}${v}客天` | `201A客天` | 36 張 |
+| 餐廳天花 | `${q}${v}餐天` | `201A餐天` | 36 張 |
+| 主臥天花 | `${q}${v}臥天` | `201A臥天` | 36 張 |
+| 客廳立面 | `${q}${v}客立` | `201A客立` | 36 張（既有） |
+| 餐廳立面 | `${q}${v}餐立` | `201A餐立` | 36 張（既有） |
+| 主臥立面 | `${q}${v}臥立` | `201A臥立` | 36 張（既有） |
+
+#### 4.4.2 view 欄位值（新增至 ArchiveItem 型別）
 
 ```ts
-/**
- * 判斷 CE 試卷是「天花板」還是「立面圖」
- * @param code 試卷編號，如 "201A天花"、"201A客立"、"201A餐立"、"201A臥立"
- */
-export function getCEDrawingType(code: string): "ceiling" | "elevation" {
-  return code.includes("天花") ? "ceiling" : "elevation";
+type CEView = '客天' | '餐天' | '臥天' | '客立' | '餐立' | '臥立';
+```
+
+#### 4.4.3 focus 撰寫規範
+
+- 完整肯定句（不得為問句）
+- 客廳天花：「客廳天花板配置，含客廳燈具迴路、空調出風口投影與間接照明飾燈配置。」
+- 餐廳天花：「餐廳天花板配置，含餐廳吊燈位置、空調出風口與飾燈投射範圍。」
+- 主臥天花：「主臥天花板配置，含主臥間接照明鏈條、空調出風口投影與飾燈位置。」
+
+#### 4.4.4 notes 撰寫規範
+
+- 每張 4–6 條扣分點，全部以 `×` 前綴開頭
+- 客廳天花例：`× 客廳天花燈具迴路未標`、`× 客廳出風口尺寸遺漏`、`× 客廳天花間接照明取消扣`、`× 客廳飾燈位置與立面圖不一致`、`× 客廳天花高度標註缺漏`
+- 餐廳天花例：`× 餐廳吊燈位置錯誤`、`× 餐廳天花尺寸鏈標註缺漏`、`× 餐廳空調出風口與餐廳吊燈衝突`、`× 餐廳天花板飾燈電源迴路未標`
+- 主臥天花例：`× 主臥間接照明鏈條遺漏`、`× 主臥出風口投影錯誤`、`× 主臥天花飾燈與床頭位置衝突`、`× 主臥天花板高度鏈標註缺漏`
+
+#### 4.4.5 程式碼生成方式
+
+在 `exam-content.ts` 的 `ceilingElevationItems.forEach` 迴圈內，新增 3 個 `.push()` 呼叫：
+
+```ts
+// 2. 客廳天花（新）
+ceilingElevationItems.push({
+  code: `${q}${v}客天`,
+  title: `${q}${v} 客廳天花`,
+  variants: ["客廳天花", "燈具迴路"],
+  focus: "客廳天花板配置，含客廳燈具迴路、空調出風口投影與間接照明飾燈配置。",
+  notes: `× 客廳天花燈具迴路未標\n× 客廳出風口尺寸遺漏\n× 客廳天花間接照明取消扣\n× 客廳飾燈位置與立面圖不一致\n× 客廳天花高度標註缺漏`,
+});
+
+// 3. 餐廳天花（新）
+ceilingElevationItems.push({
+  code: `${q}${v}餐天`,
+  title: `${q}${v} 餐廳天花`,
+  variants: ["餐廳天花", "燈具迴路"],
+  focus: "餐廳天花板配置，含餐廳吊燈位置、空調出風口與飾燈投射範圍。",
+  notes: `× 餐廳吊燈位置錯誤\n× 餐廳天花尺寸鏈標註缺漏\n× 餐廳空調出風口與餐廳吊燈衝突\n× 餐廳天花板飾燈電源迴路未標`,
+});
+
+// 4. 主臥天花（新）
+ceilingElevationItems.push({
+  code: `${q}${v}臥天`,
+  title: `${q}${v} 主臥天花`,
+  variants: ["主臥天花", "燈具迴路"],
+  focus: "主臥天花板配置，含主臥間接照明鏈條、空調出風口投影與飾燈位置。",
+  notes: `× 主臥間接照明鏈條遺漏\n× 主臥出風口投影錯誤\n× 主臥天花飾燈與床頭位置衝突\n× 主臥天花板高度鏈標註缺漏`,
+});
+```
+
+- [ ] 4.4.6 執行 `npx tsc --noEmit` 驗證無編譯錯誤
+- [ ] 4.4.7 **注意**：`notes` 為 `string` 型別（非 `string[]`），多條以 `\n` 換行分隔
+
+### Step 4.5 — 更新 src/types/exam.ts
+
+- [ ] 4.5.1 在 `ArchiveItem` 介面新增 `view` 欄位：
+
+```ts
+view?: '客天' | '餐天' | '臥天' | '客立' | '餐立' | '臥立';
+```
+
+- [ ] 4.5.2 為 72 張新增天花板項目標 `view` 欄位
+- [ ] 4.5.3 為 108 張既有立面項目標 `view` 欄位
+- [ ] 4.5.4 執行 `npx tsc --noEmit` 確認型別正確
+
+### Step 4.6 — 更新抽題邏輯 src/hooks/use-exam-draw.ts（核心改動）
+
+#### 4.6.1 getCEDrawingType 改為以 view 欄位為主
+
+```ts
+export function getCEDrawingType(item: ArchiveItem): "ceiling" | "elevation" {
+  // 優先用 view 欄位判斷
+  if (item.view) {
+    return item.view.endsWith('天') ? 'ceiling' : 'elevation';
+  }
+  // 向後相容：fallback 以 code 字串判斷
+  return item.code.includes('天花') || item.code.includes('客天') || item.code.includes('餐天') || item.code.includes('臥天')
+    ? 'ceiling'
+    : 'elevation';
 }
 ```
 
-#### 1-3. 在 `countPracticePerItem` 函式之後，新增總量統計函式
+#### 4.6.2 calcCECategoryBalance 以 view 欄位識別池
 
 ```ts
-export type CECategoryBalance = {
-  ceilingCount: number;   // 天花板練習總張數（已上傳的 unique 張數）
-  elevationCount: number; // 立面圖練習總張數
-  diff: number;           // ceilingCount - elevationCount（正數＝天花已練習更多）
-  lean: "ceiling" | "elevation" | "balanced";
-};
-
-/**
- * 計算「天花板圖」與「立面圖」的練習總量差距
- * @param uploads 所有上傳記錄
- * @param ceilingItems 天花板試卷陣列（用於建立 code Set）
- * @param elevationItems 立面圖試卷陣列（用於建立 code Set）
- */
 export function calcCECategoryBalance(
   uploads: UploadEntry[],
   ceilingItems: ArchiveItem[],
   elevationItems: ArchiveItem[]
 ): CECategoryBalance {
-  const ceilingCodes = new Set(ceilingItems.map(i => i.code));
-  const elevationCodes = new Set(elevationItems.map(i => i.code));
+  // 以 item.view 欄位識別天花板池（108 張）
+  const ceilingCodes = new Set(ceilingItems.map((i) => i.code));
+  // 以 item.view 欄位識別立面池（108 張）
+  const elevationCodes = new Set(elevationItems.map((i) => i.code));
 
-  // 計算已練習張數（unique sheetCode 去重）
   const ceilingUploaded = new Set(
     uploads
-      .filter(
-        (u) =>
-          ceilingCodes.has(u.sheetCode) &&
-          u.kind === "我的練習圖"
-      )
+      .filter((u) => ceilingCodes.has(u.sheetCode) && u.kind === UPLOAD_KINDS.MY_PRACTICE)
       .map((u) => u.sheetCode)
   ).size;
 
   const elevationUploaded = new Set(
     uploads
-      .filter(
-        (u) =>
-          elevationCodes.has(u.sheetCode) &&
-          u.kind === "我的練習圖"
-      )
+      .filter((u) => elevationCodes.has(u.sheetCode) && u.kind === UPLOAD_KINDS.MY_PRACTICE)
       .map((u) => u.sheetCode)
   ).size;
 
   const diff = ceilingUploaded - elevationUploaded;
-
   let lean: CECategoryBalance["lean"] = "balanced";
   if (diff > 2) lean = "ceiling";
   else if (diff < -2) lean = "elevation";
@@ -115,343 +246,173 @@ export function calcCECategoryBalance(
 }
 ```
 
-#### 1-4. 修改 `drawExamGroup` 函式
+#### 4.6.3 drawExamGroup 內的 CE 子池邏輯（核心改動）
 
-找到以下段落（約在原函式倒數第 30 行）：
+```
+舊邏輯：
+  同 baseCode 的天花板池 + 立面池 → 合併 → 加權抽 → 單一題目
 
-```ts
-} else if (group === "plan-ceiling-elevation") {
-  // 先抽平面圖
-  const planItems = examSections.find(s => s.slug === "plan")?.items ?? [];
-  const planResult = drawOneFromItems(planItems, practiceCountMap);
-
-  if (planResult) {
-    results.push(planResult);
-    // 再抽同題號的天花/立面圖 (例如 201 -> 201A, 201B)
-    const baseCode = planResult.item.code; // e.g., "201"
-    const ceItems = examSections.find(s => s.slug === "ceiling-elevation")?.items ?? [];
-    const matchingCeItems = ceItems.filter(item => item.code.startsWith(baseCode));
-
-    const ceResult = drawOneFromItems(matchingCeItems, practiceCountMap);
-    if (ceResult) results.push(ceResult);
-  }
-}
+新邏輯（池級平衡 + 視角隨機）：
+  同 baseCode 的天花板池（客天/餐天/臥天，各若干張）→ 均勻隨機抽 1 張
+  同 baseCode 的立面池（客立/餐立/臥立，各若干張）→ 均勻隨機抽 1 張
+  池選擇由 ceiling_total vs elevation_total 決定
 ```
 
-**將其替換為**：
+**抽題流程（在 plan-ceiling-elevation 分支內）**：
 
 ```ts
-} else if (group === "plan-ceiling-elevation") {
-  // ── Step 1：先抽平面圖 ──────────────────────────────
-  const planItems = examSections.find(s => s.slug === "plan")?.items ?? [];
-  const planResult = drawOneFromItems(planItems, practiceCountMap);
+// Step 3：取同 baseCode 的 CE 試卷（新版，含 view 欄位）
+const matchingCeItems = allCeItems.filter((item) =>
+  item.code.startsWith(baseCode)
+);
 
-  if (planResult) {
-    results.push(planResult);
+// Step 4：以 view 欄位分類天花板池 vs 立面池
+const ceilingPool = matchingCeItems.filter(
+  (item) => getCEDrawingType(item) === "ceiling"
+);
+const elevationPool = matchingCeItems.filter(
+  (item) => getCEDrawingType(item) === "elevation"
+);
 
-    // ── Step 2：依據平面圖 baseCode 取對應 CE 試卷 ──
-    const baseCode = planResult.item.code; // e.g., "201"
-    const allCeItems = examSections.find(s => s.slug === "ceiling-elevation")?.items ?? [];
-    const matchingCeItems = allCeItems.filter(item => item.code.startsWith(baseCode));
+// Step 5：計算池級平衡（ceiling_total vs elevation_total）
+// 由呼叫端傳入 lean，或在此函式內呼叫 calcCECategoryBalance
 
-    // ── Step 3：分類天花板 vs 立面圖 ──────────────────
-    const ceilingPool = matchingCeItems.filter(item =>
-      getCEDrawingType(item.code) === "ceiling"
-    );
-    const elevationPool = matchingCeItems.filter(item =>
-      getCEDrawingType(item.code) === "elevation"
-    );
-
-    // ── Step 4：根據總量平衡動態調整抽題權重 ─────────
-    // 從 uploads 中取出所有 MY_PRACTICE 用於計算平衡
-    // 注意：uploads 需由呼叫端傳入，此函式包裝後使用
-    const { lean } = calcCECategoryBalance([], ceilingPool, elevationPool);
-
-    let ceResult: DrawResult | null = null;
-
-    if (lean === "elevation") {
-      // 立面已練習更少 → 80% 抽立面、20% 抽天花
-      const weightedPool = [
-        ...elevationPool, ...elevationPool, ...elevationPool, ...elevationPool, // x4
-        ...ceilingPool,
-      ];
-      ceResult = drawOneFromItems(weightedPool, practiceCountMap);
-    } else if (lean === "ceiling") {
-      // 天花已練習更少 → 80% 抽天花、20% 抽立面
-      const weightedPool = [
-        ...ceilingPool, ...ceilingPool, ...ceilingPool, ...ceilingPool, // x4
-        ...elevationPool,
-      ];
-      ceResult = drawOneFromItems(weightedPool, practiceCountMap);
-    } else {
-      // balanced → 50/50 隨機
-      const balancedPool = [...ceilingPool, ...elevationPool];
-      ceResult = drawOneFromItems(balancedPool, practiceCountMap);
-    }
-
-    if (ceResult) results.push(ceResult);
-  }
+// Step 6：根據 lean 決定池加權抽題
+let selectedPool: ArchiveItem[];
+if (lean === "ceiling") {
+  // 天花板已練更多 → 80% 抽立面池
+  selectedPool = [
+    ...elevationPool, ...elevationPool, ...elevationPool, ...elevationPool, ...ceilingPool,
+  ];
+} else if (lean === "elevation") {
+  // 立面已練更多 → 80% 抽天花板池
+  selectedPool = [
+    ...ceilingPool, ...ceilingPool, ...ceilingPool, ...ceilingPool, ...elevationPool,
+  ];
+} else {
+  // balanced → 50/50
+  selectedPool = [...ceilingPool, ...elevationPool];
 }
+
+// Step 7：池內均勻隨機抽 1 張（視角純隨機，不加權）
+const ceResult = drawOneFromItems(selectedPool, practiceCountMap);
 ```
 
-#### 1-5：新增對外暴露的平衡統計函式（供 UI 使用）
+#### 4.6.4 池內視角均勻分布驗證
 
-在檔案最底部（`drawExamGroup` 函式結束之後）新增：
+- 確認天花板池（`${q}A客天` / `${q}A餐天` / `${q}A臥天` 等 3 視角）數量相等
+- 確認立面池（`${q}A客立` / `${q}A餐立` / `${q}A臥立` 等 3 視角）數量相等
+- 抽題 20 次以上，觀察各視角出現頻率接近均勻分布
 
-```ts
-/**
- * 供外部 UI 呼叫，取得當前 CE 練習總量平衡狀態
- * @param uploads 所有上傳記錄
- * @param baseCode 平面圖 baseCode（如 "201"），用於限定只計算同題號的 CE
- */
-export function getCurrentCEBalance(
-  uploads: UploadEntry[],
-  baseCode: string
-): CECategoryBalance {
-  const allCeItems = examSections.find(s => s.slug === "ceiling-elevation")?.items ?? [];
-  const matchingCeItems = allCeItems.filter(item => item.code.startsWith(baseCode));
+#### 4.6.5 向後相容
 
-  const ceilingPool = matchingCeItems.filter(item =>
-    getCEDrawingType(item.code) === "ceiling"
-  );
-  const elevationPool = matchingCeItems.filter(item =>
-    getCEDrawingType(item.code) === "elevation"
-  );
+- 既有 `code` 含「天花」字樣（無 `view` 欄位）自動歸入天花板池
+- 既有 `code` 含「客立/餐立/臥立」（無 `view` 欄位）自動歸入立面池
+- Supabase 練習紀錄以 `code` 為主鍵，無需遷移
 
-  return calcCECategoryBalance(uploads, ceilingPool, elevationPool);
-}
-```
+#### 4.6.6 驗證清單
+
+- [ ] 抽 10 次，確認天花板池 / 立面池分配比例符合加權邏輯
+- [ ] 同一池抽 20 次，確認 3 個視角（客/餐/臥）出現頻率接近 1:1:1
+- [ ] `npx tsc --noEmit` 無錯誤
+
+### Step 4.7 — UI 元件更新
+
+#### 4.7.1 src/components/archive-card.tsx
+
+- [ ] 卡片底部顯示 `view` chip（客廳天花 / 餐廳天花 / 主至天花 / 客立 / 餐立 / 臥立）
+- [ ] chip 樣式：`uppercase tracking-widest text-xs` + 暖棕底色 `bg-amber-100 text-amber-800`
+- [ ] 點擊 chip 觸發同視角篩選
+
+#### 4.7.2 src/components/archive-filter.tsx
+
+- [ ] 新增「視角」維度篩選器，選項：全部 / 客廳 / 餐廳 / 主臥
+- [ ] 與「題目」「版本」篩選器並列
+- [ ] 支援多重篩選（視角 + 版本 + 題號）
+
+#### 4.7.3 src/components/exam-draw-section.tsx
+
+- [ ] 面板標題改為「視角抽題（天/立）」
+- [ ] 平衡條改為「天花板 X 張 / 立面 Y 張」二級練習總量（移除視角分佈）
+- [ ] 圓餅圖改為「天花板 vs 立面」二分圓餅（2 切片，不細分 6 視角）
+
+#### 4.7.4 src/components/archive-detail-modal.tsx
+
+- [ ] Modal 頂部顯示「視角」標籤（客廳天花 / 餐廳天花 / ...）
+- [ ] 備考筆記區塊標題改為「備考知識」，副標題顯示「該視角繪圖要點」
+
+#### 4.7.5 src/app/page.tsx
+
+- [ ] CE 區塊標題：「天花板與立面圖（216 張）」
+- [ ] 確認首頁 CE 區塊正常顯示 216 張試卷卡
+
+### Step 4.8 — 視覺驗收（UAT）
+
+- [ ] 4.8.1 `npm run dev` 啟動，確認 `http://localhost:3000` 無 console error
+- [ ] 4.8.2 首頁 CE 區塊標題顯示「216 張」
+- [ ] 4.8.3 archive-card 顯示 view chip（6 種：客天/餐天/臥天/客立/餐立/臥立）
+- [ ] 4.8.4 archive-filter 視角篩選器可切換
+- [ ] 4.8.5 exam-draw-section 平衡條顯示「天花板 X / 立面 Y」
+- [ ] 4.8.6 抽題按鈕 10 次，觀察池分配是否符合加權邏輯
+- [ ] 4.8.7 同一池抽 20 次，驗證 3 個視角均勻分布
+- [ ] 4.8.8 RWD（mobile / tablet / desktop 三斷點皆正常）
+- [ ] 4.8.9 截圖存證
+
+### Step 4.9 — 文檔同步與 Git Commit
+
+- [ ] 4.9.1 執行 `git status` 確認所有變更
+- [ ] 4.9.2 執行 `git add -A`
+- [ ] 4.9.3 執行 `git commit -m "feat: CE 對稱化 — 72 新天花板視角、池級平衡、視角隨機、UI 更新"`
+- [ ] 4.9.4 確認 commit hash
 
 ---
 
-### Step 2：修改 `src/components/exam-draw-section.tsx`
+## 5. 預估工時
 
-#### 2-1. 在現有 import 區塊，確認已有 `calcCECategoryBalance` / `getCurrentCEBalance`
-
-新增 import 行：
-
-```ts
-import {
-  drawExamGroup,
-  countPracticePerItem,
-  DrawGroup,
-  DrawResult,
-  calcCECategoryBalance,
-  getCEDrawingType,
-} from "@/hooks/use-exam-draw";
-```
-
-#### 2-2. 在 `ExamDrawSection` 元件內的 state 宣告處，新增 balance 狀態
-
-```ts
-const [drawnResults, setDrawnResults] = useState<DrawResult[]>([]);
-const [ceBalance, setCeBalance] = useState<CECategoryBalance>({
-  ceilingCount: 0,
-  elevationCount: 0,
-  diff: 0,
-  lean: "balanced",
-});
-```
-
-#### 2-3. 在 `useEffect` 的 fetch 成功區塊內，新增平衡統計更新
-
-找到 fetch 成功的 `.then` 區塊，在 `setUploads(data.entries ?? [])` 之後加上：
-
-```ts
-// 計算 CE 平衡（預設以 201 為基準，待使用者抽題後動態更新）
-const allCeItems = examSections.find(s => s.slug === "ceiling-elevation")?.items ?? [];
-const planItems = examSections.find(s => s.slug === "plan")?.items ?? [];
-
-// 從 uploads 計算所有 CE 的總量平衡
-const ceilingPool = allCeItems.filter(item => getCEDrawingType(item.code) === "ceiling");
-const elevationPool = allCeItems.filter(item => getCEDrawingType(item.code) === "elevation");
-setCeBalance(calcCECategoryBalance(data.entries ?? [], ceilingPool, elevationPool));
-```
-
-#### 2-4. 在 `handleDraw` 函式內，抽題成功後同步更新 balance 狀態
-
-找到 `setDrawnResults(results)` 之後新增：
-
-```ts
-// 同步更新 CE 平衡顯示
-const ceItems = examSections.find(s => s.slug === "ceiling-elevation")?.items ?? [];
-const ceilingPool = ceItems.filter(item => getCEDrawingType(item.code) === "ceiling");
-const elevationPool = ceItems.filter(item => getCEDrawingType(item.code) === "elevation");
-setCeBalance(calcCECategoryBalance(uploads, ceilingPool, elevationPool));
-```
-
-#### 2-5. 在 JSX 的抽題按鈕下方，新增平衡儀 UI
-
-找到抽題按鈕群組（包含兩個 `<button>` 的區塊），在按鈕下方新增：
-
-```tsx
-{/* ── CE 平衡儀 ─────────────────────────── */}
-<div className="ce-balance-indicator" aria-label="天花板與立面圖練習平衡狀態">
-  <div className="balance-bar">
-    <div className="bar-label left">天花 {ceBalance.ceilingCount} 張</div>
-    <div className="bar-track">
-      <div
-        className="bar-fill ceiling"
-        style={{
-          width: `${Math.min(100, (ceBalance.ceilingCount / Math.max(1, ceBalance.ceilingCount + ceBalance.elevationCount)) * 100)}%`
-        }}
-      />
-    </div>
-    <div className="bar-label right">立面 {ceBalance.elevationCount} 張</div>
-  </div>
-  {ceBalance.lean !== "balanced" && (
-    <p className="balance-hint">
-      下一題傾向：{ceBalance.lean === "ceiling" ? "立面圖" : "天花板圖"}
-    </p>
-  )}
-</div>
-```
-
-#### 2-6. 在 `globals.css` 的對應區塊，新增平衡儀樣式
-
-找到或新增 `.ce-balance-indicator` 樣式：
-
-```css
-.ce-balance-indicator {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin-top: var(--space-4);
-}
-
-.balance-bar {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  font-size: 0.75rem;
-}
-
-.bar-track {
-  flex: 1;
-  height: 4px;
-  background: var(--color-surface);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.bar-fill {
-  height: 100%;
-  transition: width 300ms ease-out;
-}
-
-.bar-fill.ceiling {
-  background: var(--color-accent);
-}
-
-.balance-hint {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  margin: 0;
-}
-```
+| 步驟 | 工時 |
+|------|------|
+| Step 4.1 環境備份 | 5 分鐘 |
+| Step 4.2 讀取檔案 | 10 分鐘 |
+| Step 4.3 AGENTS.md | 15 分鐘 |
+| Step 4.4 exam-content.ts | 60 分鐘 |
+| Step 4.5 exam.ts | 10 分鐘 |
+| Step 4.6 use-exam-draw.ts | 30 分鐘 |
+| Step 4.7 UI 元件 | 40 分鐘 |
+| Step 4.8 視覺驗收 | 15 分鐘 |
+| Step 4.9 commit | 5 分鐘 |
+| **總計** | **3 小時 10 分鐘** |
 
 ---
 
-### Step 3：修改 `src/app/globals.css`（若 Step 2-6 樣式未正確疊加）
+## 6. 完成定義（Definition of Done）
 
-確認 `:root` 已有 `color-accent` 定義。若無，在 `:root` 區塊確認：
-
-```css
---color-accent: #876f49;     /* 暖棕品牌色 */
---color-text-muted: #6b6560; /* 次要文字 */
---color-surface: #ffffff;    /* 卡片白 */
-```
+- [ ] AGENTS.md 第六章、附錄 E (#3)、附錄 G 已同步更新
+- [ ] `exam-content.ts` 新增 72 張天花板視角項（客天/餐天/臥天 各 36 張）
+- [ ] `exam-content.ts` 合計 216 張 CE 項目（天花板 108 + 立面 108）
+- [ ] `exam.ts` 新增 `view` 選填欄位
+- [ ] `use-exam-draw.ts` 以池（天花板/立面）為單位計數；池內視角均勻隨機
+- [ ] archive-card、archive-filter、exam-draw-section、archive-detail-modal 已同步更新
+- [ ] `npm run dev` 正常運行 `http://localhost:3000`
+- [ ] 視覺驗收 8/8 通過
+- [ ] 已 commit（含 `feat: CE 對稱化`）
 
 ---
 
-### Step 4：驗證
+## 7. 緊急回退計畫
 
-#### 4-1. TypeScript 編譯檢查
+若中途發生重大問題，執行以下回退：
 
 ```bash
-npx tsc --noEmit
-```
+# 1. 停止 npm run dev
+# 2. 還原所有變更
+git restore src/data/exam-content.ts
+git restore src/types/exam.ts
+git restore src/hooks/use-exam-draw.ts
+git restore src/components/
+git restore AGENTS.md
 
-預期：無 `error TS` 輸出。若有錯誤，檢查：
-- `calcCECategoryBalance` 回傳型別是否與 `CECategoryBalance` 一致
-- `ceBalance` state 初始化值是否完整覆蓋所有欄位
-
-#### 4-2. 邏輯驗證（開發模式 console）
-
-在 `drawExamGroup` 的 `plan-ceiling-elevation` 分支，加上 debug log：
-
-```ts
-// 在 ceResult 計算完成後加
-console.debug("[CE Balance] lean=", lean, "ceilingPool=", ceilingPool.length, "elevationPool=", elevationPool.length);
-```
-
-執行 `npm run dev`，嘗試抽題 3–5 次，觀察 console 輸出是否符合預期：
-- 當「天花」已練習更多時，應該看到 `lean: "elevation"`
-- 當「立面」已練習更多時，應該看到 `lean: "ceiling"`
-
-#### 4-3. 確認無新增 hex 色碼
-
-```bash
-grep -rn "#876f49\|#[0-9a-fA-F]\{6\}" src/hooks/use-exam-draw.ts src/components/exam-draw-section.tsx | grep -v "var(--"
-```
-
-預期：無輸出（所有顏色皆來自 CSS 變數）
-
----
-
-### Step 5：視覺驗收
-
-```bash
+# 3. 確認可運行
 npm run dev
 ```
 
-開啟 http://localhost:3000/#exam-draw 確認：
-
-- [ ] 平衡儀出現在「平面圖試卷」抽題按鈕下方
-- [ ] 平衡儀顯示「天花 N 張 / 立面 M 張」
-- [ ] 進度條視覺化兩者比例
-- [ ] 當不平衡時（diff > 2），顯示「下一題傾向：立面圖」或「下一題傾向：天花板圖」
-- [ ] 抽題 1–2 次後，平衡儀數字隨 uploads 變化
-- [ ] 抽出的 CE 試卷類型分布符合「少的那類優先」邏輯
-
----
-
-## 預期改動檔案清單
-
-| 檔案 | 改動類型 |
-|------|----------|
-| `src/hooks/use-exam-draw.ts` | 新增 3 個函式 + 修改 1 個函式 |
-| `src/components/exam-draw-section.tsx` | 新增 import + state + 平衡儀 UI |
-| `src/app/globals.css` | 新增 `.ce-balance-indicator` 樣式 |
-
----
-
-## 不需改動的檔案（已確認）
-
-| 檔案 | 理由 |
-|------|------|
-| `src/data/exam-content.ts` | 內容鎖定白名單，不觸及 |
-| `src/types/exam.ts` | 型別不變 |
-| `src/lib/upload-constants.ts` | 不需新增常數 |
-| `AGENTS.md` | 此為實作任務，非憲章修訂 |
-
----
-
-## 風險與緩解
-
-| 風險 | 緩解措施 |
-|------|----------|
-| `calcCECategoryBalance` 的 `uploads` 尚未 fetch 完成就呼叫 | `useEffect` 先 fetch，確保資料就緒後再更新 balance |
-| 平衡閾值 ±2 主觀導致體驗不佳 | 預設 ±2，可於 `AGENTS.md` 另增「平衡閾值可配置」條款 |
-| `drawOneFromItems` 遇到 weighted pool 有重複 code 導致加權失準 | weighted pool 直接傳入，`drawOneFromItems` 內部 `practiceCountMap` 仍以原始 code 為 key，OK |
-
----
-
-## 驗收標準
-
-1. 抽題按鈕下方有視覺化平衡儀
-2. 當「立面圖」練習次數落後 ≥ 3 張時，下一題 80% 抽出立面圖
-3. 當「天花」練習次數落後 ≥ 3 張時，下一題 80% 抽出天花板圖
-4. 當差距 ≤ 2 張時，50/50 隨機
-5. TypeScript 編譯無錯誤
-6. 頁面無 console error
+回退後狀態：保留 Step 4.1 的 commit 與既有 144 張試卷結構。
