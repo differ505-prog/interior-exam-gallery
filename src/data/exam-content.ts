@@ -22,7 +22,8 @@ questions.forEach((q) => {
       title: `${q}${v} 天花板配置圖`,
       variants: ["天花配置", "燈具迴路"],
       focus: "天花配置、燈具配置與出風口投影",
-      notes: `${q}題型${v}版天花配置圖，注意燈槽尺寸與迴路配線。`
+      notes: `${q}題型${v}版天花配置圖，注意燈槽尺寸與迴路配線。`,
+      view: "客天",
     });
     // 2. 客廳立面圖
     ceilingElevationItems.push({
@@ -30,7 +31,8 @@ questions.forEach((q) => {
       title: `${q}${v} 客廳立面圖`,
       variants: ["客廳立面", "剖面高度"],
       focus: "電視牆投影、展示櫃尺度與高度標註",
-      notes: `${q}題型${v}版客廳立面配置，注意材質交接與高度標記。`
+      notes: `${q}題型${v}版客廳立面配置，注意材質交接與高度標記。`,
+      view: "客立",
     });
     // 3. 餐廳立面圖
     ceilingElevationItems.push({
@@ -38,7 +40,8 @@ questions.forEach((q) => {
       title: `${q}${v} 餐廳立面圖`,
       variants: ["餐廳立面", "剖面高度"],
       focus: "餐邊櫃比例、出風口投影與主牆造型",
-      notes: `${q}題型${v}版餐廳立面配置，注意拉門收邊與餐几尺度。`
+      notes: `${q}題型${v}版餐廳立面配置，注意拉門收邊與餐几尺度。`,
+      view: "餐立",
     });
     // 4. 主臥立面圖
     ceilingElevationItems.push({
@@ -46,7 +49,40 @@ questions.forEach((q) => {
       title: `${q}${v} 主臥立面圖`,
       variants: ["主臥立面", "剖面高度"],
       focus: "床頭背牆、衣櫃機能收納與化妝桌配置",
-      notes: `${q}題型${v}版主臥室立面配置，細檢化妝鏡高度與抽屜配置。`
+      notes: `${q}題型${v}版主臥室立面配置，細檢化妝鏡高度與抽屜配置。`,
+      view: "臥立",
+    });
+
+    // ── v1.2 新增：天花板視角衍生項（客廳天花 / 餐廳天花 / 主臥天花）──────────────────────
+
+    // 5. 客廳天花（新）
+    ceilingElevationItems.push({
+      code: `${q}${v}客天`,
+      title: `${q}${v} 客廳天花`,
+      variants: ["客廳天花", "燈具迴路"],
+      focus: "客廳天花板配置，含客廳燈具迴路、空調出風口投影與間接照明飾燈配置。",
+      notes: `× 客廳天花燈具迴路未標\n× 客廳出風口尺寸遺漏\n× 客廳天花間接照明取消扣\n× 客廳飾燈位置與立面圖不一致\n× 客廳天花高度標註缺漏`,
+      view: "客天",
+    });
+
+    // 6. 餐廳天花（新）
+    ceilingElevationItems.push({
+      code: `${q}${v}餐天`,
+      title: `${q}${v} 餐廳天花`,
+      variants: ["餐廳天花", "燈具迴路"],
+      focus: "餐廳天花板配置，含餐廳吊燈位置、空調出風口與飾燈投射範圍。",
+      notes: `× 餐廳吊燈位置錯誤\n× 餐廳天花尺寸鏈標註缺漏\n× 餐廳出風口投影與吊燈位置衝突\n× 餐廳天花板飾燈電源迴路未標`,
+      view: "餐天",
+    });
+
+    // 7. 主臥天花（新）
+    ceilingElevationItems.push({
+      code: `${q}${v}臥天`,
+      title: `${q}${v} 主臥天花`,
+      variants: ["主臥天花", "燈具迴路"],
+      focus: "主臥天花板配置，含主臥間接照明鏈條、空調出風口投影與飾燈位置。",
+      notes: `× 主臥間接照明鏈條遺漏\n× 主臥出風口投影位置錯誤\n× 主臥天花飾燈與床頭位置衝突\n× 主臥天花板高度鏈標註缺漏`,
+      view: "臥天",
     });
   });
 });
@@ -63,8 +99,8 @@ export const examSections: ArchiveSection[] = [
   {
     slug: "ceiling-elevation",
     eyebrow: "Ceiling & Elevation Archive",
-    title: "天花板圖與立面圖",
-    summary: "收錄 201-206 各版型（A-F）的天花板配置圖與立面圖。",
+    title: "天花板與立面圖（216 張）",
+    summary: "收錄 201-206 各版型（A-F）的天花板與立面圖，共 216 張（天花板 108 + 立面 108）。",
     visualNote: "您可以點擊上方題號標籤切換檢視，對照天花照明迴路與立面圖櫃體投影設計。",
     items: ceilingElevationItems,
   },

@@ -19,8 +19,8 @@ import { ArchiveItem, UploadEntry } from "@/types/exam";
 /** 試卷組合標題 */
 const GROUP_META: Record<DrawGroup, { title: string; subtitle: string }> = {
   "plan-ceiling-elevation": {
-    title: "平面圖試卷",
-    subtitle: "平面圖＋天花/立面圖（最少練習優先）",
+    title: "平面圖＋CE（天/立）",
+    subtitle: "平面圖＋天花板/立面圖，池級平衡（最少練習優先）",
   },
   "perspective-detail": {
     title: "透視＋大樣圖",
@@ -57,10 +57,10 @@ export function ExamDrawSection() {
           examSections.find((s) => s.slug === "ceiling-elevation")?.items ??
           [];
         const ceilingPool = allCeItems.filter(
-          (item) => getCEDrawingType(item.code) === "ceiling"
+          (item) => getCEDrawingType(item) === "ceiling"
         );
         const elevationPool = allCeItems.filter(
-          (item) => getCEDrawingType(item.code) === "elevation"
+          (item) => getCEDrawingType(item) === "elevation"
         );
         setCeBalance(calcCECategoryBalance(entries, ceilingPool, elevationPool));
       })
@@ -107,10 +107,10 @@ export function ExamDrawSection() {
           );
 
           const ceilingPool = matchingCeItems.filter(
-            (item) => getCEDrawingType(item.code) === "ceiling"
+            (item) => getCEDrawingType(item) === "ceiling"
           );
           const elevationPool = matchingCeItems.filter(
-            (item) => getCEDrawingType(item.code) === "elevation"
+            (item) => getCEDrawingType(item) === "elevation"
           );
 
           // 根據總量平衡，取加權池
@@ -162,10 +162,10 @@ export function ExamDrawSection() {
       const allCeItems =
         examSections.find((s) => s.slug === "ceiling-elevation")?.items ?? [];
       const ceilingPool = allCeItems.filter(
-        (item) => getCEDrawingType(item.code) === "ceiling"
+        (item) => getCEDrawingType(item) === "ceiling"
       );
       const elevationPool = allCeItems.filter(
-        (item) => getCEDrawingType(item.code) === "elevation"
+        (item) => getCEDrawingType(item) === "elevation"
       );
       setCeBalance(calcCECategoryBalance(uploads, ceilingPool, elevationPool));
 

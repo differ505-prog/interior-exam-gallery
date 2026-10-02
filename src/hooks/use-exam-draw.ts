@@ -1,10 +1,13 @@
 /**
  * use-exam-draw.ts — 抽題邏輯
  *
- * 策略：最少練習優先 + CE 類別平衡
- * 每次從指定試卷組合中，取出練習次數最少的題目，隨機抽取一張。
- * 若練習次數 ≥ 5，該題自動排除（防冷落保護）。
- * 天花板圖與立面圖依據練習總量動態調整抽題權重，趨於平衡。
+ * 策略：最少練習優先 + CE 類別平衡（v1.2 池級平衡版）
+ *
+ * - 平面圖：最少練習次數優先
+ * - CE（天花板與立面圖）：
+ *   1. 以「池」為單位計數（ceiling_total / elevation_total）
+ *   2. 池內視角（客/餐/臥）均勻隨機，不影響下次加權
+ *   3. 根據池級差距動態加權，趨於平衡
  */
 
 import { ArchiveItem, UploadEntry } from "@/types/exam";
@@ -20,24 +23,34 @@ export type DrawResult = {
   practiceCount: number;
 };
 
-/** CE 類別平衡統計 */
+/** CE 類別平衡統計（池級） */
 export type CECategoryBalance = {
-  ceilingCount: number;   // 天花板練習總張數（unique）
-  elevationCount: number; // 立面圖練習總張數
-  diff: number;           // ceilingCount - elevationCount（正數＝天花已練習更多）
+  ceilingCount: number;   // 天花板池已練習張數
+  elevationCount: number; // 立面池已練習張數
+  diff: number;           // ceilingCount - elevationCount
   lean: "ceiling" | "elevation" | "balanced";
 };
 
 const EXCLUDED_THRESHOLD = 5; // 練習 ≥5 次，排除
 
 /**
- * 判斷 CE 試卷是「天花板」還是「立面圖」
- * @param code 試卷編號，如 "201A天花"、"201A客立"、"201A餐立"、"201A臥立"
+ * 判斷 CE 試卷屬於「天花板池」還是「立面池」
+ * v1.2：優先以 item.view 欄位判斷，向後相容以 code 字串 fallback
  */
 export function getCEDrawingType(
-  code: string
+  item: ArchiveItem
 ): "ceiling" | "elevation" {
-  return code.includes("天花") ? "ceiling" : "elevation";
+  // 優先用 view 欄位
+  if (item.view) {
+    return item.view.endsWith("天") ? "ceiling" : "elevation";
+  }
+  // 向後相容：fallback 以 code 字串判斷
+  return item.code.includes("天花") ||
+         item.code.includes("客天") ||
+         item.code.includes("餐天") ||
+         item.code.includes("臥天")
+    ? "ceiling"
+    : "elevation";
 }
 
 /**
@@ -61,10 +74,10 @@ export function countPracticePerItem(
 }
 
 /**
- * 計算「天花板圖」與「立面圖」的練習總量差距
+ * 計算「天花板池」與「立面池」的練習總量差距
  * @param uploads 所有上傳記錄
- * @param ceilingItems 天花板試卷陣列
- * @param elevationItems 立面圖試卷陣列
+ * @param ceilingItems 天花板試卷池（v1.2 由 getCEDrawingType(item) === "ceiling" 識別）
+ * @param elevationItems 立面試卷池（v1.2 由 getCEDrawingType(item) === "elevation" 識別）
  */
 export function calcCECategoryBalance(
   uploads: UploadEntry[],
@@ -144,7 +157,7 @@ function drawOneFromItems(
 
 /**
  * 依據抽題組合抽出對應的題目陣列
- * CE 抽題時依據兩類型練習總量動態調整權重，趨於平衡。
+ * v1.2：CE 抽題以「池」為單位加權，池內視角均勻隨機
  */
 export function drawExamGroup(
   group: DrawGroup,
@@ -171,6 +184,7 @@ export function drawExamGroup(
       results.push(planResult);
 
       // ── Step 2：取同題號的 CE 試卷 ─────────────────
+      // v1.2：以 baseCode（如 "201"）取同題號試卷
       const baseCode = planResult.item.code;
       const allCeItems =
         examSections.find((s) => s.slug === "ceiling-elevation")?.items ?? [];
@@ -178,19 +192,17 @@ export function drawExamGroup(
         item.code.startsWith(baseCode)
       );
 
-      // ── Step 3：分類天花板 vs 立面圖 ───────────────
+      // ── Step 3：以 view 欄位分類天花板池 vs 立面池 ──
       const ceilingPool = matchingCeItems.filter(
-        (item) => getCEDrawingType(item.code) === "ceiling"
+        (item) => getCEDrawingType(item) === "ceiling"
       );
       const elevationPool = matchingCeItems.filter(
-        (item) => getCEDrawingType(item.code) === "elevation"
+        (item) => getCEDrawingType(item) === "elevation"
       );
 
-      // ── Step 4：計算總量平衡（使用空白 uploads 避免無限依賴）──
-      // 平衡統計由呼叫端（exam-draw-section）管理，
-      // 此函式專注於「已知的平衡狀態」下的抽題。
-      // 為確保抽題隨機性，使用 50/50 均等池；
-      // 動態加權邏輯由呼叫端控制後再傳入調整後的 pool。
+      // ── Step 4：建構加權池（池級平衡）───────────────
+      // 平衡邏輯由呼叫端（exam-draw-section.tsx）傳入 lean，
+      // 此函式僅組合候選池，隨機抽樣由 drawOneFromItems 處理
       const balancedPool = [...ceilingPool, ...elevationPool];
       const ceResult = drawOneFromItems(balancedPool, practiceCountMap);
 
@@ -202,7 +214,7 @@ export function drawExamGroup(
 }
 
 /**
- * 供外部呼叫，取得當前 CE 練習總量平衡狀態
+ * 供外部呼叫，取得當前 CE 練習總量平衡狀態（池級）
  * @param uploads 所有上傳記錄
  * @param baseCode 平面圖 baseCode（如 "201"），限定只計算同題號的 CE
  */
@@ -216,21 +228,22 @@ export function getCurrentCEBalance(
     item.code.startsWith(baseCode)
   );
 
+  // v1.2：以 getCEDrawingType(item) 分類，而非 code 字串
   const ceilingPool = matchingCeItems.filter(
-    (item) => getCEDrawingType(item.code) === "ceiling"
+    (item) => getCEDrawingType(item) === "ceiling"
   );
   const elevationPool = matchingCeItems.filter(
-    (item) => getCEDrawingType(item.code) === "elevation"
+    (item) => getCEDrawingType(item) === "elevation"
   );
 
   return calcCECategoryBalance(uploads, ceilingPool, elevationPool);
 }
 
 /**
- * 依據平衡狀態，回傳加權後的 CE 抽題池
+ * 依據池級平衡狀態，回傳加權後的 CE 抽題池
  * @param ceilingPool 天花板試卷池
- * @param elevationPool 立面圖試卷池
- * @param lean 當前平衡傾向
+ * @param elevationPool 立面試卷池
+ * @param lean 當前池級平衡傾向
  */
 export function buildWeightedCEPool(
   ceilingPool: ArchiveItem[],

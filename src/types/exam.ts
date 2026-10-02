@@ -1,9 +1,13 @@
+export type CEView = '客天' | '餐天' | '臥天' | '客立' | '餐立' | '臥立';
+
 export type ArchiveItem = {
   code: string;
   title: string;
   variants: string[];
   focus: string;
   notes: string;
+  /** 視角標籤（ceiling-elevation 限定）；影響 UI chip 顯示與篩選，不影響抽題加權 */
+  view?: CEView;
   /** 試卷教學連結（由 Supabase 動態填入，目前 localStorage 階段性支援） */
   links?: string[];
 };

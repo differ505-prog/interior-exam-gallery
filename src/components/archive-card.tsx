@@ -67,6 +67,11 @@ export function ArchiveCard({ item, sectionSlug, uploads = [], examNotes, onDele
         <h3 className="archive-card__title">{item.title}</h3>
         <p className="archive-card__focus">{item.focus}</p>
         <small className="archive-card__notes">{item.notes}</small>
+        {item.view && (
+          <span className="archive-card__view-chip" aria-label={`視角：${item.view}`}>
+            {item.view}
+          </span>
+        )}
       </article>
 
       {isOpen && (

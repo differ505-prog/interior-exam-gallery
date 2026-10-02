@@ -4,7 +4,7 @@
  * 需求圖解析單一事實來源（Single Source of Truth）。
  *
  * 設計背景：
- * 平面圖試卷（plan）的需求圖（requirement）以字母版本（A/B/C/D/E）共用。
+ * 平面圖試卷（plan）的需求圖（requirement）以字母版本（A/B/C/D/E/F）共用。
  * 例如上傳一張「A 需求圖」，會出現在 201A、202A、203A、204A、205A、206A 六張試卷的 Modal 中。
  *
  * 共用 key 命名規則：
@@ -12,6 +12,9 @@
  *
  * 可擴展性：
  * 未來可支援天花板與立面圖（ceiling-elevation-A 等）、大樣圖（detail-217-scale 等）
+ *
+ * v1.2 更新（2026-10-02）：
+ * - ceiling-elevation 的共用需求圖現在影響 7 個視角（天花/客天/餐天/臥天/客立/餐立/臥立）
  */
 
 import { UploadEntry } from "@/types/exam";
@@ -49,7 +52,7 @@ export function parseSharedRequirementKey(sheetCode: string): SharedRequirementK
  * 列出受某個共用需求圖影響的試卷題號。
  *
  * plan：201-206 × [variant]
- * ceiling-elevation：201-206 × [variant] 各四張（天花/客立/餐立/臥立）
+ * ceiling-elevation：201-206 × [variant] 各七張（天花/客天/餐天/臥天/客立/餐立/臥立）
  */
 export function listAffectedSheetCodes(sectionSlug: string, variant: string): string[] {
   const questions = ["201", "202", "203", "204", "205", "206"];
@@ -61,9 +64,12 @@ export function listAffectedSheetCodes(sectionSlug: string, variant: string): st
       codes.push(`${q}${variant}`);
     }
   } else if (sectionSlug === "ceiling-elevation") {
-    // 天花板與立面圖：每個版本 × 4 視角
+    // 天花板與立面圖：每個版本 × 7 視角（v1.2 新增客天/餐天/臥天）
     for (const q of questions) {
       codes.push(`${q}${variant}天花`);
+      codes.push(`${q}${variant}客天`);
+      codes.push(`${q}${variant}餐天`);
+      codes.push(`${q}${variant}臥天`);
       codes.push(`${q}${variant}客立`);
       codes.push(`${q}${variant}餐立`);
       codes.push(`${q}${variant}臥立`);
@@ -135,13 +141,19 @@ export function resolveRequirementImageUrl(
 /**
  * 從 itemCode 抽出字母版本。
  * "201A" → "A"
- * "201A天花" → "A"
+ * "201A客天" → "A"
  * "208乙" → "乙"
  */
 function extractVariant(itemCode: string): string | null {
-  // 匹配倒數第 1 或第 2 個字元是否為字母/中文版本
-  const match = itemCode.match(/([A-Z]|[甲乙丙丁])$/);
-  return match ? match[1] : null;
+  // 匹配緊跟在 3 位數字後的字母（A–Z）
+  // 同時處理：
+  // - 短格式："201A" → 抓到 "A"（後面沒有更多字母）
+  // - 長格式："201A客天" → 抓到 "A"（後面緊接中文字）
+  const match = itemCode.match(/^\d{3}([A-Z])(?![A-Z])/);
+  if (match) return match[1];
+  // 中文版本（透視圖）：匹配倒數第 1 個中文字
+  const zhMatch = itemCode.match(/([甲乙丙丁])$/);
+  return zhMatch ? zhMatch[1] : null;
 }
 
 /**

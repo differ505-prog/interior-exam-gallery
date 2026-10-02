@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { TrendingUp } from "lucide-react";
 
-const TOTAL_EXAMS = 180;
+const TOTAL_EXAMS = 276;
 
 const CATEGORY_TOTAL = [
-  { label: "平面圖", total: 30, key: "plan" },
-  { label: "天花與立面", total: 120, key: "ceiling-elevation" },
+  { label: "平面圖", total: 36, key: "plan" },
+  { label: "天花與立面", total: 216, key: "ceiling-elevation" },
   { label: "透視圖", total: 18, key: "perspective" },
   { label: "大樣圖", total: 12, key: "detail" },
 ] as const;
@@ -39,13 +39,13 @@ function bucketUploads(uploads: RawUpload[]) {
       buckets.perspective.add(code);
       return;
     }
-    // 天花板與立面圖：201–206 + A–E + (天花/客立/餐立/臥立)
-    if (/^(201|202|203|204|205|206)[a-e](天花|客立|餐立|臥立)$/i.test(code)) {
+    // 天花板與立面圖：201–206 + A–F + (天花/客天/餐天/臥天/客立/餐立/臥立)
+    if (/^(201|202|203|204|205|206)[a-f](天花|客天|餐天|臥天|客立|餐立|臥立)$/i.test(code)) {
       buckets["ceiling-elevation"].add(code);
       return;
     }
-    // 平面圖 201–206 + A–E（純英文字母版本）
-    if (/^(201|202|203|204|205|206)[a-e]$/i.test(code)) {
+    // 平面圖 201–206 + A–F（純英文字母版本）
+    if (/^(201|202|203|204|205|206)[a-f]$/i.test(code)) {
       buckets.plan.add(code);
       return;
     }
