@@ -6,14 +6,18 @@ import { SurfacePanel } from "@/components/ui/primitives";
 import { examSections } from "@/data/exam-content";
 import {
   drawExamGroup,
-  countPracticePerItem,
   DrawGroup,
-  DrawResult,
   calcCECategoryBalance,
   getCEDrawingType,
   CECategoryBalance,
   buildWeightedCEPool,
+  calcPerspectiveBalance,
+  PerspectiveBalance,
+  ExtendedDrawResult,
+  DIRECTION_VP_MAP,
+  PerspectiveDirection,
 } from "@/hooks/use-exam-draw";
+import { countPracticePerItem } from "@/lib/practice-stats";
 import { ArchiveItem, UploadEntry } from "@/types/exam";
 
 /** 試卷組合標題 */
@@ -30,7 +34,7 @@ const GROUP_META: Record<DrawGroup, { title: string; subtitle: string }> = {
 
 export function ExamDrawSection() {
   const [uploads, setUploads] = useState<UploadEntry[]>([]);
-  const [drawnResults, setDrawnResults] = useState<DrawResult[]>([]);
+  const [drawnResults, setDrawnResults] = useState<ExtendedDrawResult[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ceBalance, setCeBalance] = useState<CECategoryBalance>({
@@ -38,6 +42,14 @@ export function ExamDrawSection() {
     elevationCount: 0,
     diff: 0,
     lean: "balanced",
+  });
+  const [perspBalance, setPerspBalance] = useState<PerspectiveBalance>({
+    directionCounts: { 甲: 0, 乙: 0, 丙: 0 },
+    totalCount: 0,
+    directionShares: { 甲: 0, 乙: 0, 丙: 0 },
+    directionDeficits: { 甲: 0, 乙: 0, 丙: 0 },
+    lean: "balanced",
+    completedDirections: [],
   });
   const fetchedRef = useRef(false);
 
@@ -63,6 +75,11 @@ export function ExamDrawSection() {
           (item) => getCEDrawingType(item) === "elevation"
         );
         setCeBalance(calcCECategoryBalance(entries, ceilingPool, elevationPool));
+
+        // 計算透視圖方向平衡
+        const perspItems =
+          examSections.find((s) => s.slug === "perspective")?.items ?? [];
+        setPerspBalance(calcPerspectiveBalance(perspItems, entries));
       })
       .catch(() => {
         // fetch 失敗：降級為空陣列，不中斷抽題
@@ -72,6 +89,14 @@ export function ExamDrawSection() {
           elevationCount: 0,
           diff: 0,
           lean: "balanced",
+        });
+        setPerspBalance({
+          directionCounts: { 甲: 0, 乙: 0, 丙: 0 },
+          totalCount: 0,
+          directionShares: { 甲: 0, 乙: 0, 丙: 0 },
+          directionDeficits: { 甲: 0, 乙: 0, 丙: 0 },
+          lean: "balanced",
+          completedDirections: [],
         });
       });
   }, []);
@@ -85,7 +110,7 @@ export function ExamDrawSection() {
       }
       const practiceCountMap = countPracticePerItem(allItems, uploads);
 
-      let results: DrawResult[] = [];
+      let results: ExtendedDrawResult[] = [];
 
       if (group === "plan-ceiling-elevation") {
         // ── 自訂 CE 平衡抽題邏輯 ──────────────────────
@@ -137,12 +162,12 @@ export function ExamDrawSection() {
             return {
               item: least[Math.floor(Math.random() * least.length)],
               practiceCount: minCount,
-            } as DrawResult;
+            } as ExtendedDrawResult;
           })();
 
           results = ceResult
-            ? [planResult, ceResult]
-            : [planResult];
+            ? [planResult as ExtendedDrawResult, ceResult]
+            : [planResult as ExtendedDrawResult];
         }
       } else {
         results = drawExamGroup(group, practiceCountMap);
@@ -158,7 +183,7 @@ export function ExamDrawSection() {
       setDrawnResults(results);
       setShowModal(true);
 
-      // ── 同步更新 CE 平衡顯示 ──────────────────────
+      // ── 同步更新 CE + 透視圖平衡顯示 ─────────────
       const allCeItems =
         examSections.find((s) => s.slug === "ceiling-elevation")?.items ?? [];
       const ceilingPool = allCeItems.filter(
@@ -169,22 +194,28 @@ export function ExamDrawSection() {
       );
       setCeBalance(calcCECategoryBalance(uploads, ceilingPool, elevationPool));
 
+      const perspItems =
+        examSections.find((s) => s.slug === "perspective")?.items ?? [];
+      setPerspBalance(calcPerspectiveBalance(perspItems, uploads));
+
       if (process.env.NODE_ENV === "development") {
         // eslint-disable-next-line no-console
         console.debug("[ExamDrawSection] 抽出試卷", {
           results: results.map((r) => ({
             code: r.item.code,
             count: r.practiceCount,
+            reason: r.directionReason,
           })),
           group,
           ceBalance: ceBalance.lean,
+          perspBalance: perspBalance.lean,
         });
       }
     },
-    [uploads, ceBalance]
+    [uploads, ceBalance, perspBalance]
   );
 
-  // 計算平衡儀百分比
+  // 計算 CE 平衡儀百分比
   const total = ceBalance.ceilingCount + ceBalance.elevationCount;
   const ceilingPct = total > 0 ? (ceBalance.ceilingCount / total) * 100 : 50;
 
@@ -203,13 +234,24 @@ export function ExamDrawSection() {
         </div>
 
         {/* CE 平衡儀 */}
-        <div className="ce-balance-indicator" aria-label="天花板與立面圖練習平衡狀態">
+        <div
+          className="ce-balance-indicator"
+          aria-label="天花板與立面圖練習平衡狀態"
+        >
           <div className="balance-bar">
             <span className="bar-label">
               <span className="bar-label__type">天花</span>
-              <span className="bar-label__count">{ceBalance.ceilingCount}</span>
+              <span className="bar-label__count">
+                {ceBalance.ceilingCount}
+              </span>
             </span>
-            <div className="bar-track" role="progressbar" aria-valuenow={Math.round(ceilingPct)} aria-valuemin={0} aria-valuemax={100}>
+            <div
+              className="bar-track"
+              role="progressbar"
+              aria-valuenow={Math.round(ceilingPct)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            >
               <div
                 className="bar-fill bar-fill--ceiling"
                 style={{ width: `${ceilingPct}%` }}
@@ -217,7 +259,9 @@ export function ExamDrawSection() {
             </div>
             <span className="bar-label">
               <span className="bar-label__type">立面</span>
-              <span className="bar-label__count">{ceBalance.elevationCount}</span>
+              <span className="bar-label__count">
+                {ceBalance.elevationCount}
+              </span>
             </span>
           </div>
           {ceBalance.lean !== "balanced" && (
@@ -228,8 +272,161 @@ export function ExamDrawSection() {
           )}
         </div>
 
+        {/* 透視圖平衡儀（v2 新增） */}
+        <div
+          aria-label="透視圖方向練習平衡狀態"
+          style={{ marginTop: "var(--space-5)" }}
+        >
+          <p
+            style={{
+              fontSize: "0.75rem",
+              color: "var(--color-text-muted)",
+              marginBottom: "var(--space-3)",
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+            }}
+          >
+            透視圖方向
+          </p>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              gap: "var(--space-3)",
+            }}
+          >
+            {(["甲", "乙", "丙"] as const).map((dir) => {
+              const count = perspBalance.directionCounts[dir];
+              const target = Math.round(perspBalance.totalCount / 3);
+              const isLean = perspBalance.lean === dir;
+              const isCompleted =
+                perspBalance.completedDirections.includes(dir);
+              const vpType = dir === "甲" ? "一消點" : "二消點";
+
+              return (
+                <div
+                  key={dir}
+                  style={{
+                    padding: "var(--space-4)",
+                    borderRadius: "12px",
+                    background: isLean
+                      ? "color-mix(in srgb, var(--color-accent) 12%, transparent)"
+                      : "var(--color-surface)",
+                    border: isLean
+                      ? "1px solid var(--color-accent)"
+                      : "1px solid var(--color-border)",
+                    transition: "all 200ms ease-out",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "var(--space-2)",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: "1.1rem",
+                        fontWeight: 700,
+                        color: "var(--color-accent)",
+                      }}
+                    >
+                      {dir}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "0.65rem",
+                        padding: "2px 8px",
+                        borderRadius: "999px",
+                        background: "color-mix(in srgb, var(--color-accent) 12%, transparent)",
+                        color: "var(--color-accent)",
+                        fontWeight: 500,
+                      }}
+                    >
+                      {vpType}
+                    </span>
+                  </div>
+                  <p
+                    style={{
+                      fontSize: "1.5rem",
+                      fontWeight: 800,
+                      margin: "0 0 4px 0",
+                      color: "var(--color-text)",
+                      lineHeight: 1,
+                    }}
+                  >
+                    {count}
+                    <span
+                      style={{
+                        fontSize: "0.75rem",
+                        fontWeight: 400,
+                        color: "var(--color-text-muted)",
+                        marginLeft: "4px",
+                      }}
+                    >
+                      張
+                    </span>
+                  </p>
+                  {isLean && !isCompleted && (
+                    <p
+                      style={{
+                        fontSize: "0.7rem",
+                        color: "var(--color-accent)",
+                        margin: 0,
+                        fontWeight: 500,
+                      }}
+                    >
+                      → 下一題
+                    </p>
+                  )}
+                  {isCompleted && (
+                    <p
+                      style={{
+                        fontSize: "0.7rem",
+                        color: "var(--color-text-muted)",
+                        margin: 0,
+                      }}
+                    >
+                      ✓ 已完成
+                    </p>
+                  )}
+                  {!isLean && !isCompleted && perspBalance.totalCount > 0 && (
+                    <p
+                      style={{
+                        fontSize: "0.7rem",
+                        color: "var(--color-text-muted)",
+                        margin: 0,
+                      }}
+                    >
+                      目標 {target} 張
+                    </p>
+                  )}
+                  {!isLean && !isCompleted && perspBalance.totalCount === 0 && (
+                    <p
+                      style={{
+                        fontSize: "0.7rem",
+                        color: "var(--color-text-muted)",
+                        margin: 0,
+                      }}
+                    >
+                      尚未開始
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
         {/* 抽題按鈕 */}
-        <div className="exam-draw-buttons" role="group" aria-label="抽題組合">
+        <div
+          className="exam-draw-buttons"
+          role="group"
+          aria-label="抽題組合"
+          style={{ marginTop: "var(--space-6)" }}
+        >
           {(Object.keys(GROUP_META) as DrawGroup[]).map((group) => {
             const meta = GROUP_META[group];
             return (
@@ -251,7 +448,7 @@ export function ExamDrawSection() {
         </div>
       </SurfacePanel>
 
-      {/* 抽出結果 Modal (考試抽題專用，不破梗) */}
+      {/* 抽出結果 Modal */}
       {showModal && drawnResults.length > 0 && (
         <div
           className="modal-overlay"
@@ -291,67 +488,115 @@ export function ExamDrawSection() {
                     key={idx}
                     className="draw-result-card"
                     style={{
-                      padding: "16px",
+                      padding: "var(--space-5)",
                       border: "1px solid var(--color-border)",
                       borderRadius: "12px",
                       background: "var(--color-theme)",
                     }}
                   >
+                    {/* 題號列 + 消點 chip */}
                     <div
                       style={{
                         display: "flex",
                         justifyContent: "space-between",
-                        alignItems: "flex-start",
-                        marginBottom: "8px",
+                        alignItems: "center",
+                        marginBottom: "var(--space-3)",
                       }}
                     >
+                      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+                        <span
+                          style={{
+                            fontSize: "1.3rem",
+                            fontWeight: 700,
+                            color: "var(--color-accent)",
+                          }}
+                        >
+                          {res.item.code}
+                        </span>
+                        {/* 消點 chip（透視圖限定） */}
+                        {res.item.code.endsWith("甲") && (
+                          <span
+                            style={{
+                              fontSize: "0.65rem",
+                              padding: "2px 8px",
+                              borderRadius: "999px",
+                              background: "color-mix(in srgb, var(--color-accent) 12%, transparent)",
+                              color: "var(--color-accent)",
+                              fontWeight: 500,
+                            }}
+                          >
+                            一消點
+                          </span>
+                        )}
+                        {(res.item.code.endsWith("乙") || res.item.code.endsWith("丙")) && (
+                          <span
+                            style={{
+                              fontSize: "0.65rem",
+                              padding: "2px 8px",
+                              borderRadius: "999px",
+                              background: "color-mix(in srgb, var(--color-accent) 12%, transparent)",
+                              color: "var(--color-accent)",
+                              fontWeight: 500,
+                            }}
+                          >
+                            二消點
+                          </span>
+                        )}
+                      </div>
                       <span
-                        className="draw-result-code"
                         style={{
-                          fontSize: "1.2rem",
-                          fontWeight: 600,
-                          color: "var(--color-accent)",
-                        }}
-                      >
-                        {res.item.code}
-                      </span>
-                      <span
-                        className="draw-result-meta"
-                        style={{
-                          fontSize: "0.85rem",
+                          fontSize: "0.8rem",
                           color: "var(--color-text-muted)",
                         }}
                       >
-                        目前練習次數：{res.practiceCount} 次
+                        {res.practiceCount} 次
                       </span>
                     </div>
+
                     <h3
-                      className="draw-result-title"
                       style={{
-                        fontSize: "1.1rem",
-                        margin: "0 0 8px 0",
+                        fontSize: "1.05rem",
+                        margin: "0 0 var(--space-2) 0",
                         color: "var(--color-text)",
+                        fontWeight: 600,
                       }}
                     >
                       {res.item.title}
                     </h3>
+
                     <p
-                      className="draw-result-focus"
                       style={{
                         margin: 0,
-                        fontSize: "0.95rem",
+                        fontSize: "0.875rem",
                         color: "var(--color-text-muted)",
-                        lineHeight: 1.5,
+                        lineHeight: 1.6,
                       }}
                     >
-                      重點提示：{res.item.focus}
+                      {res.item.focus}
                     </p>
+
+                    {/* 理由說明列（v2 新增） */}
+                    {res.directionReason && (
+                      <p
+                        style={{
+                          marginTop: "var(--space-3)",
+                          padding: "8px 12px",
+                          borderRadius: "8px",
+                          background: "color-mix(in srgb, var(--color-accent) 8%, transparent)",
+                          fontSize: "0.8rem",
+                          color: "var(--color-text-muted)",
+                          fontStyle: "italic",
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        💡 {res.directionReason}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
 
               <div
-                className="draw-result-actions"
                 style={{
                   padding: "0 24px 24px",
                   display: "flex",
@@ -359,16 +604,25 @@ export function ExamDrawSection() {
                 }}
               >
                 <button
-                  className="modal-cta-btn"
                   onClick={() => setShowModal(false)}
                   style={{
                     width: "100%",
-                    padding: "12px",
+                    padding: "14px",
                     background: "var(--color-accent)",
-                    color: "white",
-                    borderRadius: "8px",
-                    fontWeight: 600,
+                    color: "#fff",
+                    borderRadius: "10px",
+                    fontWeight: 700,
+                    fontSize: "1rem",
+                    border: "none",
+                    cursor: "pointer",
+                    transition: "opacity 200ms ease-out",
                   }}
+                  onMouseEnter={(e) =>
+                    ((e.target as HTMLButtonElement).style.opacity = "0.88")
+                  }
+                  onMouseLeave={(e) =>
+                    ((e.target as HTMLButtonElement).style.opacity = "1")
+                  }
                 >
                   開始練習
                 </button>

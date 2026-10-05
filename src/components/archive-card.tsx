@@ -53,7 +53,24 @@ export function ArchiveCard({ item, sectionSlug, uploads = [], examNotes, onDele
         style={{ cursor: "pointer" }}
       >
         <div className="archive-card-top">
-          <p className="archive-card__code">{item.code}</p>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <p className="archive-card__code">{item.code}</p>
+            {/^[0-9]{3}[甲乙丙]$/.test(item.code) && (
+              <span
+                style={{
+                  fontSize: "0.6rem",
+                  padding: "1px 6px",
+                  borderRadius: "999px",
+                  background: "color-mix(in srgb, var(--color-accent) 10%, transparent)",
+                  color: "var(--color-accent)",
+                  fontWeight: 500,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {item.code.endsWith("甲") ? "一消點" : "二消點"}
+              </span>
+            )}
+          </div>
           <div className="archive-card-top-right">
             {hasUpload && (
               <span className="archive-card__upload-badge" aria-hidden="true">
