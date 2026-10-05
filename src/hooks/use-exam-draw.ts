@@ -18,7 +18,6 @@
 import { ArchiveItem } from "@/types/exam";
 import { UPLOAD_KINDS } from "@/lib/upload-constants";
 import { examSections } from "@/data/exam-content";
-import { countPracticePerItem } from "@/lib/practice-stats";
 
 /** 試卷組合區塊 slug */
 export type DrawGroup = "plan-ceiling-elevation" | "perspective-detail";

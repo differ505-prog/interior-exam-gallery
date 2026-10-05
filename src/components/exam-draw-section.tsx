@@ -14,8 +14,6 @@ import {
   calcPerspectiveBalance,
   PerspectiveBalance,
   ExtendedDrawResult,
-  DIRECTION_VP_MAP,
-  PerspectiveDirection,
 } from "@/hooks/use-exam-draw";
 import { countPracticePerItem } from "@/lib/practice-stats";
 import { ArchiveItem, UploadEntry } from "@/types/exam";
@@ -36,7 +34,7 @@ export function ExamDrawSection() {
   const [uploads, setUploads] = useState<UploadEntry[]>([]);
   const [drawnResults, setDrawnResults] = useState<ExtendedDrawResult[]>([]);
   const [showModal, setShowModal] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
   const [ceBalance, setCeBalance] = useState<CECategoryBalance>({
     ceilingCount: 0,
     elevationCount: 0,
@@ -114,8 +112,6 @@ export function ExamDrawSection() {
 
       if (group === "plan-ceiling-elevation") {
         // ── 自訂 CE 平衡抽題邏輯 ──────────────────────
-        const planItems =
-          examSections.find((s) => s.slug === "plan")?.items ?? [];
         const planResult = drawExamGroup(
           "plan-ceiling-elevation",
           practiceCountMap

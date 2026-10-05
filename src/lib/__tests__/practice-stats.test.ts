@@ -12,10 +12,9 @@ import {
   VP_TARGET_RATIO,
   extractPerspectiveDirection,
   calcPerspectiveBalance,
-  PerspectiveDirection,
 } from "@/hooks/use-exam-draw";
 import { countPracticePerItem } from "@/lib/practice-stats";
-import { ArchiveItem } from "@/types/exam";
+import { ArchiveItem, UploadEntry } from "@/types/exam";
 import { UPLOAD_KINDS } from "@/lib/upload-constants";
 
 describe("透視圖方向權重不變式（不得破壞）", () => {
@@ -73,7 +72,7 @@ describe("countPracticePerItem — 圖片張數統計", () => {
         teacherComment: "",
         weaknesses: [],
         createdAt: "",
-      } as any,
+      } as UploadEntry,
     ];
     const result = countPracticePerItem(items, uploads);
     expect(result["208甲"]).toBe(2);
@@ -97,7 +96,7 @@ describe("countPracticePerItem — 圖片張數統計", () => {
         teacherComment: "",
         weaknesses: [],
         createdAt: "",
-      } as any,
+      } as UploadEntry,
     ];
     const result = countPracticePerItem(items, uploads);
     expect(result["207乙"]).toBe(1);
@@ -139,7 +138,7 @@ describe("calcPerspectiveBalance — 方向平衡計算", () => {
         teacherComment: "",
         weaknesses: [],
         createdAt: "",
-      } as any,
+      } as UploadEntry,
     ];
     const balance = calcPerspectiveBalance(items, uploads);
     expect(balance.lean).not.toBe("甲");
@@ -169,7 +168,7 @@ describe("calcPerspectiveBalance — 方向平衡計算", () => {
         teacherComment: "",
         weaknesses: [],
         createdAt: "",
-      } as any,
+      } as UploadEntry,
     ];
     const balance = calcPerspectiveBalance(items, uploads);
     expect(balance.completedDirections).toContain("甲");
