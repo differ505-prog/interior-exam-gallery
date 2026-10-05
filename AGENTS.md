@@ -7,7 +7,7 @@
 ---
 
 ## 憲法生效日期：2026-07-13
-> 版本：v1.3（v1.1 整合 Gemini 分享內容，v1.2 整合 CE 對稱化，v1.3 整合透視圖方向感知抽題）
+> 版本：v1.4（v1.1 整合 Gemini 分享內容，v1.2 整合 CE 對稱化，v1.3 整合透視圖方向感知抽題，v1.4 整合試卷閱讀器）
 
 ---
 
@@ -483,3 +483,50 @@ grep -rEn "font-size: [0-9]+\.[5-9]rem|font-size: [1-9][0-9]rem" src/
 - `countPracticePerItem` 對同題多圖回傳圖片張數
 - `calcPerspectiveBalance` 三向皆 0 時回傳 balanced
 - 甲向 30 張以上時 `completedDirections` 含 "甲"
+
+---
+
+# 附錄 I：試卷閱讀器（Sheet Reader）更新（v1.4）
+
+## 更新日期
+
+2026-10-05
+
+## 核心變更
+
+試卷閱讀從「兩欄並排正反面圖」升級為「分頁閱讀器」：
+- 單一文件物件（SheetDoc）取代「兩個 URL 欄位」
+- 滿寬 912px（舊 446px 的 2.05 倍）+ object-fit: contain
+- 分頁導航：頁碼指示器 + 縮圖列 + 鍵盤左右鍵
+- 自動裁邊 build script：有效解析度再提升 1.15 倍
+- 方向框標註（208 透視圖專用）
+
+## 新增檔案
+
+| 檔案 | 說明 |
+|------|------|
+| `src/types/sheet.ts` | SheetDoc / SheetPage 型別定義 |
+| `src/lib/sheet-reader.ts` | URL 解析邏輯（單一事實來源） |
+| `src/components/sheet-reader.tsx` | 試卷閱讀器元件 |
+| `src/data/perspective-markers.ts` | 208 方向框標註資料 |
+| `scripts/trim-sheets.mjs` | 自動裁邊 build script |
+
+## 受影響檔案
+
+| 檔案 | 變更 |
+|------|------|
+| `src/components/archive-detail-modal.tsx` | 題目區改用 SheetReader，整合 buildSheetDoc |
+| `src/app/globals.css` | 新增 SheetReader / 方向標註樣式 |
+| `src/lib/perspective-sheets.ts` | 重寫為純邏輯層（不含 UI） |
+
+## 設計權重評估
+
+| 軸 | 分數 | 理由 |
+|---|---|---|
+| 資訊準確度 | 10 | 單一事實來源，頁面語意正確 |
+| 圖面可讀性 | 9.5 | 2.05× 放大 × 1.15× 裁邊 = 2.35× 有效解析度 |
+| 資訊層級 | 9.5 | 文件 → 頁 → 區域 三層，Stripe 網格成立 |
+| RWD 穩健度 | 9 | 768px 單欄，縮圖列橫向捲動（§12 RWD 紀律）|
+| 維護成本 | 7 | 新增 viewer 元件 + build script，但複用既有 thumb/lightbox |
+| 跨 section 一致性 | 8 | 抽象成通用 SheetReader，plan/detail 可選用 |
+| **加權總分** | **9.1** | |
