@@ -18,6 +18,8 @@ import {
   listAffectedSheetCodes,
   isSharedRequirement,
 } from "@/lib/requirement-resolver";
+import { SheetReader } from "@/components/sheet-reader";
+import { buildSheetDoc, getSectionCoverage } from "@/lib/sheet-reader";
 
 // ─── 配置驅動：題目區渲染參數 ───────────────────────────────
 type LayoutVariant = "two-col" | "one-col";
@@ -330,6 +332,16 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
   // 最終使用的 URL：有 override 用 override URL；否則用靜態 URL
   const finalRequirementUrl = isRequirementOverride ? referenceImageUrl : staticRequirementUrl;
 
+  // ─── SheetDoc：用於 SheetReader 題目區呈現 ───────────────
+  const sheetDoc = useMemo(
+    () => buildSheetDoc(item, sectionSlug, finalRequirementUrl),
+    [item, sectionSlug, finalRequirementUrl],
+  );
+
+  const sheetDocUrls = useMemo(() => {
+    return sheetDoc?.pages.map((p) => p.url) ?? [];
+  }, [sheetDoc]);
+
   const handlePrefill = (kindVal: "我的練習圖" | "他人作品參考" | "標記試卷") => {
     let uploadCategory = "平面圖 201-206";
     if (sectionSlug === "ceiling-elevation") uploadCategory = "天花板圖 / 立面圖";
@@ -343,9 +355,7 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
 
   // Build the list of all zoomable images in order (展開每筆的 imageUrls)
   const zoomableImages = useMemo(() => {
-    const urls: string[] = [];
-    if (questionImageUrl) urls.push(questionImageUrl);
-    if (referenceImageUrl) urls.push(referenceImageUrl);
+    const urls: string[] = [...sheetDocUrls];
     for (const u of uploads) {
       if (u.imageUrls && u.imageUrls.length > 0) {
         urls.push(...u.imageUrls);
@@ -354,7 +364,7 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
       }
     }
     return urls;
-  }, [questionImageUrl, referenceImageUrl, uploads]);
+  }, [sheetDocUrls, uploads]);
 
   // 將上傳列表攤平為「每張圖一筆」，並保留指向該筆 UploadEntry 的引用（供多圖徽章/刪除用）
   const uploadImageUnits = useMemo(() => {
@@ -426,57 +436,25 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
           {/* Question Reference Area */}
           <section className="modal-section">
             <h3 className="section-title">{questionConfig.title}</h3>
-            {questionConfig.layout === "two-col" && questionImageUrl && referenceImageUrl ? (
-              <div className="question-grid">
-                <div className="question-image-box">
-                  <div className="question-image-header">
-                    <h4>{sectionSlug === "detail" ? "題目圖" : sectionSlug === "plan" ? "題目圖" : "平面配置參考圖"}</h4>
-                    <button className="zoom-btn" onClick={() => setActiveImage(questionImageUrl)} aria-label={sectionSlug === "detail" ? "放大題目圖" : sectionSlug === "plan" ? "放大題目圖" : "放大平面圖"}>
-                      <ZoomIn size={16} /> <span>放大</span>
-                    </button>
-                  </div>
-                  <div className="question-image-container" onClick={() => setActiveImage(questionImageUrl)}>
-                    <SafeImage src={questionImageUrl} alt={sectionSlug === "detail" ? `${item.code} 題目圖` : sectionSlug === "plan" ? `${item.code} 題目圖` : `${item.code} 平面配置參考圖`} aspectRatio="4 / 3" />
-                  </div>
-                </div>
-                <div className="question-image-box">
-                  <div className="question-image-header">
-                    <h4>{sectionSlug === "detail" ? "官方答案圖" : sectionSlug === "plan" ? "需求圖" : "立面配置參考圖"}</h4>
-                    {isRequirementOverride && (
-                      <span className="shared-req-badge">共用需求圖（已上傳）</span>
-                    )}
-                    <button className="zoom-btn" onClick={() => setActiveImage(finalRequirementUrl)} aria-label={sectionSlug === "detail" ? "放大官方答案圖" : sectionSlug === "plan" ? "放大需求圖" : "放大立面圖"}>
-                      <ZoomIn size={16} /> <span>放大</span>
-                    </button>
-                  </div>
-                  <div className="question-image-container" onClick={() => setActiveImage(finalRequirementUrl)}>
-                    <SafeImage src={finalRequirementUrl} alt={sectionSlug === "detail" ? `${item.code} 官方答案圖` : sectionSlug === "plan" ? `${item.code} 需求圖` : `${item.code} 立面配置參考圖`} aspectRatio="4 / 3" />
-                  </div>
-                </div>
-              </div>
-            ) : questionConfig.layout === "two-col" && questionImageUrl ? (
-              <div className="question-single">
-                <div className="question-image-box">
-                  <div className="question-image-header">
-                    <h4>大樣圖參考</h4>
-                    <button className="zoom-btn" onClick={() => setActiveImage(questionImageUrl)} aria-label="放大參考圖">
-                      <ZoomIn size={16} /> <span>放大</span>
-                    </button>
-                  </div>
-                  <div className="question-image-container" onClick={() => setActiveImage(questionImageUrl)}>
-                    <SafeImage src={questionImageUrl} alt={`${item.code} 大樣圖參考`} aspectRatio="4 / 3" />
-                  </div>
-                </div>
-              </div>
+
+            {/* ── SheetDocRenderer：試卷閱讀器 Wrapper ── */}
+            {sheetDoc ? (
+              <SheetReader
+                doc={sheetDoc}
+                onOpenLightbox={(url) => setActiveImage(url)}
+                coverage={`${getSectionCoverage(sectionSlug).description} 共 ${getSectionCoverage(sectionSlug).total} 題 · 已收錄 ${getSectionCoverage(sectionSlug).archived} 題`}
+              />
             ) : (
-              <div className="question-placeholder">
-                <div className="placeholder-content">
-                  <FileImage className="placeholder-icon" size={48} />
-                  <h4>題目圖紙建置中</h4>
-                  <p>
-                    此題目的題目參考圖正在編校上傳中。
-                  </p>
-                </div>
+              <div className="sheet-reader--empty">
+                <p className="sheet-reader--empty__code">{item.code}</p>
+                <p className="sheet-reader--empty__msg">
+                  {sectionSlug === "perspective"
+                    ? `${item.code.slice(0, 3)} 題的題目卷正反面尚未收錄，掃描建檔後會自動顯示。`
+                    : "此題目的題目參考圖正在編校上傳中。"}
+                </p>
+                <p className="sheet-reader--empty__coverage">
+                  {getSectionCoverage(sectionSlug).description} 共 {getSectionCoverage(sectionSlug).total} 題 · 已收錄 {getSectionCoverage(sectionSlug).archived} 題
+                </p>
               </div>
             )}
           </section>

@@ -5139,4 +5139,421 @@ main {
     gap: var(--space-3);
   }
 }
+
+/* =========================================================================
+   Sheet Reader — 試卷閱讀器
+   ========================================================================= */
+
+/* 誠實空狀態 */
+.sheet-reader--empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-8) var(--space-6);
+  background: var(--panel-soft);
+  border: 2px dashed var(--line-strong);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.sheet-reader--empty__code {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 0;
+}
+
+.sheet-reader--empty__msg {
+  font-size: 0.9rem;
+  color: var(--muted);
+  max-width: 40ch;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.sheet-reader--empty__coverage {
+  font-size: 0.75rem;
+  color: var(--muted);
+  background: var(--accent-soft);
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  margin: 0;
+}
+
+/* 閱讀器本體 */
+.sheet-reader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+/* 頁碼指示器 */
+.sheet-reader__page-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.82rem;
+  color: var(--muted);
+  justify-content: center;
+}
+
+.sheet-reader__page-current {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.sheet-reader__page-sep {
+  color: var(--line-strong);
+}
+
+.sheet-reader__page-total {
+  color: var(--muted);
+}
+
+.sheet-reader__page-label {
+  margin-left: var(--space-2);
+  padding: 2px 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: var(--radius-pill);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* 主圖區 */
+.sheet-reader__main {
+  position: relative;
+  cursor: zoom-in;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--bg-deep);
+  /* 滿寬 912px，現行 446px 的 2.05 倍 */
+  max-width: 912px;
+  margin: 0 auto;
+  width: 100%;
+  transition: box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.sheet-reader__main:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.sheet-reader__main:active {
+  cursor: grabbing;
+}
+
+.sheet-reader__img {
+  width: 100%;
+  height: auto;
+  display: block;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+/* 縮放尺寸 */
+.sheet-reader__img--fit {
+  object-fit: contain;
+  max-height: 70vh;
+}
+
+.sheet-reader__img--medium {
+  width: 1400px;
+  max-width: none;
+  margin: 0 auto;
+}
+
+.sheet-reader__img--large {
+  width: 2200px;
+  max-width: none;
+  margin: 0 auto;
+}
+
+/* 比對模式下並排顯示 */
+.sheet-reader--compare .sheet-reader__main {
+  max-width: none;
+}
+
+.sheet-reader--compare .sheet-reader__img {
+  object-fit: contain;
+  max-height: 50vh;
+}
+
+/* 放大提示 */
+.sheet-reader__zoom-hint {
+  position: absolute;
+  bottom: var(--space-3);
+  right: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: rgba(0, 0, 0, 0.48);
+  color: rgba(255, 255, 255, 0.85);
+  border-radius: var(--radius-pill);
+  font-size: 0.75rem;
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+  pointer-events: none;
+}
+
+.sheet-reader__main:hover .sheet-reader__zoom-hint {
+  opacity: 1;
+}
+
+/* 翻面提示 */
+.sheet-reader__flip-hint {
+  position: absolute;
+  bottom: var(--space-3);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 12px;
+  background: rgba(0, 0, 0, 0.42);
+  color: rgba(255, 255, 255, 0.7);
+  border-radius: var(--radius-pill);
+  font-size: 0.72rem;
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+
+/* 縮圖列 */
+.sheet-reader__thumbs {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding: var(--space-1);
+  -webkit-overflow-scrolling: touch;
+  justify-content: center;
+}
+
+.sheet-reader__thumb-btn {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: var(--space-2);
+  border: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--bg-deep);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+  min-width: 72px;
+}
+
+.sheet-reader__thumb-btn:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.sheet-reader__thumb-btn--active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.sheet-reader__thumb-img {
+  width: 56px;
+  height: 56px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.sheet-reader__thumb-label {
+  font-size: 0.68rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.sheet-reader__thumb-btn--active .sheet-reader__thumb-label {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* 控制列 */
+.sheet-reader__controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.sheet-reader__nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--bg-deep);
+  color: var(--muted);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.sheet-reader__nav-btn:hover:not(:disabled) {
+  background: var(--accent-soft);
+  color: var(--accent);
+  transform: scale(1.05);
+}
+
+.sheet-reader__nav-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.sheet-reader__zoom-btns {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  padding: 3px;
+}
+
+.sheet-reader__zoom-btn {
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.sheet-reader__zoom-btn:hover {
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--text-strong);
+}
+
+.sheet-reader__zoom-btn--active {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.sheet-reader__zoom-btn--active:hover {
+  background: var(--accent-strong);
+  color: var(--on-accent);
+}
+
+.sheet-reader__mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--bg-deep);
+  color: var(--muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.sheet-reader__mode-btn:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* 方向框標註 */
+.sheet-reader__marker-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.sheet-reader__marker {
+  position: absolute;
+  border: 2px dashed;
+  border-radius: 6px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 4px;
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.sheet-reader__marker--1vp {
+  border-color: rgba(59, 130, 246, 0.7);
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.sheet-reader__marker--2vp {
+  border-color: rgba(139, 92, 246, 0.7);
+  background: rgba(139, 92, 246, 0.06);
+}
+
+.sheet-reader__marker-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.sheet-reader__marker--1vp .sheet-reader__marker-label {
+  color: #1d4ed8;
+}
+
+.sheet-reader__marker--2vp .sheet-reader__marker-label {
+  color: #5b21b6;
+}
+
+.sheet-reader__marker-label small {
+  font-size: 0.62rem;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+/* RWD：768px 以下 */
+@media (max-width: 768px) {
+  .sheet-reader__main {
+    max-width: 100%;
+  }
+
+  .sheet-reader__img--medium {
+    width: 100%;
+  }
+
+  .sheet-reader__img--large {
+    width: 100%;
+  }
+
+  .sheet-reader__thumb-img {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* RWD：480px 以下 */
+@media (max-width: 480px) {
+  .sheet-reader__controls {
+    gap: var(--space-2);
+  }
+
+  .sheet-reader__zoom-btn {
+    padding: 4px 8px;
+    font-size: 0.72rem;
+  }
+}
 }
