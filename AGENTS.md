@@ -7,7 +7,7 @@
 ---
 
 ## 憲法生效日期：2026-07-13
-> 版本：v1.2（v1.1 整合 Gemini 分享內容，v1.2 整合 CE 對稱化）
+> 版本：v1.3（v1.1 整合 Gemini 分享內容，v1.2 整合 CE 對稱化，v1.3 整合透視圖方向感知抽題）
 
 ---
 
@@ -430,3 +430,56 @@ grep -rEn "font-size: [0-9]+\.[5-9]rem|font-size: [1-9][0-9]rem" src/
 | `src/data/exam-notes.ts` | 備考知識庫 | Gemini 整合備考 SOP、公式、速查表 |
 | `src/types/exam-note.ts` | 型別定義 | 備考知識庫型別 |
 | `src/lib/site-config.ts` | 品牌設定 | 品牌名、色票、SEO 關鍵字 |
+| `src/lib/practice-stats.ts` | 統計單一事實來源 | 練習統計口徑統一（v1.3） |
+| `vitest.config.ts` | 測試設定 | vitest 單元測試設定 |
+| `src/lib/__tests__/practice-stats.test.ts` | 單元測試 | 10 條測試，含權重不變式與邏輯驗證 |
+
+---
+
+# 附錄 H：透視圖抽題邏輯更新（v1.3）
+
+## 更新日期
+
+2026-10-05
+
+## 核心變更
+
+透視圖抽題從「題目級最少練習」升級為「方向感知抽題」：
+
+- **統計口徑**：上傳圖片張數（`imageUrls.length`），非去重 sheetCode
+- **權重常數鎖定**：一消點 1/3 : 二消點 2/3（單一事實來源於 `use-exam-draw.ts`）
+- **雙層抽題演算法**：先算方向 deficit，再在方向內抽最少練習試卷
+- **0.5% DEADBAND 遲滯帶**：防止來回震盪
+
+## 設計背景
+
+透視圖（207–212 甲/乙/丙）甲向為一消點透視圖，乙丙向為二消點透視圖。考場比例二消點 : 一消點 = 2 : 1，因此練習量應為一消點的 2 倍。
+
+原有邏輯依賴「題數對稱（各 6 張）」碰巧滿足 1:2，無防護機制。v1.3 以權重常數 + 方向感知抽題確保此比例恆成立。
+
+## 新增檔案
+
+| 檔案 | 說明 |
+|------|------|
+| `src/lib/practice-stats.ts` | 練習統計單一事實來源，含 `countPracticePerItem`、`sumByGroup` |
+| `src/lib/__tests__/practice-stats.test.ts` | 10 條單元測試 |
+| `vitest.config.ts` | vitest 設定 |
+
+## 受影響檔案
+
+| 檔案 | 變更 |
+|------|------|
+| `src/hooks/use-exam-draw.ts` | 新增方向分類器、`PerspectiveDirection` type、`PERSPECTIVE_DIRECTION_WEIGHTS` 常數、`calcPerspectiveBalance`、`extractPerspectiveDirection`、方向感知抽題邏輯 |
+| `src/components/exam-draw-section.tsx` | 新增透視圖三段平衡儀、消點 chip、理由說明列 |
+| `src/components/archive-card.tsx` | 新增透視圖消點 chip（僅透視 section） |
+| `package.json` | 新增 `test` script、`vitest` devDependency |
+| `AGENTS.md` | 更新至 v1.3 |
+
+## 不變式測試（阻擋迴歸）
+
+- 三向權重和 === 1
+- 二消點 : 一消點 === 2 : 1
+- 甲向 = 一消點，乙丙向 = 二消點
+- `countPracticePerItem` 對同題多圖回傳圖片張數
+- `calcPerspectiveBalance` 三向皆 0 時回傳 balanced
+- 甲向 30 張以上時 `completedDirections` 含 "甲"
