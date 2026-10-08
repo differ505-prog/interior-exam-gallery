@@ -83,8 +83,8 @@ function buildPerspectiveSheetDoc(item: ArchiveItem): SheetDoc | null {
     sectionSlug: "perspective",
     coverage: "透視圖 207-212 共 6 題",
     pages: [
-      { url: pair.front, label: PERSP_PAGE_COPY.front.label, alt: `${item.code} ${PERSP_PAGE_COPY.front.alt}` },
-      { url: pair.back, label: PERSP_PAGE_COPY.back.label, alt: `${item.code} ${PERSP_PAGE_COPY.back.alt}`, isAnswer: true },
+      { url: pair.front, label: PERSP_PAGE_COPY.front.label, alt: `${item.code.slice(0,3)} 題目卷正面：${PERSP_PAGE_COPY.front.alt}` },
+      { url: pair.back, label: PERSP_PAGE_COPY.back.label, alt: `${item.code.slice(0,3)} 題目卷背面：${PERSP_PAGE_COPY.back.alt}`, isAnswer: true },
     ],
   };
 }
@@ -100,7 +100,7 @@ export function getSectionCoverage(sectionSlug: string): { total: number; archiv
     case "ceiling-elevation":
       return { total: 216, archived: 6, description: "天花板與立面圖" };
     case "perspective":
-      return { total: 18, archived: 2, description: "透視圖 207-212" };
+      return { total: 18, archived: 6, description: "透視圖 207-212" };
     case "detail":
       return { total: 12, archived: 12, description: "大樣圖 213-224" };
     default:

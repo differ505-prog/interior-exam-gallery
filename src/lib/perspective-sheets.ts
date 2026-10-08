@@ -6,12 +6,12 @@
  * 設計背景：
  * 乙級術科「空間意象透視表現圖」的題目卷是一份 A3 對折試卷，實體上分兩面：
  * - 題目卷正面（`front`）：平面圖 + 甲／乙／丙 三個透視方向標示 + 試題編號與姓名欄
- * - 題目卷背面（`back`）：A／B1／C／D 四面立面圖與展示櫃三視圖
+ * - 題目卷背面（`back`）：四面立面圖與相關視圖
  *
- * 關鍵限制：
- * 目前僅 208 題的題目卷完成掃描與建檔。
- * 其餘題號（207、209–212）尚未收錄圖檔，必須回傳 `null` 讓 UI 顯示佔位狀態，
- * 嚴禁 fallback 到 208 的圖檔。
+ * 圖檔建檔狀態：
+ * - 208（2026-10-05 建檔）：正面含展示櫃三視圖
+ * - 211（2026-10-08 建檔）：正面含平面圖，背面含立面圖
+ * - 其餘題號（207、209–210、212）尚未收錄，須回傳 `null`
  */
 
 import { ArchiveItem } from "@/types/exam";
@@ -32,6 +32,10 @@ const PERSPECTIVE_SHEETS: Record<string, PerspectiveSheetPair> = {
   "208": {
     front: "/images/208/2021021722093353239 (2).jpg",
     back: "/images/208/2021021722093353239 (1).jpg",
+  },
+  "211": {
+    front: "/images/211/211-平面.JPG",
+    back: "/images/211/211-立面.JPG",
   },
 };
 
@@ -54,7 +58,7 @@ export const PERSPECTIVE_SHEET_COPY = {
   frontLabel: "題目卷正面",
   backLabel: "題目卷背面",
   frontAlt: "平面圖與甲乙丙透視方向標示",
-  backAlt: "A／B1／C／D 立面圖與展示櫃三視圖",
+  backAlt: "立面圖與相關視圖",
 } as const;
 
 /**
