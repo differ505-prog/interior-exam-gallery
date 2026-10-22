@@ -744,6 +744,11 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
             src={activeImage}
             alt="放大圖面"
             className={`img-zoomed-${zoomLevel === "fit" ? "fit" : zoomLevel === "medium" ? "medium" : "large"}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setZoomLevel((prev) => (prev === "fit" ? "medium" : prev === "medium" ? "large" : "fit"));
+            }}
+            title={zoomLevel === "fit" ? "點擊放大至 1400px" : zoomLevel === "medium" ? "點擊放大至 2200px" : "點擊恢復符合視窗"}
           />
         </div>
       )}

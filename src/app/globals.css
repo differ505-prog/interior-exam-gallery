@@ -5242,12 +5242,33 @@ main {
   transition: box-shadow var(--duration-fast) var(--ease-out);
 }
 
+.sheet-reader__main--zoomed {
+  overflow: auto;
+  max-height: 75vh;
+  cursor: grab;
+}
+
+.sheet-reader__main--zoomed:active {
+  cursor: grabbing;
+}
+
 .sheet-reader__main:hover {
   box-shadow: var(--shadow-sm);
 }
 
-.sheet-reader__main:active {
-  cursor: grabbing;
+.sheet-reader__main:not(.sheet-reader__main--zoomed) .safe-image {
+  max-height: 70vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sheet-reader__main--zoomed .safe-image {
+  aspect-ratio: unset !important;
+  overflow: visible !important;
+  display: block;
+  width: max-content;
+  margin: 0 auto;
 }
 
 .sheet-reader__img {
@@ -5261,18 +5282,29 @@ main {
 .sheet-reader__img--fit {
   object-fit: contain;
   max-height: 70vh;
+  width: auto;
+  max-width: 100%;
+  margin: 0 auto;
 }
 
+.sheet-reader__main .safe-image img.sheet-reader__img--medium,
 .sheet-reader__img--medium {
-  width: 1400px;
-  max-width: none;
+  width: 1400px !important;
+  max-width: none !important;
+  height: auto !important;
+  object-fit: contain !important;
   margin: 0 auto;
+  display: block;
 }
 
+.sheet-reader__main .safe-image img.sheet-reader__img--large,
 .sheet-reader__img--large {
-  width: 2200px;
-  max-width: none;
+  width: 2200px !important;
+  max-width: none !important;
+  height: auto !important;
+  object-fit: contain !important;
   margin: 0 auto;
+  display: block;
 }
 
 /* 比對模式下並排顯示 */

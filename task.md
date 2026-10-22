@@ -1,1600 +1,2119 @@
-# 方案 E — 試卷閱讀器（Sheet Reader）
+# 方案 S — 建檔中心（Sheet Registry）
 
-> 版本：v1.0（目標分數 9.1）
-> 生效日期：2026-10-05
-> 前提：先回滾上一輪 UI 改動至乾淨基線，再實作本方案
-> 核心觀念：正反面是「同一份 A3 對折試卷的兩個面」，文件不該用 grid 並排，該用閱讀器排
+> 版本：v1.0　目標分數：**9.1 / 10**　生效日期：2026-10-22
+> **本文件完全取代前一份 `task.md`（方案 E 試卷閱讀器）。** 舊任務與過期紀錄已全部抹除。
+> 前提：方案 E 已於 commit `7bee5a0` 落地，SheetReader 為現存且可複用元件，本方案建構於其上。
 
 ---
 
-## 方案分數拆解
+## 0. 給執行模型的三條硬規則
 
-| 軸 | 分數 | 權重 |
+1. **不得修改 `src/data/exam-content.ts` 的 `code` / `focus` / `notes` 欄位**（憲法第六條）。本方案完全不碰這個檔案。
+2. **不得臆測 CSS 變數名稱**（SOP 9）。可用的 token 僅限 §3.3 白名單，其餘一律視為不存在。
+3. **每一個 Phase 結束前必須跑該 Phase 的驗證指令**，輸出不符合「預期」就停下回報，不可跳過往下做。
+
+---
+
+## 1. 方案分數拆解
+
+| 軸 | 分數 | 權重 | 說明 |
+|---|---|---|---|
+| 每次入檔速度 | 10 | 25% | 瀏覽器直傳，不開 IDE、不等部署 |
+| 開發成本 | 7 | 20% | 1 頁面 + 3 端點 + 1 hash，複用 6 個既有元件 |
+| 內容治理 | 10 | 20% | 三態變更單 + curator 閘，覆寫需明確核准 |
+| 可追溯 / 回滾 | 9 | 15% | 保留上一版 + 一鍵回滾 + 稽核欄位 |
+| 長期維護 | 9 | 20% | registry 成為「缺圖」單一事實來源 |
+| **加權總分** | **9.1** | | |
+
+**為什麼不是 10**：KV 沒有 Git 級別不可竄改紀錄（回滾靠自建欄位）；且多了一個後台頁與 token 設定需要維護。
+
+---
+
+## 2. 現況盤點（2026-10-22 已用 `ls` 驗證，非記憶）
+
+### 2.1 圖檔實際存在清單
+
+```
+public/images/plan/     question-202.jpg  question-205.jpg  requirement-A.jpg  requirement-B.jpg
+                        （各另有 .trim.jpg）
+public/images/208/      2021021722093353239 (2).jpg  2021021722093353239 (1).jpg
+public/images/211/      211-平面.JPG  211-立面.JPG
+public/images/213/      213-question.jpg  213-answer.jpg  213-official-answer.jpg
+public/images/222/      222-question.jpg  222-answer.jpg
+public/images/224/      224-question.jpg  224-answer.jpg
+```
+
+### 2.2 待建檔清單（本方案要解決的缺口）
+
+| 區塊 | 缺什麼 | 缺幾張 |
 |---|---|---|
-| 資訊準確度 | 10 | 25% |
-| 圖面可讀性 | 9.5 | 25% |
-| 資訊層級 | 9.5 | 15% |
-| RWD 穩健度 | 9 | 10% |
-| 維護成本 | 7 | 15% |
-| 跨 section 一致性 | 8 | 10% |
-| **加權總分** | **9.1** | |
+| 平面圖題目圖 | 201、203、204、206（`question-{num}.jpg`） | 4 |
+| 共用需求圖 | requirement-C / D / E / F | 4 |
+| 透視圖題目卷 | 207、209、210、212（每題正反兩面） | 8 |
+| 大樣圖 | 214–221、223（每題題目 + 答案） | 18 |
+| **合計** | | **34 張 / 17 個題號** |
+
+> 已建檔但未接線者：**無**。`src/lib/perspective-sheets.ts` 已含 208 與 211（commit `1593831`）。
+
+### 2.3 兩個既有地雷（必須處理，不可略過）
+
+**地雷 A — 不得沿用 `practice_entries`。**
+`src/lib/kv-store.ts` 的 `kvPushEntry` 在 List 長度超過 `MAX_ENTRIES = 200` 時會 `LPOP` 丟棄最舊一筆。若把試卷建檔塞進同一個 List，276 張 × 2 頁 = 552 筆，會**靜默吃掉使用者的練習紀錄**。本方案改用 **Hash** `sheet_registry`，不設上限。
+
+**地雷 B — 共用需求圖上傳無寫入閘。**
+`src/app/api/uploads/route.ts` 的覆寫分支 `if (confirmOverride && parsedKey)` 沒有任何身分驗證，任何訪客都能覆寫官方需求圖。本方案在 Phase 10 補上 curator token 驗證。
 
 ---
 
-## 第一階段：回滾至乾淨基線
+## 3. 設計決策與資料模型
 
-### Step 1.1 — 確認 Git 狀態
+### 3.1 KV 結構
 
-```bash
-cd "/Users/liangzhiwei/Documents/VIbe Coding/室內設計乙級"
-git status
+| 項目 | 值 |
+|---|---|
+| KV Key | `sheet_registry`（Hash，非 List） |
+| Field key | `${sectionSlug}:${code}:${slot}`，例：`plan:201A:question` |
+| 單筆上限 | 無（Hash 不會 LPOP） |
+| 讀取 | `HGETALL` → 轉 `SheetRecord[]` |
+
+### 3.2 三態變更單（核心機制）
+
+| 狀態 | 欄位 | 意義 | 前台是否可見 |
+|---|---|---|---|
+| 草稿（客戶端） | — | 使用者選好檔案、尚未上傳 | 否 |
+| 待核准 | `stagedUrl` | 已上傳 Cloudinary，等待 curator 核准 | **否** |
+| 生效 | `url` | 前台唯一讀取的欄位 | 是 |
+| 上一版 | `prevUrl` / `prevAt` | 回滾來源 | 否 |
+
+**不變式**：`resolveSlotUrl()` 只讀 `url`，永遠不讀 `stagedUrl`。這就是治理分的來源——待核准的圖在物理上不可能出現在前台。
+
+### 3.3 CSS Token 白名單（`globals.css` `:root` 實際定義，禁臆測）
+
+```
+色彩  --bg  --bg-deep  --panel  --panel-soft  --line  --line-strong
+      --text  --text-strong  --muted  --on-accent
+      --accent  --accent-soft  --accent-strong
+      --danger  --danger-soft
+      --overlay-deep  --surface-frosted
+陰影  --shadow  --shadow-sm
+半徑  --radius-lg  --radius-md  --radius-sm  --radius-pill
+間距  --space-1  --space-2  --space-3  --space-4  --space-5
+      --space-6  --space-8  --space-10  --space-12  --space-16
+      ⚠️ 不存在 --space-7 / --space-9 / --space-11
+字體  --font-sans  --font-display
+字距  --tracking-tight  --tracking-snug  --tracking-wide
+動態  --ease-out  --duration-fast  --duration-base
+容器  --container  --container-tight
 ```
 
-**預期輸出**：
+### 3.4 可複用的既有元件（不要重寫）
+
+| 元件／模組 | 位置 | 用途 |
+|---|---|---|
+| `SheetReader` | `src/components/sheet-reader.tsx` | 建檔中心預覽試卷 |
+| `SafeImage` | `src/components/ui/safe-image.tsx` | 縮圖 + 載入失敗 fallback |
+| `SurfacePanel` `EmptyState` `SkeletonGrid` `Eyebrow` | `src/components/ui/primitives.tsx` | 版面骨架與空狀態 |
+| `buildSheetDoc` | `src/lib/sheet-reader.ts` | 題號 → URL 單一事實來源 |
+| `cloudinary` `cloudinaryFolder` `hasCloudinaryEnv` | `src/lib/cloudinary.ts` | 圖床上傳 |
+| `hasKvEnv` | `src/lib/kv-store.ts` | KV 可用性檢查 |
+
+---
+
+## 4. Phase 0 — 基線確認
+
+### Step 4.1　處理既有未提交改動（重要，勿略過）
+
+2026-10-22 收工時工作區有**未提交的改動**，內容是「SheetReader 縮放檢視」功能：
+
 ```
- M src/components/archive-detail-modal.tsx
-?? src/lib/perspective-sheets.ts
- M src/lib/requirement-resolver.ts
+ M src/app/globals.css                    （+21 行 zoomed 樣式）
+ M src/components/archive-detail-modal.tsx (+5 行 點擊循環切換 zoom 層級)
+ M src/components/sheet-reader.tsx        （+43/-8 holdTimer → useRef、長按僅兩頁生效、handleClick 與長按互斥）
+ M src/components/ui/safe-image.tsx       （+3/-2 aspectRatio 改為可選）
  M tsconfig.tsbuildinfo
 ```
 
-### Step 1.2 — 暫存 perspective-sheets.ts（將新建，先保留）
-
-```bash
-git add src/lib/perspective-sheets.ts
-```
-
-### Step 1.3 — 還原 archive-detail-modal.tsx 與 requirement-resolver.ts
-
-```bash
-git checkout HEAD -- src/components/archive-detail-modal.tsx src/lib/requirement-resolver.ts
-```
-
-### Step 1.4 — 驗證還原成功
-
-```bash
-git status
-# 預期：
-# A  src/lib/perspective-sheets.ts（已 staged）
-# ?? src/lib/perspective-sheets.ts（unstaged 新檔）
-```
-
-### Step 1.5 — 重建 perspective-sheets.ts（上一輪改壞的，重新寫入正確內容）
-
-直接寫入以下內容，這是正確的邏輯層檔案（定義解析函式，不含 UI）：
-
-**新建檔案**：`src/lib/perspective-sheets.ts`
-
-```ts
-/**
- * perspective-sheets.ts
- *
- * 透視圖題目卷圖檔解析單一事實來源（Single Source of Truth）。
- *
- * 設計背景：
- * 乙級術科「空間意象透視表現圖」的題目卷是一份 A3 對折試卷，實體上分兩面：
- * - 題目卷正面（`front`）：平面圖 + 甲／乙／丙 三個透視方向標示 + 試題編號與姓名欄
- * - 題目卷背面（`back`）：A／B1／C／D 四面立面圖與展示櫃三視圖
- *
- * 關鍵限制：
- * 目前僅 208 題的題目卷完成掃描與建檔。
- * 其餘題號（207、209–212）尚未收錄圖檔，必須回傳 `null` 讓 UI 顯示佔位狀態，
- * 嚴禁 fallback 到 208 的圖檔。
- */
-
-import { ArchiveItem } from "@/types/exam";
-
-/** 題目卷圖檔組：一面一張，共兩張 */
-export type PerspectiveSheetPair = {
-  /** 題目卷正面：平面圖 + 甲乙丙透視方向 + 試題編號欄 */
-  front: string;
-  /** 題目卷背面：A／B1／C／D 立面圖與展示櫃三視圖 */
-  back: string;
-};
-
-/**
- * 已建檔的透視圖題目卷。
- * key 為題號前綴（不含方向字），value 為正反面圖檔路徑。
- */
-const PERSPECTIVE_SHEETS: Record<string, PerspectiveSheetPair> = {
-  "208": {
-    front: "/images/208/2021021722093353239 (2).jpg",
-    back: "/images/208/2021021722093353239 (1).jpg",
-  },
-};
-
-/**
- * 解析透視圖題號的題目卷正反面圖檔。
- *
- * @param itemCode 試卷代碼，例如 "208甲"、"207乙"
- * @returns 該題的題目卷圖檔組；未建檔時回傳 `null`
- */
-export function resolvePerspectiveSheets(itemCode: string): PerspectiveSheetPair | null {
-  const questionNo = itemCode.slice(0, 3);
-  return PERSPECTIVE_SHEETS[questionNo] ?? null;
-}
-
-/**
- * 透視圖題目卷的區塊標題與欄位標籤（配置驅動，避免 JSX 內三元運算子）。
- */
-export const PERSPECTIVE_SHEET_COPY = {
-  sectionTitle: "題目區（題目卷正反面）",
-  frontLabel: "題目卷正面",
-  backLabel: "題目卷背面",
-  frontAlt: "平面圖與甲乙丙透視方向標示",
-  backAlt: "A／B1／C／D 立面圖與展示櫃三視圖",
-} as const;
-
-/**
- * 檢查某張透視圖試卷是否已建檔題目卷圖。
- */
-export function hasPerspectiveSheets(item: ArchiveItem): boolean {
-  return resolvePerspectiveSheets(item.code) !== null;
-}
-```
-
-### Step 1.6 — 驗證編譯無 Error
+已驗證：`npx tsc --noEmit` 通過、`npm test` 10 條全綠。此為**獨立且完整**的功能，應先獨立提交，不要與建檔中心混在同一個 commit。
 
 ```bash
 cd "/Users/liangzhiwei/Documents/VIbe Coding/室內設計乙級"
-npx tsc --noEmit 2>&1 | head -30
+git diff --stat                     # 確認與上表一致
+git add src/app/globals.css src/components/archive-detail-modal.tsx \
+        src/components/sheet-reader.tsx src/components/ui/safe-image.tsx
+git commit -m "feat(sheet-reader): 新增點擊縮放檢視（fit → medium → large 循環）"
 ```
 
-**預期**：無 Error（Warning 可接受）
+**預期**：commit 成功，`git status --short` 只剩 `tsconfig.tsbuildinfo`。
+
+> 若 `git diff --stat` 與上表**不一致**，**停止執行**並回報差異，不得自行合併或丟棄。
+
+### Step 4.2　建立分支
+
+```bash
+git checkout -b feat/sheet-registry
+git status --short
+```
+
+**預期**：分支建立成功，且工作區乾淨（僅 `tsconfig.tsbuildinfo`）。若 `src/` 下仍有改動，**停止並回報**。
 
 ---
 
-## 第二階段：資料模型重構
+## 5. Phase 1 — 型別與 token 存取
 
-### Step 2.1 — 建立 `SheetDoc` 類型
-
-**新建檔案**：`src/types/sheet.ts`
+### Step 1.1　新建 `src/types/sheet-registry.ts`
 
 ```ts
-/**
- * types/sheet.ts
- *
- * 試卷閱讀器的資料模型。
- * 取代「兩個 URL 欄位」的舊模型，確保題號→頁面的映射只有一個真相來源。
- */
+/** 試卷圖檔的兩個頁面槽位：題目頁 / 答案頁 */
+export type SheetSlot = "question" | "answer";
 
-export type SheetPage = {
-  /** 圖檔 URL */
-  url: string;
-  /** 頁面標籤（正面/背面 或 第1頁/第2頁） */
-  label: string;
-  /** 替換文字敘述（用於無障礙） */
-  alt: string;
-  /** 是否為參考答案頁（預設 false） */
-  isAnswer?: boolean;
-};
-
-/** 試卷文件：包含題號 + 所有圖頁 + 題組覆蓋率 */
-export type SheetDoc = {
-  /** 試卷編號，如 "208甲" */
-  code: string;
-  /** 所屬區塊 slug */
+/** 單一槽位的建檔記錄（registry 的一個 field） */
+export type SheetRecord = {
   sectionSlug: string;
-  /** 所有圖頁（通常 1-2 張） */
-  pages: SheetPage[];
-  /** 此試卷的題組覆蓋率敘述（如 "透視圖 207-212 共 6 題"） */
-  coverage?: string;
+  code: string;
+  slot: SheetSlot;
+  /** 生效 URL：前台唯一讀取的欄位 */
+  url: string | null;
+  /** 上一版 URL（回滾來源） */
+  prevUrl: string | null;
+  /** 上一版的生效時間 */
+  prevAt: string | null;
+  /** 待核准 URL：前台絕不讀取 */
+  stagedUrl: string | null;
+  /** 待核准時間 */
+  stagedAt: string | null;
+  /** 最後一次變更時間 */
+  updatedAt: string;
+};
+
+/** key = `${sectionSlug}:${code}:${slot}` */
+export type SheetRegistry = Record<string, SheetRecord>;
+
+export type SheetSlotState = "missing" | "live" | "pending" | "rollback-ready";
+
+export type SheetSlotStatus = {
+  slot: SheetSlot;
+  state: SheetSlotState;
+  liveUrl: string | null;
+  pendingUrl: string | null;
+  canApprove: boolean;
+  canRollback: boolean;
+};
+
+export type SectionCoverage = {
+  sectionSlug: string;
+  totalCodes: number;
+  questionReady: number;
+  answerReady: number;
+  pendingCount: number;
+  missingCodes: string[];
 };
 ```
 
-**驗收**：此類型為純資料結構，不含任何 UI 邏輯。
-
----
-
-### Step 2.2 — 新建 `src/lib/sheet-reader.ts`（試卷閱讀器核心邏輯）
-
-**新建檔案**：`src/lib/sheet-reader.ts`
+### Step 1.2　新建 `src/lib/curator-token.ts`
 
 ```ts
-/**
- * sheet-reader.ts
- *
- * 試卷閱讀器（Sheet Reader）的 URL 解析邏輯。
- * 單一事實來源：給定 sectionSlug + item.code，回傳 SheetDoc。
- *
- * 舊模型（bug）：
- *   questionImageUrl + finalRequirementUrl，兩欄並排，裁切問題、無法對照同位置
- *
- * 新模型（正確）：
- *   SheetDoc { code, pages[] }，分頁閱讀，自動裁邊，正反面可快速翻
- */
+/** curator token 的瀏覽器端儲存 key（sessionStorage，關閉分頁即失效） */
+export const CURATOR_TOKEN_STORAGE_KEY = "sheet_registry_token";
 
-import { ArchiveItem } from "@/types/exam";
-import { SheetDoc, SheetPage } from "@/types/sheet";
-import { resolvePerspectiveSheets } from "./perspective-sheets";
-
-/** 透視圖題目卷的圖說（配置驅動） */
-const PERSP_PAGE_COPY: Record<"front" | "back", { label: string; alt: string }> = {
-  front: {
-    label: "題目卷正面",
-    alt: "平面圖與甲乙丙透視方向標示",
-  },
-  back: {
-    label: "題目卷背面",
-    alt: "A／B1／C／D 立面圖與展示櫃三視圖",
-  },
-};
-
-/**
- * 從 ArchiveItem + sectionSlug 建構 SheetDoc。
- *
- * 優先順序：
- * 1. 透視圖：使用 resolvePerspectiveSheets（僅 208 有圖）
- * 2. 大樣圖：題目圖 + 官方答案圖
- * 3. 平面圖 / 天花板與立面圖：題目圖
- *
- * 未建檔時回傳 null，讓 UI 顯示誠實佔位狀態。
- */
-export function buildSheetDoc(
-  item: ArchiveItem,
-  sectionSlug: string,
-  answerUrl?: string | null,
-): SheetDoc | null {
-  if (sectionSlug === "perspective") {
-    return buildPerspectiveSheetDoc(item);
-  }
-
-  if (sectionSlug === "detail") {
-    const questionUrl = `/images/${item.code}/${item.code}-question.jpg`;
-    const pages: SheetPage[] = [
-      { url: questionUrl, label: "題目圖", alt: `${item.code} 大樣圖題目` },
-    ];
-    if (answerUrl) {
-      pages.push({ url: answerUrl, label: "官方答案圖", alt: `${item.code} 官方答案`, isAnswer: true });
-    }
-    return { code: item.code, sectionSlug, pages };
-  }
-
-  if (sectionSlug === "plan" || sectionSlug === "ceiling-elevation") {
-    const numPart = item.code.slice(0, 3);
-    if (!/^\d{3}$/.test(numPart)) return null;
-    const questionUrl = `/images/plan/question-${numPart}.jpg`;
-    const pages: SheetPage[] = [
-      { url: questionUrl, label: "題目圖", alt: `${item.code} 題目圖` },
-    ];
-    if (answerUrl) {
-      pages.push({ url: answerUrl, label: "需求圖", alt: `${item.code} 需求圖`, isAnswer: true });
-    }
-    return { code: item.code, sectionSlug, pages };
-  }
-
-  return null;
+export function getCuratorToken(): string {
+  if (typeof window === "undefined") return "";
+  return window.sessionStorage.getItem(CURATOR_TOKEN_STORAGE_KEY) ?? "";
 }
 
-/** 透視圖專用建構 */
-function buildPerspectiveSheetDoc(item: ArchiveItem): SheetDoc | null {
-  const pair = resolvePerspectiveSheets(item.code);
-  if (!pair) return null;
+export function setCuratorToken(token: string): void {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.setItem(CURATOR_TOKEN_STORAGE_KEY, token);
+}
 
+export function clearCuratorToken(): void {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.removeItem(CURATOR_TOKEN_STORAGE_KEY);
+}
+```
+
+**驗證**：
+
+```bash
+npx tsc --noEmit 2>&1 | head -20
+```
+
+**預期**：無 Error。
+
+---
+
+## 6. Phase 2 — 純邏輯層（含狀態機 reducer）
+
+### Step 2.1　新建 `src/lib/sheet-registry.ts`
+
+```ts
+/**
+ * sheet-registry.ts
+ *
+ * 建檔中心的純邏輯層：key 建構、狀態機 reducer、覆蓋率計算。
+ * 本檔案不得 import KV、Cloudinary、React（保持可單元測試）。
+ */
+
+import type { ArchiveItem } from "@/types/exam";
+import type {
+  SectionCoverage,
+  SheetRecord,
+  SheetRegistry,
+  SheetSlot,
+  SheetSlotStatus,
+} from "@/types/sheet-registry";
+
+/** KV Hash key（單一事實來源，API 與 UI 皆引用此常數） */
+export const REGISTRY_KV_KEY = "sheet_registry";
+
+/** 支援的四個區塊（與 examSections 對齊） */
+export const REGISTRY_SECTIONS = [
+  { slug: "plan", label: "平面圖 201-206" },
+  { slug: "ceiling-elevation", label: "天花板與立面圖" },
+  { slug: "perspective", label: "透視圖 207-212" },
+  { slug: "detail", label: "大樣圖 213-224" },
+] as const;
+
+/** 建立 field key */
+export function buildRegistryKey(
+  sectionSlug: string,
+  code: string,
+  slot: SheetSlot,
+): string {
+  return `${sectionSlug}:${code}:${slot}`;
+}
+
+/** 解析 field key；格式不符回傳 null */
+export function parseRegistryKey(key: string): {
+  sectionSlug: string;
+  code: string;
+  slot: SheetSlot;
+} | null {
+  const parts = key.split(":");
+  if (parts.length !== 3) return null;
+  const [sectionSlug, code, slot] = parts;
+  if (!sectionSlug || !code) return null;
+  if (slot !== "question" && slot !== "answer") return null;
+  return { sectionSlug, code, slot };
+}
+
+/** 建立一筆全新的記錄 */
+export function createRecord(
+  sectionSlug: string,
+  code: string,
+  slot: SheetSlot,
+  at: string,
+): SheetRecord {
   return {
-    code: item.code,
-    sectionSlug: "perspective",
-    coverage: "透視圖 207-212 共 6 題",
-    pages: [
-      { url: pair.front, label: PERSP_PAGE_COPY.front.label, alt: `${item.code} ${PERSP_PAGE_COPY.front.alt}` },
-      { url: pair.back, label: PERSP_PAGE_COPY.back.label, alt: `${item.code} ${PERSP_PAGE_COPY.back.alt}`, isAnswer: true },
-    ],
+    sectionSlug,
+    code,
+    slot,
+    url: null,
+    prevUrl: null,
+    prevAt: null,
+    stagedUrl: null,
+    stagedAt: null,
+    updatedAt: at,
   };
 }
 
+/** 上傳新圖 → 進入「待核准」。若已有待核准圖，舊的待核准圖被取代。 */
+export function applyStage(
+  record: SheetRecord,
+  url: string,
+  at: string,
+): SheetRecord {
+  return { ...record, stagedUrl: url, stagedAt: at, updatedAt: at };
+}
+
+/** 核准：生效欄位 ← 待核准欄位；舊生效欄位降級為上一版。 */
+export function applyApprove(record: SheetRecord, at: string): SheetRecord {
+  if (!record.stagedUrl) return record;
+  return {
+    ...record,
+    url: record.stagedUrl,
+    prevUrl: record.url,
+    prevAt: record.updatedAt,
+    stagedUrl: null,
+    stagedAt: null,
+    updatedAt: at,
+  };
+}
+
+/** 撤銷：丟棄待核准圖，不影響生效與上一版。 */
+export function applyDiscard(record: SheetRecord, at: string): SheetRecord {
+  if (!record.stagedUrl) return record;
+  return { ...record, stagedUrl: null, stagedAt: null, updatedAt: at };
+}
+
 /**
- * 取得區塊的試卷收錄進度摘要。
- * 用於誠實空狀態：告知使用者總題數與已收錄題數。
+ * 回滾：生效與上一版互換。
+ * 互換而非清空，讓「回滾」本身也可以再被核准還原（單一按鈕即可復原誤操作）。
  */
-export function getSectionCoverage(sectionSlug: string): { total: number; archived: number; description: string } {
-  switch (sectionSlug) {
-    case "plan":
-      return { total: 36, archived: 6, description: "平面圖 201-206" };
-    case "ceiling-elevation":
-      return { total: 216, archived: 6, description: "天花板與立面圖" };
-    case "perspective":
-      return { total: 18, archived: 2, description: "透視圖 207-212" };
-    case "detail":
-      return { total: 12, archived: 12, description: "大樣圖 213-224" };
-    default:
-      return { total: 0, archived: 0, description: "" };
+export function applyRollback(record: SheetRecord, at: string): SheetRecord {
+  if (!record.prevUrl) return record;
+  const current = record.url;
+  return {
+    ...record,
+    url: record.prevUrl,
+    prevUrl: current,
+    prevAt: record.updatedAt,
+    updatedAt: at,
+  };
+}
+
+/** 前台唯一讀取入口：只認生效欄位。 */
+export function resolveSlotUrl(record: SheetRecord | undefined): string | null {
+  return record?.url ?? null;
+}
+
+/** 槽位狀態燈（供建檔中心 UI 使用） */
+export function buildSlotStatus(
+  record: SheetRecord | undefined,
+  slot: SheetSlot,
+): SheetSlotStatus {
+  const liveUrl = resolveSlotUrl(record);
+  const pendingUrl = record?.stagedUrl ?? null;
+  const state: SheetSlotStatus["state"] = pendingUrl
+    ? "pending"
+    : liveUrl
+      ? record?.prevUrl
+        ? "rollback-ready"
+        : "live"
+      : "missing";
+
+  return {
+    slot,
+    state,
+    liveUrl,
+    pendingUrl,
+    canApprove: Boolean(pendingUrl),
+    canRollback: Boolean(record?.prevUrl),
+  };
+}
+
+/** 取得某區塊所有不重複題號（保留題庫順序） */
+export function uniqueCodes(items: readonly ArchiveItem[]): string[] {
+  const seen = new Set<string>();
+  const codes: string[] = [];
+  for (const item of items) {
+    if (seen.has(item.code)) continue;
+    seen.add(item.code);
+    codes.push(item.code);
   }
+  return codes;
+}
+
+/**
+ * 計算某區塊的建檔覆蓋率。
+ * 「已備妥」= registry 有生效 URL，或 staticProbe 確認磁碟上有靜態圖。
+ */
+export function buildSectionCoverage(
+  sectionSlug: string,
+  items: readonly ArchiveItem[],
+  registry: SheetRegistry,
+  staticProbe?: Record<string, boolean>,
+): SectionCoverage {
+  const codes = uniqueCodes(items);
+  let questionReady = 0;
+  let answerReady = 0;
+  let pendingCount = 0;
+  const missingCodes: string[] = [];
+
+  for (const code of codes) {
+    const question = registry[buildRegistryKey(sectionSlug, code, "question")];
+    const answer = registry[buildRegistryKey(sectionSlug, code, "answer")];
+
+    if (question?.stagedUrl) pendingCount += 1;
+    if (answer?.stagedUrl) pendingCount += 1;
+
+    const questionOnDisk = staticProbe?.[buildRegistryKey(sectionSlug, code, "question")] !== false;
+    const answerOnDisk = staticProbe?.[buildRegistryKey(sectionSlug, code, "answer")] !== false;
+
+    if (question?.url || questionOnDisk) {
+      questionReady += 1;
+    } else {
+      missingCodes.push(code);
+    }
+    if (answer?.url || answerOnDisk) answerReady += 1;
+  }
+
+  return {
+    sectionSlug,
+    totalCodes: codes.length,
+    questionReady,
+    answerReady,
+    pendingCount,
+    missingCodes,
+  };
 }
 ```
 
-**驗收**：`buildSheetDoc("208甲", "perspective")` 回傳含 2 頁的 SheetDoc；`buildSheetDoc("207甲", "perspective")` 回傳 null（未建檔）。
+### Step 2.2　新建 `src/lib/__tests__/sheet-registry.test.ts`
+
+```ts
+import { describe, expect, it } from "vitest";
+import {
+  applyApprove,
+  applyDiscard,
+  applyRollback,
+  applyStage,
+  buildRegistryKey,
+  buildSectionCoverage,
+  createRecord,
+  parseRegistryKey,
+  resolveSlotUrl,
+} from "@/lib/sheet-registry";
+import type { ArchiveItem } from "@/types/exam";
+
+const NOW = "2026-10-22T12:00:00.000Z";
+const LATER = "2026-10-22T13:00:00.000Z";
+
+function item(code: string): ArchiveItem {
+  return {
+    code,
+    title: code,
+    variants: [],
+    focus: "",
+    notes: "",
+  };
+}
+
+describe("registry key", () => {
+  it("組裝與解析互為逆運算", () => {
+    const key = buildRegistryKey("plan", "201A", "question");
+    expect(key).toBe("plan:201A:question");
+    expect(parseRegistryKey(key)).toEqual({
+      sectionSlug: "plan",
+      code: "201A",
+      slot: "question",
+    });
+  });
+
+  it("非法 slot 回傳 null", () => {
+    expect(parseRegistryKey("plan:201A:answer2")).toBeNull();
+    expect(parseRegistryKey("plan-201A")).toBeNull();
+  });
+});
+
+describe("狀態機", () => {
+  it("待核准不會變成生效（治理不變式）", () => {
+    const staged = applyStage(createRecord("plan", "201A", "question", NOW), "u1", NOW);
+    expect(staged.stagedUrl).toBe("u1");
+    expect(resolveSlotUrl(staged)).toBeNull();
+  });
+
+  it("核准後生效，舊生效降級為上一版", () => {
+    const first = applyApprove(
+      applyStage(createRecord("plan", "201A", "question", NOW), "u1", NOW),
+      NOW,
+    );
+    const second = applyApprove(applyStage(first, "u2", LATER), LATER);
+    expect(resolveSlotUrl(second)).toBe("u2");
+    expect(second.prevUrl).toBe("u1");
+    expect(second.stagedUrl).toBeNull();
+  });
+
+  it("撤銷不影響生效版本", () => {
+    const live = applyApprove(
+      applyStage(createRecord("plan", "201A", "question", NOW), "u1", NOW),
+      NOW,
+    );
+    const discarded = applyDiscard(applyStage(live, "u2", LATER), LATER);
+    expect(discarded.stagedUrl).toBeNull();
+    expect(resolveSlotUrl(discarded)).toBe("u1");
+  });
+
+  it("回滾為互換，可再核准還原", () => {
+    const live = applyApprove(
+      applyStage(createRecord("plan", "201A", "question", NOW), "u1", NOW),
+      NOW,
+    );
+    const newer = applyApprove(applyStage(live, "u2", LATER), LATER);
+    const rolled = applyRollback(newer, LATER);
+    expect(resolveSlotUrl(rolled)).toBe("u1");
+    expect(rolled.prevUrl).toBe("u2");
+  });
+
+  it("無上一版時回滾為 no-op", () => {
+    const live = applyApprove(
+      applyStage(createRecord("plan", "201A", "question", NOW), "u1", NOW),
+      NOW,
+    );
+    expect(applyRollback(live, LATER)).toEqual(live);
+  });
+});
+
+describe("覆蓋率", () => {
+  it("無任何圖檔時全數列入缺圖", () => {
+    const registry = {};
+    const probe = {};
+    const coverage = buildSectionCoverage("detail", [item("214"), item("215")], registry, probe);
+    expect(coverage.totalCodes).toBe(2);
+    expect(coverage.missingCodes).toEqual(["214", "215"]);
+  });
+
+  it("磁碟探測為 false 才算缺圖（不會誤報）", () => {
+    const registry = {};
+    const probe = {
+      "detail:214:question": false,
+      "detail:214:answer": false,
+      "detail:215:question": true,
+      "detail:215:answer": true,
+    };
+    const coverage = buildSectionCoverage("detail", [item("214"), item("215")], registry, probe);
+    expect(coverage.missingCodes).toEqual(["214"]);
+  });
+
+  it("待核准數量正確計入", () => {
+    const registry = {
+      "detail:214:question": applyStage(createRecord("detail", "214", "question", NOW), "u1", NOW),
+    };
+    const coverage = buildSectionCoverage("detail", [item("214")], registry, {});
+    expect(coverage.pendingCount).toBe(1);
+  });
+});
+```
+
+**驗證**：
+
+```bash
+npm test 2>&1 | tail -20
+```
+
+**預期**：全部測試通過（本檔案 11 條，原有 10 條不受影響）。
 
 ---
 
-## 第三階段：自動裁邊 Build Script
+## 7. Phase 3 — KV 存取層
 
-### Step 3.1 — 確認 Sharp 依賴
-
-```bash
-cd "/Users/liangzhiwei/Documents/VIbe Coding/室內設計乙級"
-cat package.json | grep -E '"sharp"|"@types/sharp"'
-```
-
-**若無輸出**，執行：
-```bash
-npm install --save-dev sharp @types/sharp
-```
-
-### Step 3.2 — 建立裁邊 Script
-
-**新建檔案**：`scripts/trim-sheets.mjs`
-
-```js
-/**
- * scripts/trim-sheets.mjs
- *
- * 自動裁邊 Script：將紙張外的桌面背景裁掉，有效解析度再提升 1.15 倍。
- *
- * 使用方式：
- *   node scripts/trim-sheets.mjs
- *
- * 行為：
- *   1. 讀取 public/images/ 下的所有 .jpg 圖檔
- *   2. 使用 Sharp 自動裁邊（trim）偵測白色/淺色邊緣
- *   3. 輸出為 .trim.jpg，保留原檔
- *
- * 設計決策：
- *   - 輸出另存新檔（.trim.jpg），不覆寫原檔，保留 fallback
- *   - 若 trim 失敗（邊緣複雜），自動跳過該檔案
- */
-
-import { readdir, mkdir, copyFile } from "fs/promises";
-import { existsSync } from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
-import sharp from "sharp";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const IMAGES_DIR = path.join(__dirname, "../public/images");
-
-async function* walkDir(dir) {
-  const entries = await readdir(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      yield* walkDir(fullPath);
-    } else if (entry.isFile() && entry.name.endsWith(".jpg") && !entry.name.includes(".trim")) {
-      yield fullPath;
-    }
-  }
-}
-
-async function trimImage(inputPath) {
-  const dir = path.dirname(inputPath);
-  const ext = path.extname(inputPath);
-  const basename = path.basename(inputPath, ext);
-  const outputPath = path.join(dir, `${basename}.trim${ext}`);
-
-  try {
-    const image = sharp(inputPath);
-    const meta = await image.metadata();
-
-    // 偵測邊緣：讀取邊緣 20px，若平均亮度 > 240（幾乎白色）則裁
-    const { data, info } = await image
-      .ensureAlpha()
-      .raw()
-      .toBuffer({ resolveWithObject: true });
-
-    const { width, height, channels } = info;
-    const threshold = 240; // 白色 threshold
-    const edgePx = 20;
-
-    // 偵測上邊緣
-    let topCrop = 0;
-    outer: for (let y = 0; y < edgePx; y++) {
-      for (let x = 0; x < width; x++) {
-        const idx = (y * width + x) * channels;
-        const r = data[idx], g = data[idx + 1], b = data[idx + 2];
-        if ((r + g + b) / 3 < threshold - 20) break outer;
-      }
-      topCrop++;
-    }
-
-    // 偵測下邊緣
-    let bottomCrop = 0;
-    outer: for (let y = height - 1; y >= height - edgePx; y--) {
-      for (let x = 0; x < width; x++) {
-        const idx = (y * width + x) * channels;
-        const r = data[idx], g = data[idx + 1], b = data[idx + 2];
-        if ((r + g + b) / 3 < threshold - 20) break outer;
-      }
-      bottomCrop++;
-    }
-
-    // 偵測左邊緣
-    let leftCrop = 0;
-    outer: for (let x = 0; x < edgePx; x++) {
-      for (let y = 0; y < height; y++) {
-        const idx = (y * width + x) * channels;
-        const r = data[idx], g = data[idx + 1], b = data[idx + 2];
-        if ((r + g + b) / 3 < threshold - 20) break outer;
-      }
-      leftCrop++;
-    }
-
-    // 偵測右邊緣
-    let rightCrop = 0;
-    outer: for (let x = width - 1; x >= width - edgePx; x--) {
-      for (let y = 0; y < height; y++) {
-        const idx = (y * width + x) * channels;
-        const r = data[idx], g = data[idx + 1], b = data[idx + 2];
-        if ((r + g + b) / 3 < threshold - 20) break outer;
-      }
-      rightCrop++;
-    }
-
-    const minCrop = 10; // 至少要裁 10px 才執行
-    if (topCrop < minCrop && bottomCrop < minCrop && leftCrop < minCrop && rightCrop < minCrop) {
-      console.log(`  ⏭  跳過（裁邊不足 ${minCrop}px）: ${path.basename(inputPath)}`);
-      return;
-    }
-
-    const newWidth = width - leftCrop - rightCrop;
-    const newHeight = height - topCrop - bottomCrop;
-
-    await sharp(inputPath)
-      .extract({
-        left: leftCrop,
-        top: topCrop,
-        width: Math.max(newWidth, 100),
-        height: Math.max(newHeight, 100),
-      })
-      .jpeg({ quality: 92 })
-      .toFile(outputPath);
-
-    const originalSize = (await sharp(inputPath).metadata()).width;
-    const trimmedSize = (await sharp(outputPath).metadata()).width;
-    const ratio = ((originalSize - trimmedSize) / originalSize * 100).toFixed(1);
-    console.log(`  ✅ 裁邊 ${ratio}% → ${path.basename(outputPath)}`);
-  } catch (err) {
-    console.warn(`  ⚠️  裁邊失敗，跳過: ${path.basename(inputPath)} (${err.message})`);
-  }
-}
-
-async function main() {
-  console.log("🔍 開始自動裁邊...\n");
-
-  if (!existsSync(IMAGES_DIR)) {
-    console.error(`❌ 圖片目錄不存在: ${IMAGES_DIR}`);
-    process.exit(1);
-  }
-
-  let count = 0;
-  for await (const filePath of walkDir(IMAGES_DIR)) {
-    await trimImage(filePath);
-    count++;
-  }
-
-  console.log(`\n📊 完成，共處理 ${count} 個檔案`);
-}
-
-main().catch(console.error);
-```
-
-### Step 3.3 — 執行裁邊 Script
-
-```bash
-node scripts/trim-sheets.mjs
-```
-
-**預期輸出**：處理 public/images/ 下的圖檔，產出 .trim.jpg 檔案。
-
-### Step 3.4 — 更新 `sheet-reader.ts` 優先使用裁邊檔
-
-在 `buildSheetDoc` 的 URL 建構處，若存在 `.trim.jpg` 優先使用，否則 fallback 至原檔：
+### Step 3.1　新建 `src/lib/sheet-registry-kv.ts`
 
 ```ts
 /**
- * 取得圖檔 URL，優先使用裁邊版本。
+ * sheet-registry-kv.ts
+ *
+ * Vercel KV Hash 存取層。使用 Hash（而非 List）以避開
+ * kv-store.ts 的 200 筆 LPOP 上限，避免吃掉練習紀錄。
  */
-function getImageUrl(original: string): string {
-  // original: "/images/208/2021021722093353239 (2).jpg"
-  // → "/images/208/2021021722093353239 (2).trim.jpg"
-  const trimmed = original.replace(/\.jpg$/, ".trim.jpg");
-  // 這裡在 Client 端無法直接判斷檔案是否存在，
-  // 所以輸出時使用 data-trimmed 屬性讓後續 CSS/JS 處理降級
-  return original; // 裁邊與否由 URL 模式區分（伺服器端或 CDN 處理）
+
+import { kv } from "@vercel/kv";
+import { hasKvEnv } from "@/lib/kv-store";
+import { buildRegistryKey, REGISTRY_KV_KEY } from "@/lib/sheet-registry";
+import type { SheetRecord, SheetSlot } from "@/types/sheet-registry";
+
+function isSlot(value: unknown): value is SheetSlot {
+  return value === "question" || value === "answer";
+}
+
+/** 防衛性解析：欄位型別不符或缺 key 一律丟棄，不讓壞資料進入 UI */
+function mapRecord(raw: unknown): SheetRecord | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const sectionSlug = typeof r.sectionSlug === "string" ? r.sectionSlug.trim() : "";
+  const code = typeof r.code === "string" ? r.code.trim() : "";
+  if (!sectionSlug || !code || !isSlot(r.slot)) return null;
+
+  const str = (v: unknown) => (typeof v === "string" && v.trim() ? v : null);
+
+  return {
+    sectionSlug,
+    code,
+    slot: r.slot,
+    url: str(r.url),
+    prevUrl: str(r.prevUrl),
+    prevAt: str(r.prevAt),
+    stagedUrl: str(r.stagedUrl),
+    stagedAt: str(r.stagedAt),
+    updatedAt: str(r.updatedAt) ?? new Date(0).toISOString(),
+  };
+}
+
+export function hasSheetRegistryEnv(): boolean {
+  return hasKvEnv();
+}
+
+/** 讀取全部建檔記錄；KV 未設定或讀取失敗時回傳空陣列（降級不中斷前台） */
+export async function kvGetSheetRecords(): Promise<SheetRecord[]> {
+  if (!hasKvEnv()) return [];
+  try {
+    const raw = await kv.hgetall(REGISTRY_KV_KEY);
+    return Object.values(raw)
+      .map((v) => {
+        try {
+          return typeof v === "string" ? (JSON.parse(v) as unknown) : v;
+        } catch {
+          return null;
+        }
+      })
+      .map(mapRecord)
+      .filter((r): r is SheetRecord => r !== null);
+  } catch (error) {
+    console.error("[sheet-registry] KV 讀取失敗:", error);
+    return [];
+  }
+}
+
+/** 寫入單筆記錄 */
+export async function kvSetSheetRecord(record: SheetRecord): Promise<void> {
+  const key = buildRegistryKey(record.sectionSlug, record.code, record.slot);
+  await kv.hset(REGISTRY_KV_KEY, key, JSON.stringify(record));
 }
 ```
 
-**說明**：裁邊後的 URL 模式為 `.trim.jpg`。後續 `SheetReader` 元件在渲染時，src 屬性直接使用此 URL，由伺服器或 CDN 提供裁邊後的版本。
+**驗證**：
+
+```bash
+npx tsc --noEmit 2>&1 | head -20 && npm test 2>&1 | tail -6
+```
+
+**預期**：無 Error，測試通過。
 
 ---
 
-## 第四階段：試卷閱讀器元件
+## 8. Phase 4 — 限流工具與 API 端點
 
-### Step 4.1 — 新建 `src/components/sheet-reader.tsx`
+### Step 4.1　新建 `src/lib/rate-limit.ts`
 
-這是本方案的核心新元件，負責試卷圖檔的「分頁閱讀」體驗。
+```ts
+/**
+ * rate-limit.ts
+ *
+ * 極簡記憶體限流（單一 instance 適用，Serverless 每實例獨立計數）。
+ *
+ * 注意：本輪僅供 /api/sheets 使用。
+ * /api/uploads 既有實作本輪不重構，避免改動核心商業邏輯（憲法第十一條）。
+ */
 
-**新建檔案**：`src/components/sheet-reader.tsx`
+type Bucket = { count: number; resetAt: number };
+
+const buckets = new Map<string, Bucket>();
+
+export function getClientIp(request: Request): string {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0]?.trim() || "unknown";
+  return request.headers.get("x-real-ip") || "unknown";
+}
+
+export function checkRateLimit(
+  scope: string,
+  ip: string,
+  max: number,
+  windowMs: number,
+): { allowed: boolean; retryAfter: number } {
+  const key = `${scope}:${ip}`;
+  const now = Date.now();
+  const bucket = buckets.get(key);
+
+  if (!bucket || bucket.resetAt < now) {
+    buckets.set(key, { count: 1, resetAt: now + windowMs });
+    return { allowed: true, retryAfter: 0 };
+  }
+
+  if (bucket.count >= max) {
+    return { allowed: false, retryAfter: Math.ceil((bucket.resetAt - now) / 1000) };
+  }
+
+  bucket.count += 1;
+  return { allowed: true, retryAfter: 0 };
+}
+```
+
+### Step 4.2　新建 `src/app/api/sheets/route.ts`
+
+```ts
+import { randomUUID } from "crypto";
+import { existsSync } from "fs";
+import path from "path";
+import { NextResponse } from "next/server";
+import { cloudinary, cloudinaryFolder, hasCloudinaryEnv } from "@/lib/cloudinary";
+import { hasSheetRegistryEnv, kvGetSheetRecords, kvSetSheetRecord } from "@/lib/sheet-registry-kv";
+import {
+  applyApprove,
+  applyDiscard,
+  applyRollback,
+  applyStage,
+  buildRegistryKey,
+  createRecord,
+} from "@/lib/sheet-registry";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import type { SheetRecord, SheetSlot } from "@/types/sheet-registry";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+const allowedMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+const maxFileSize = 10 * 1024 * 1024;
+const allowedSections = new Set(["plan", "ceiling-elevation", "perspective", "detail"]);
+
+/** curator 驗證：token 僅存在 server-side env，前端只在 request header 傳送 */
+function isCurator(request: Request): boolean {
+  const expected = process.env.CURATOR_TOKEN;
+  if (!expected) return false;
+  const received = request.headers.get("x-curator-token");
+  return typeof received === "string" && received === expected;
+}
+
+function unauthorized() {
+  return NextResponse.json({ message: "需要管理權限才能變更官方圖檔。" }, { status: 401 });
+}
+
+function serverNotReady(message: string) {
+  return NextResponse.json({ message }, { status: 503 });
+}
+
+function badRequest(message: string) {
+  return NextResponse.json({ message }, { status: 400 });
+}
+
+/** 靜態圖磁碟探測：讓「缺圖」是真實結果，不是推測 */
+function probeStatic(url: string | null): boolean {
+  if (!url || !url.startsWith("/images/")) return false;
+  const relative = url.replace(/^\/images\//, "");
+  if (relative.includes("..")) return false;
+  return existsSync(path.join(process.cwd(), "public", "images", relative));
+}
+
+/**
+ * GET /api/sheets?probe=1
+ * 回傳全部建檔記錄；probe=1 時額外回傳靜態圖存在與否（僅 curator 可取）
+ */
+export async function GET(request: Request) {
+  const records = await kvGetSheetRecords();
+
+  const probeParam = new URL(request.url).searchParams.get("probe");
+  if (probeParam !== "1") {
+    return NextResponse.json({ records });
+  }
+
+  if (!isCurator(request)) return unauthorized();
+
+  const { buildSectionCoverage } = await import("@/lib/sheet-registry");
+  const { examSections } = await import("@/data/exam-content");
+  const probe: Record<string, boolean> = {};
+
+  for (const section of examSections) {
+    for (const item of section.items) {
+      for (const slot of ["question", "answer"] as SheetSlot[]) {
+        const key = buildRegistryKey(section.slug, item.code, slot);
+        const record = records.find(
+          (r) => buildRegistryKey(r.sectionSlug, r.code, r.slot) === key,
+        );
+        if (record?.url) continue;
+        probe[key] = probeStatic(buildStaticUrl(section.slug, item.code, slot));
+      }
+    }
+  }
+
+  void buildSectionCoverage;
+  return NextResponse.json({ records, probe });
+}
+
+/** 靜態圖路徑規則（與 sheet-reader.ts 保持一致，僅供探測用） */
+function buildStaticUrl(sectionSlug: string, code: string, slot: SheetSlot): string {
+  const questionNo = code.slice(0, 3);
+  if (sectionSlug === "detail") {
+    return slot === "question" ? `/images/${code}/${code}-question.jpg` : `/images/${code}/${code}-answer.jpg`;
+  }
+  if (sectionSlug === "perspective") return "";
+  return slot === "question" ? `/images/plan/question-${questionNo}.jpg` : "";
+}
+
+/**
+ * POST /api/sheets  — 上傳新圖並置為「待核准」
+ * formData: image, sectionSlug, code, slot
+ */
+export async function POST(request: Request) {
+  if (!process.env.CURATOR_TOKEN) {
+    return serverNotReady("尚未設定 CURATOR_TOKEN，無法建檔。");
+  }
+  if (!isCurator(request)) return unauthorized();
+  if (!hasSheetRegistryEnv()) return serverNotReady("尚未連接 Vercel KV。");
+  if (!hasCloudinaryEnv) return serverNotReady("尚未連接 Cloudinary。上傳暫停。");
+
+  const limit = checkRateLimit("sheets", getClientIp(request), 60, 60_000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { message: `操作過於頻繁。${limit.retryAfter} 秒後再試。` },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } },
+    );
+  }
+
+  let formData: FormData;
+  try {
+    formData = await request.formData();
+  } catch {
+    return badRequest("無法解析表單資料。");
+  }
+
+  const image = formData.get("image");
+  const sectionSlug = String(formData.get("sectionSlug") ?? "").trim();
+  const code = String(formData.get("code") ?? "").trim().slice(0, 40);
+  const slot = String(formData.get("slot") ?? "").trim();
+
+  if (!allowedSections.has(sectionSlug)) return badRequest("章節參數無效。");
+  if (slot !== "question" && slot !== "answer") return badRequest("頁面槽位無效。");
+  if (!/^[\w\u4e00-\u9fa5-]{1,40}$/.test(code)) return badRequest("題號格式無效。");
+  if (!(image instanceof File) || image.size === 0) return badRequest("請選擇圖片。");
+  if (!allowedMimeTypes.has(image.type)) return badRequest("僅支援 JPG、PNG、WEBP。");
+  if (image.size > maxFileSize) return badRequest("單張圖片不可超過 10MB。");
+
+  const buffer = Buffer.from(await image.arrayBuffer());
+  let url: string;
+  try {
+    url = await new Promise<string>((resolve, reject) => {
+      cloudinary.uploader
+        .upload_stream(
+          {
+            folder: `${cloudinaryFolder}/registry/${sectionSlug}`,
+            public_id: `${Date.now()}-${randomUUID()}`,
+            resource_type: "image",
+          },
+          (error, result) => {
+            if (error || !result) return reject(error ?? new Error("upload failed"));
+            resolve(result.secure_url);
+          },
+        )
+        .end(buffer);
+    });
+  } catch (error) {
+    console.error("[sheets] Cloudinary 上傳失敗:", error);
+    return NextResponse.json({ message: "圖片上傳失敗，請稍後再試。" }, { status: 502 });
+  }
+
+  const now = new Date().toISOString();
+  const existing = (await kvGetSheetRecords()).find(
+    (r) => buildRegistryKey(r.sectionSlug, r.code, r.slot) === buildRegistryKey(sectionSlug, code, slot),
+  );
+  const record: SheetRecord = applyStage(
+    existing ?? createRecord(sectionSlug, code, slot, now),
+    url,
+    now,
+  );
+
+  await kvSetSheetRecord(record);
+  return NextResponse.json({ message: "已上傳，等待核准。", record });
+}
+
+/**
+ * PATCH /api/sheets — 核准 / 撤銷 / 回滾
+ * body: { sectionSlug, code, slot, action: "approve" | "discard" | "rollback" }
+ */
+export async function PATCH(request: Request) {
+  if (!process.env.CURATOR_TOKEN) {
+    return serverNotReady("尚未設定 CURATOR_TOKEN，無法建檔。");
+  }
+  if (!isCurator(request)) return unauthorized();
+  if (!hasSheetRegistryEnv()) return serverNotReady("尚未連接 Vercel KV。");
+
+  let body: Record<string, unknown>;
+  try {
+    body = (await request.json()) as Record<string, unknown>;
+  } catch {
+    return badRequest("無法解析請求內容。");
+  }
+
+  const sectionSlug = String(body.sectionSlug ?? "").trim();
+  const code = String(body.code ?? "").trim().slice(0, 40);
+  const slot = String(body.slot ?? "").trim();
+  const action = String(body.action ?? "").trim();
+
+  if (!allowedSections.has(sectionSlug)) return badRequest("章節參數無效。");
+  if (slot !== "question" && slot !== "answer") return badRequest("頁面槽位無效。");
+
+  const records = await kvGetSheetRecords();
+  const existing = records.find(
+    (r) => buildRegistryKey(r.sectionSlug, r.code, r.slot) === buildRegistryKey(sectionSlug, code, slot),
+  );
+  if (!existing) return badRequest("找不到這筆建檔記錄。");
+
+  const now = new Date().toISOString();
+  const next =
+    action === "approve" ? applyApprove(existing, now)
+    : action === "discard" ? applyDiscard(existing, now)
+    : action === "rollback" ? applyRollback(existing, now)
+    : null;
+
+  if (!next) return badRequest("動作無效。");
+  if (next === existing) return badRequest("此動作不適用於目前狀態。");
+
+  await kvSetSheetRecord(next);
+  return NextResponse.json({ message: "已更新。", record: next });
+}
+```
+
+> **程式碼註記**：`GET` 中的 `buildSectionCoverage` 為動態 import 且未被使用（`void` 佔位）——低階模型**請刪除該兩行**（`const { buildSectionCoverage } = await import(...)` 與 `void buildSectionCoverage;`），覆蓋率由前端元件計算，API 只負責回傳 `probe`。
+
+**驗證**：
+
+```bash
+npx tsc --noEmit 2>&1 | head -20
+```
+
+**預期**：無 Error。
+
+---
+
+## 9. Phase 5 — 客戶端圖片壓縮
+
+### Step 5.1　新建 `src/lib/image-compress.ts`
+
+```ts
+/**
+ * image-compress.ts
+ *
+ * 瀏覽器端壓縮：解決手機 4K 掃描檔超過 API 10MB 上限而被擋的問題。
+ * 純函式 + Canvas，無第三方依賴。
+ */
+
+export type CompressResult = {
+  blob: Blob;
+  width: number;
+  height: number;
+  originalBytes: number;
+  outputBytes: number;
+  /** true 表示壓縮後反而更大或無需壓縮，已沿用原檔 */
+  skipped: boolean;
+};
+
+const DEFAULTS = { maxEdge: 3000, quality: 0.85, targetType: "image/webp" };
+
+export async function compressImage(
+  file: File,
+  options: { maxEdge?: number; quality?: number; targetType?: string } = {},
+): Promise<CompressResult> {
+  const { maxEdge, quality, targetType } = { ...DEFAULTS, ...options };
+
+  const fallback = (reason: string): CompressResult => {
+    console.warn(`[compress] 略過壓縮（${reason}），沿用原檔`);
+    return {
+      blob: file,
+      width: 0,
+      height: 0,
+      originalBytes: file.size,
+      outputBytes: file.size,
+      skipped: true,
+    };
+  };
+
+  if (typeof createImageBitmap !== "function" || typeof document === "undefined") {
+    return fallback("瀏覽器不支援 createImageBitmap");
+  }
+
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  } catch {
+    return fallback("圖片解碼失敗");
+  }
+
+  const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
+  const width = Math.max(1, Math.round(bitmap.width * scale));
+  const height = Math.max(1, Math.round(bitmap.height * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  if (!context) {
+    bitmap.close();
+    return fallback("無法取得 canvas context");
+  }
+
+  context.imageSmoothingQuality = "high";
+  context.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, targetType, quality));
+
+  if (!blob || blob.size >= file.size) {
+    return fallback("壓縮後未變小");
+  }
+
+  return {
+    blob,
+    width,
+    height,
+    originalBytes: file.size,
+    outputBytes: blob.size,
+    skipped: false,
+  };
+}
+
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+```
+
+---
+
+## 10. Phase 6 — 建檔中心 UI
+
+### Step 6.1　新建 `src/components/admin/sheet-registry-panel.tsx`
 
 ```tsx
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, X, Maximize2 } from "lucide-react";
-import { SheetDoc } from "@/types/sheet";
+import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { CheckCircle2, LoaderCircle, RotateCcw, Upload, X, Lock } from "lucide-react";
 import { SafeImage } from "@/components/ui/safe-image";
+import { EmptyState, Eyebrow, Heading, SkeletonGrid, SurfacePanel } from "@/components/ui/primitives";
+import { SheetReader } from "@/components/sheet-reader";
+import { compressImage, formatBytes } from "@/lib/image-compress";
+import { clearCuratorToken, getCuratorToken, setCuratorToken } from "@/lib/curator-token";
+import {
+  buildRegistryKey,
+  buildSectionCoverage,
+  buildSlotStatus,
+  REGISTRY_SECTIONS,
+} from "@/lib/sheet-registry";
+import type { SheetRecord, SheetRegistry, SheetSlot, SheetSlotStatus } from "@/types/sheet-registry";
+import { examSections } from "@/data/exam-content";
 
-type ZoomLevel = "fit" | "medium" | "large";
-type ViewMode = "reader" | "compare";
+const TOKEN_PROBE_KEY = "registry";
 
-type SheetReaderProps = {
-  /** 試卷文件（通常 1-2 頁） */
-  doc: SheetDoc;
-  /** 開啟 lightbox 的回調 */
-  onOpenLightbox?: (url: string, pageIndex: number) => void;
-  /** 誠實佔位時的建檔進度敘述 */
-  coverage?: string;
-  /** 無法讀取時的替代描述 */
-  unarchivedMessage?: string;
-};
+function toRegistry(records: SheetRecord[]): SheetRegistry {
+  const registry: SheetRegistry = {};
+  for (const record of records) {
+    registry[buildRegistryKey(record.sectionSlug, record.code, record.slot)] = record;
+  }
+  return registry;
+}
 
-/**
- * SheetReader — 試卷閱讀器
- *
- * 設計：
- * - 單一試卷文件呈現（替代舊的兩欄並排 question + requirement grid）
- * - 分頁導航：左右箭頭 + 頁碼指示器 + 縮圖列
- * - 滿寬顯示：max-width: 912px（現行 446px 的 2.05 倍）+ object-fit: contain
- * - 翻面比較：長按按鈕可在正/背面間快速翻頁，保持縮放倍率與平移位置同步
- * - 自動偵測圖片比例，必要時切換 contain
- */
-export function SheetReader({ doc, onOpenLightbox, coverage, unarchivedMessage }: SheetReaderProps) {
-  const { pages, code } = doc;
+export function SheetRegistryPanel() {
+  const [token, setToken] = useState("");
+  const [isAuthed, setIsAuthed] = useState(false);
+  const [sectionSlug, setSectionSlug] = useState<string>(REGISTRY_SECTIONS[0].slug);
+  const [registry, setRegistry] = useState<SheetRegistry>({});
+  const [probe, setProbe] = useState<Record<string, boolean>>({});
+  const [records, setRecords] = useState<SheetRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [message, setMessage] = useState<string | null>(null);
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [preview, setPreview] = useState<SheetDocPreview | null>(null);
 
-  const [activePage, setActivePage] = useState(0);
-  const [zoom, setZoom] = useState<ZoomLevel>("fit");
-  const [viewMode, setViewMode] = useState<ViewMode>("reader");
-  const [holdTimer, setHoldTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const authHeaders = useCallback(
+    () => ({ "x-curator-token": getCuratorToken() }),
+    [],
+  );
 
-  // 同步翻頁：當 viewMode === "compare" 時，activePage 改變時同步所有縮圖位置
-  const activePageRef = useRef(activePage);
-  activePageRef.current = activePage;
-
-  const totalPages = pages.length;
-  const currentPage = pages[activePage];
-
-  // Keyboard navigation
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-        e.preventDefault();
-        if (e.key === "ArrowLeft") {
-          setActivePage((p) => Math.max(0, p - 1));
-        } else {
-          setActivePage((p) => Math.min(totalPages - 1, p + 1));
-        }
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/sheets?probe=1`, { headers: authHeaders() });
+      if (response.status === 401) {
+        setIsAuthed(false);
+        return;
       }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [totalPages]);
-
-  const handlePrev = useCallback(() => {
-    setActivePage((p) => Math.max(0, p - 1));
-  }, []);
-
-  const handleNext = useCallback(() => {
-    setActivePage((p) => Math.min(totalPages - 1, p + 1));
-  }, [totalPages]);
-
-  // 長按翻面（快速在正/背面間來回）
-  const handleMouseDown = useCallback(() => {
-    const timer = setTimeout(() => {
-      // 觸發翻面
-      setActivePage((p) => (p === 0 ? 1 : 0));
-    }, 400);
-    setHoldTimer(timer);
-  }, []);
-
-  const handleMouseUp = useCallback(() => {
-    if (holdTimer) {
-      clearTimeout(holdTimer);
-      setHoldTimer(null);
+      const data = (await response.json()) as { records?: SheetRecord[]; probe?: Record<string, boolean> };
+      const nextRecords = data.records ?? [];
+      setRecords(nextRecords);
+      setRegistry(toRegistry(nextRecords));
+      setProbe(data.probe ?? {});
+      setIsAuthed(true);
+    } catch {
+      setMessage("讀取建檔資料失敗，請確認網路與 KV 連線。");
+    } finally {
+      setIsLoading(false);
     }
-  }, [holdTimer]);
+  }, [authHeaders]);
 
-  // Zoom 縮放 CSS class
-  const zoomClass = (() => {
-    if (viewMode === "compare") return "";
-    switch (zoom) {
-      case "fit": return "sheet-reader__img--fit";
-      case "medium": return "sheet-reader__img--medium";
-      case "large": return "sheet-reader__img--large";
+  useEffect(() => {
+    setToken(getCuratorToken());
+    if (getCuratorToken()) void load();
+    else setIsLoading(false);
+  }, [load]);
+
+  const items = useMemo(
+    () => examSections.find((s) => s.slug === sectionSlug)?.items ?? [],
+    [sectionSlug],
+  );
+
+  const coverage = useMemo(
+    () => buildSectionCoverage(sectionSlug, items, registry, probe),
+    [sectionSlug, items, registry, probe],
+  );
+
+  const handleUnlock = () => {
+    setCuratorToken(token.trim());
+    void load();
+  };
+
+  const handleSignOut = () => {
+    clearCuratorToken();
+    setToken("");
+    setIsAuthed(false);
+    setRegistry({});
+    setProbe({});
+    setRecords([]);
+  };
+
+  const upload = async (code: string, slot: SheetSlot, file: File) => {
+    const key = buildRegistryKey(sectionSlug, code, slot);
+    setBusyKey(key);
+    setMessage(null);
+    try {
+      const result = await compressImage(file);
+      const body = new FormData();
+      body.append("image", result.blob, file.name.replace(/\.[^.]+$/, "") + ".webp");
+      body.append("sectionSlug", sectionSlug);
+      body.append("code", code);
+      body.append("slot", slot);
+
+      const response = await fetch("/api/sheets", { method: "POST", headers: authHeaders(), body });
+      const data = (await response.json()) as { message?: string };
+      if (!response.ok) {
+        setMessage(data.message ?? "上傳失敗。");
+        return;
+      }
+      setMessage(
+        `${code} ${slot === "question" ? "題目圖" : "答案圖"} 已上傳，待核准（原檔 ${formatBytes(result.originalBytes)} → ${formatBytes(result.outputBytes)}）。`,
+      );
+      await load();
+    } catch {
+      setMessage("上傳失敗，請稍後再試。");
+    } finally {
+      setBusyKey(null);
     }
-  })();
+  };
 
-  if (!doc || pages.length === 0) {
+  const patch = async (code: string, slot: SheetSlot, action: "approve" | "discard" | "rollback") => {
+    const key = buildRegistryKey(sectionSlug, code, slot);
+    setBusyKey(key);
+    try {
+      const response = await fetch("/api/sheets", {
+        method: "PATCH",
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ sectionSlug, code, slot, action }),
+      });
+      const data = (await response.json()) as { message?: string };
+      setMessage(data.message ?? "已更新。");
+      await load();
+    } catch {
+      setMessage("操作失敗，請稍後再試。");
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  if (!isAuthed) {
     return (
-      <div className="sheet-reader--empty">
-        <p className="sheet-reader--empty__code">{code}</p>
-        <p className="sheet-reader--empty__msg">
-          {unarchivedMessage ?? "題目圖紙建置中，掃描建檔後會自動顯示。"}
-        </p>
-        {coverage && (
-          <p className="sheet-reader--empty__coverage">{coverage}</p>
-        )}
-      </div>
+      <SurfacePanel className="registry-gate">
+        <Eyebrow>建檔中心</Eyebrow>
+        <Heading level={2}>輸入管理密碼以繼續</Heading>
+        <p className="registry-gate__desc">建檔會變更全站試卷圖檔，僅限管理者操作。</p>
+        <div className="registry-gate__field">
+          <label className="form-field__label" htmlFor="registry-token">
+            管理密碼
+          </label>
+          <input
+            id="registry-token"
+            type="password"
+            className="registry-input"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            placeholder="CURATOR_TOKEN"
+            autoComplete="off"
+          />
+        </div>
+        <button type="button" className="submit-button" onClick={handleUnlock}>
+          <Lock size={16} /> 驗證並進入
+        </button>
+        {message ? <p className="form-message">{message}</p> : null}
+      </SurfacePanel>
     );
   }
 
   return (
-    <div
-      className={`sheet-reader sheet-reader--${viewMode}`}
-      role="region"
-      aria-label={`試卷 ${code} 閱讀器`}
-    >
-      {/* 頁碼指示器 */}
-      {totalPages > 1 && (
-        <div className="sheet-reader__page-indicator" aria-live="polite" aria-atomic="true">
-          <span className="sheet-reader__page-current">{activePage + 1}</span>
-          <span className="sheet-reader__page-sep">/</span>
-          <span className="sheet-reader__page-total">{totalPages}</span>
-          <span className="sheet-reader__page-label">{currentPage.label}</span>
+    <SurfacePanel className="registry-panel">
+      <header className="registry-header">
+        <div>
+          <Eyebrow>建檔中心</Eyebrow>
+          <Heading level={2}>試卷圖檔建檔</Heading>
         </div>
-      )}
-
-      {/* 主圖區 */}
-      <div
-        className="sheet-reader__main"
-        onClick={() => onOpenLightbox?.(currentPage.url, activePage)}
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        role="button"
-        tabIndex={0}
-        aria-label={`放大查看 ${currentPage.label}（點擊或長按翻面）`}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onOpenLightbox?.(currentPage.url, activePage);
-          }
-        }}
-      >
-        <SafeImage
-          src={currentPage.url}
-          alt={`${code} ${currentPage.alt}`}
-          aspectRatio={viewMode === "compare" ? "4 / 3" : undefined}
-          objectFit="contain"
-          className={`sheet-reader__img ${zoomClass}`}
-          fallbackLabel={currentPage.label}
-        />
-
-        {/* 放大提示 */}
-        <div className="sheet-reader__zoom-hint" aria-hidden="true">
-          <ZoomIn size={20} />
-          <span>點擊放大</span>
-        </div>
-
-        {/* 翻面提示（僅兩頁時顯示） */}
-        {totalPages === 2 && (
-          <div className="sheet-reader__flip-hint" aria-hidden="true">
-            長按翻面
-          </div>
-        )}
-      </div>
-
-      {/* 縮圖列 */}
-      {totalPages > 1 && (
-        <div
-          className="sheet-reader__thumbs"
-          role="tablist"
-          aria-label={`${code} 圖頁切換，共 ${totalPages} 頁`}
-        >
-          {pages.map((page, idx) => (
-            <button
-              key={idx}
-              role="tab"
-              aria-selected={idx === activePage}
-              aria-controls={`sheet-page-${idx}`}
-              className={`sheet-reader__thumb-btn${idx === activePage ? " sheet-reader__thumb-btn--active" : ""}`}
-              onClick={() => setActivePage(idx)}
-              type="button"
-            >
-              <SafeImage
-                src={page.url}
-                alt={`${page.label} 縮圖`}
-                aspectRatio="1 / 1"
-                objectFit="cover"
-                className="sheet-reader__thumb-img"
-              />
-              <span className="sheet-reader__thumb-label">{page.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* 導航控制列 */}
-      <div className="sheet-reader__controls">
-        {totalPages > 1 && (
-          <>
-            <button
-              className="sheet-reader__nav-btn"
-              onClick={handlePrev}
-              disabled={activePage === 0}
-              aria-label="上一頁"
-              type="button"
-            >
-              <ChevronLeft size={20} />
-            </button>
-            <button
-              className="sheet-reader__nav-btn"
-              onClick={handleNext}
-              disabled={activePage === totalPages - 1}
-              aria-label="下一頁"
-              type="button"
-            >
-              <ChevronRight size={20} />
-            </button>
-          </>
-        )}
-
-        {/* Zoom 控制 */}
-        <div className="sheet-reader__zoom-btns" role="group" aria-label="縮放控制">
-          {(["fit", "medium", "large"] as ZoomLevel[]).map((z) => (
-            <button
-              key={z}
-              className={`sheet-reader__zoom-btn${zoom === z ? " sheet-reader__zoom-btn--active" : ""}`}
-              onClick={() => setZoom(z)}
-              type="button"
-              aria-pressed={zoom === z}
-            >
-              {z === "fit" ? "符合" : z === "medium" ? "1400" : "2200"}
-            </button>
-          ))}
-        </div>
-
-        {/* 檢視模式切換 */}
-        <button
-          className="sheet-reader__mode-btn"
-          onClick={() => setViewMode((m) => (m === "reader" ? "compare" : "reader"))}
-          type="button"
-          aria-pressed={viewMode === "compare"}
-        >
-          <Maximize2 size={16} />
-          <span>{viewMode === "compare" ? "閱讀模式" : "比對模式"}</span>
+        <button type="button" className="ghost-link" onClick={handleSignOut}>
+          登出
         </button>
+      </header>
+
+      <nav className="registry-tabs" aria-label="試卷區塊">
+        {REGISTRY_SECTIONS.map((section) => (
+          <button
+            key={section.slug}
+            type="button"
+            className={`registry-tab${sectionSlug === section.slug ? " registry-tab--active" : ""}`}
+            aria-current={sectionSlug === section.slug ? "true" : undefined}
+            onClick={() => setSectionSlug(section.slug)}
+          >
+            {section.label}
+          </button>
+        ))}
+      </nav>
+
+      <div className="registry-summary">
+        <span>
+          題目圖備妥 <strong>{coverage.questionReady}</strong> / {coverage.totalCodes}
+        </span>
+        <span>
+          答案圖備妥 <strong>{coverage.answerReady}</strong> / {coverage.totalCodes}
+        </span>
+        <span>
+          待核准 <strong>{coverage.pendingCount}</strong>
+        </span>
+        <span>
+          缺圖 <strong>{coverage.missingCodes.length}</strong>
+        </span>
       </div>
-    </div>
+
+      {message ? <p className="form-message">{message}</p> : null}
+
+      {isLoading ? (
+        <SkeletonGrid count={6} height={180} ariaLabel="載入建檔資料中" />
+      ) : coverage.missingCodes.length === 0 && coverage.pendingCount === 0 ? (
+        <EmptyState
+          title="此區塊圖檔已完備"
+          description="所有試卷的題目圖與答案圖皆已建檔，無待處理項目。"
+        />
+      ) : (
+        <ul className="registry-grid">
+          {[...coverage.missingCodes, ...Array.from(new Set(records.map((r) => r.code)))]
+            .filter((code, index, list) => list.indexOf(code) === index)
+            .map((code) => (
+              <RegistryCell
+                key={code}
+                code={code}
+                sectionSlug={sectionSlug}
+                registry={registry}
+                busyKey={busyKey}
+                onUpload={upload}
+                onPatch={patch}
+                onPreview={setPreview}
+              />
+            ))}
+        </ul>
+      )}
+
+      {preview ? (
+        <div className="registry-preview" role="dialog" aria-label={`${preview.code} 預覽`}>
+          <button type="button" className="registry-preview__close" onClick={() => setPreview(null)}>
+            <X size={18} /> 關閉預覽
+          </button>
+          <SheetReader doc={preview.doc} />
+        </div>
+      ) : null}
+    </SurfacePanel>
+  );
+}
+
+type SheetDocPreview = { code: string; doc: Parameters<typeof SheetReader>[0]["doc"] };
+
+function RegistryCell({
+  code,
+  sectionSlug,
+  registry,
+  busyKey,
+  onUpload,
+  onPatch,
+  onPreview,
+}: {
+  code: string;
+  sectionSlug: string;
+  registry: SheetRegistry;
+  busyKey: string | null;
+  onUpload: (code: string, slot: SheetSlot, file: File) => Promise<void>;
+  onPatch: (code: string, slot: SheetSlot, action: "approve" | "discard" | "rollback") => Promise<void>;
+  onPreview: (preview: SheetDocPreview) => void;
+}) {
+  const slots: { slot: SheetSlot; label: string }[] = [
+    { slot: "question", label: "題目圖" },
+    { slot: "answer", label: "答案圖" },
+  ];
+
+  return (
+    <li className="registry-cell">
+      <div className="registry-cell__head">
+        <span className="registry-cell__code">{code}</span>
+        <span className="registry-cell__section">{sectionSlug}</span>
+      </div>
+
+      {slots.map(({ slot, label }) => {
+        const status: SheetSlotStatus = buildSlotStatus(
+          registry[buildRegistryKey(sectionSlug, code, slot)],
+          slot,
+        );
+        const key = buildRegistryKey(sectionSlug, code, slot);
+        const isBusy = busyKey === key;
+
+        return (
+          <div key={slot} className="registry-slot">
+            <div className="registry-slot__head">
+              <span className="registry-slot__label">{label}</span>
+              <span className={`registry-status registry-status--${status.state}`}>{status.state}</span>
+            </div>
+
+            <SafeImage
+              src={status.liveUrl ?? status.pendingUrl}
+              alt={`${code} ${label}`}
+              aspectRatio="4 / 3"
+              objectFit="contain"
+              fallbackLabel={status.state === "missing" ? "尚未建檔" : label}
+            />
+
+            <label className="registry-upload">
+              <Upload size={14} />
+              <span>選擇圖片</span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                disabled={isBusy}
+                onChange={(event: ChangeEvent<HTMLInputElement>) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (file) void onUpload(code, slot, file);
+                }}
+              />
+            </label>
+
+            <div className="registry-slot__actions">
+              {status.canApprove ? (
+                <>
+                  <button
+                    type="button"
+                    className="ghost-link"
+                    disabled={isBusy}
+                    onClick={() => void onPatch(code, slot, "approve")}
+                  >
+                    <CheckCircle2 size={14} /> 核准
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost-link"
+                    disabled={isBusy}
+                    onClick={() => void onPatch(code, slot, "discard")}
+                  >
+                    <X size={14} /> 撤銷
+                  </button>
+                </>
+              ) : null}
+              {status.canRollback ? (
+                <button
+                  type="button"
+                  className="ghost-link"
+                  disabled={isBusy}
+                  onClick={() => void onPatch(code, slot, "rollback")}
+                >
+                  <RotateCcw size={14} /> 回滾上一版
+                </button>
+              ) : null}
+              {isBusy ? <LoaderCircle size={14} className="registry-spinner" /> : null}
+            </div>
+          </div>
+        );
+      })}
+    </li>
   );
 }
 ```
 
-### Step 4.2 — 新增 SheetReader CSS 樣式
+**實作注意（給低階模型）**：
+- `SheetDocPreview.doc` 的型別若報錯，改用 `import type { SheetDoc } from "@/types/sheet";` 並把型別寫成 `SheetDoc`，其餘不動。
+- `onPreview` 與預覽彈窗為**選用**。若預覽整合報錯，**整段移除** `preview` 相關程式碼（state、`onPreview` prop、`.registry-preview` 區塊、`SheetReader` import），其餘功能不受影響。
+- `status.state` 只會是 `missing | live | pending | rollback-ready`，CSS 四個狀態都要有對應樣式。
 
-在 `src/app/globals.css` 末尾新增：
+---
+
+## 11. Phase 7 — 樣式
+
+### Step 7.1　在 `src/app/globals.css` **檔案末尾**追加
 
 ```css
 /* =========================================================================
-   Sheet Reader — 試卷閱讀器
+   Sheet Registry — 建檔中心
    ========================================================================= */
-
-/* 誠實空狀態 */
-.sheet-reader--empty {
+.registry-panel,
+.registry-gate {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  padding: var(--space-8) var(--space-6);
-  background: var(--panel-soft);
-  border: 2px dashed var(--line-strong);
-  border-radius: var(--radius-md);
-  text-align: center;
+  gap: var(--space-5);
 }
 
-.sheet-reader--empty__code {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: var(--accent);
-  margin: 0;
-}
-
-.sheet-reader--empty__msg {
-  font-size: 0.9rem;
-  color: var(--muted);
-  max-width: 40ch;
-  line-height: 1.6;
-  margin: 0;
-}
-
-.sheet-reader--empty__coverage {
-  font-size: 0.75rem;
-  color: var(--muted);
-  background: var(--accent-soft);
-  padding: 4px 12px;
-  border-radius: var(--radius-pill);
-  margin: 0;
-}
-
-/* 閱讀器本體 */
-.sheet-reader {
+.registry-header {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  background: var(--panel-soft);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
-}
-
-/* 頁碼指示器 */
-.sheet-reader__page-indicator {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-variant-numeric: tabular-nums;
-  font-size: 0.82rem;
-  color: var(--muted);
-  justify-content: center;
-}
-
-.sheet-reader__page-current {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--accent);
-}
-
-.sheet-reader__page-sep {
-  color: var(--line-strong);
-}
-
-.sheet-reader__page-total {
-  color: var(--muted);
-}
-
-.sheet-reader__page-label {
-  margin-left: var(--space-2);
-  padding: 2px 10px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  border-radius: var(--radius-pill);
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-/* 主圖區 */
-.sheet-reader__main {
-  position: relative;
-  cursor: zoom-in;
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  background: var(--bg-deep);
-  /* 滿寬 912px，現行 446px 的 2.05 倍 */
-  max-width: 912px;
-  margin: 0 auto;
-  width: 100%;
-  transition: box-shadow var(--duration-fast) var(--ease-out);
-}
-
-.sheet-reader__main:hover {
-  box-shadow: var(--shadow-sm);
-}
-
-.sheet-reader__main:active {
-  cursor: grabbing;
-}
-
-.sheet-reader__img {
-  width: 100%;
-  height: auto;
-  display: block;
-  transition: opacity var(--duration-fast) var(--ease-out);
-}
-
-/* 縮放尺寸 */
-.sheet-reader__img--fit {
-  object-fit: contain;
-  max-height: 70vh;
-}
-
-.sheet-reader__img--medium {
-  width: 1400px;
-  max-width: none;
-  margin: 0 auto;
-}
-
-.sheet-reader__img--large {
-  width: 2200px;
-  max-width: none;
-  margin: 0 auto;
-}
-
-/* 比對模式下並排顯示 */
-.sheet-reader--compare .sheet-reader__main {
-  max-width: none;
-}
-
-.sheet-reader--compare .sheet-reader__img {
-  object-fit: contain;
-  max-height: 50vh;
-}
-
-/* 放大提示 */
-.sheet-reader__zoom-hint {
-  position: absolute;
-  bottom: var(--space-3);
-  right: var(--space-3);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  background: rgba(0, 0, 0, 0.48);
-  color: rgba(255, 255, 255, 0.85);
-  border-radius: var(--radius-pill);
-  font-size: 0.75rem;
-  backdrop-filter: blur(6px);
-  opacity: 0;
-  transition: opacity var(--duration-fast) var(--ease-out);
-  pointer-events: none;
-}
-
-.sheet-reader__main:hover .sheet-reader__zoom-hint {
-  opacity: 1;
-}
-
-/* 翻面提示 */
-.sheet-reader__flip-hint {
-  position: absolute;
-  bottom: var(--space-3);
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 4px 12px;
-  background: rgba(0, 0, 0, 0.42);
-  color: rgba(255, 255, 255, 0.7);
-  border-radius: var(--radius-pill);
-  font-size: 0.72rem;
-  backdrop-filter: blur(6px);
-  pointer-events: none;
-}
-
-/* 縮圖列 */
-.sheet-reader__thumbs {
-  display: flex;
-  gap: var(--space-2);
-  overflow-x: auto;
-  scrollbar-width: thin;
-  padding: var(--space-1);
-  -webkit-overflow-scrolling: touch;
-  justify-content: center;
-}
-
-.sheet-reader__thumb-btn {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: var(--space-2);
-  border: 2px solid transparent;
-  border-radius: var(--radius-sm);
-  background: var(--bg-deep);
-  cursor: pointer;
-  transition: border-color var(--duration-fast) var(--ease-out),
-    transform var(--duration-fast) var(--ease-out);
-  min-width: 72px;
-}
-
-.sheet-reader__thumb-btn:hover {
-  border-color: var(--accent);
-  transform: translateY(-2px);
-}
-
-.sheet-reader__thumb-btn--active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-
-.sheet-reader__thumb-img {
-  width: 56px;
-  height: 56px;
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.sheet-reader__thumb-label {
-  font-size: 0.68rem;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
-.sheet-reader__thumb-btn--active .sheet-reader__thumb-label {
-  color: var(--accent);
-  font-weight: 600;
-}
-
-/* 控制列 */
-.sheet-reader__controls {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--line);
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
   flex-wrap: wrap;
 }
 
-.sheet-reader__nav-btn {
+/* Tabs：§12 RWD 紀律，橫向捲動，不換行 */
+.registry-tabs {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1px solid var(--line);
-  background: var(--bg-deep);
-  color: var(--muted);
-  cursor: pointer;
-  transition: background var(--duration-fast) var(--ease-out),
-    color var(--duration-fast) var(--ease-out),
-    transform var(--duration-fast) var(--ease-out);
+  gap: var(--space-2);
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  padding-bottom: var(--space-1);
+  scrollbar-width: thin;
 }
 
-.sheet-reader__nav-btn:hover:not(:disabled) {
-  background: var(--accent-soft);
-  color: var(--accent);
-  transform: scale(1.05);
-}
-
-.sheet-reader__nav-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.sheet-reader__zoom-btns {
-  display: flex;
-  gap: 2px;
-  background: var(--bg-deep);
-  border: 1px solid var(--line);
+.registry-tab {
+  flex: 0 0 auto;
+  padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-pill);
-  padding: 3px;
-}
-
-.sheet-reader__zoom-btn {
-  padding: 5px 12px;
-  border-radius: var(--radius-pill);
-  border: none;
-  background: transparent;
+  background: var(--panel);
   color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 500;
-  cursor: pointer;
+  font-size: 0.86rem;
+  white-space: nowrap;
   transition: background var(--duration-fast) var(--ease-out),
     color var(--duration-fast) var(--ease-out);
 }
 
-.sheet-reader__zoom-btn:hover {
-  background: rgba(255, 255, 255, 0.6);
-  color: var(--text-strong);
+.registry-tab:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
-.sheet-reader__zoom-btn--active {
+.registry-tab--active {
   background: var(--accent);
   color: var(--on-accent);
 }
 
-.sheet-reader__zoom-btn--active:hover {
-  background: var(--accent-strong);
-  color: var(--on-accent);
+.registry-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+  font-size: 0.82rem;
+  color: var(--muted);
 }
 
-.sheet-reader__mode-btn {
-  display: inline-flex;
+.registry-summary strong {
+  color: var(--accent);
+  font-size: 1rem;
+  margin-inline-start: 4px;
+}
+
+.registry-gate__desc {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.registry-gate__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: 320px;
+}
+
+.registry-input {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-frosted);
+  min-width: 0;
+}
+
+.registry-input:focus-visible {
+  border-color: var(--accent);
+}
+
+.registry-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-5);
+}
+
+/* §12-B：單卡內部 padding 不得少於 var(--space-5) */
+.registry-cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: var(--panel);
+  border-radius: var(--radius-md);
+  min-width: 0;
+}
+
+.registry-cell__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 2.4em;
+}
+
+.registry-cell__code {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: var(--tracking-snug);
+}
+
+.registry-cell__section {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+.registry-slot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+  min-width: 0;
+}
+
+.registry-slot__head {
+  display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 14px;
-  border: 1px solid var(--line);
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.registry-slot__label {
+  font-size: 0.78rem;
+  color: var(--text-strong);
+}
+
+.registry-status {
+  font-size: 0.68rem;
+  padding: 2px 10px;
   border-radius: var(--radius-pill);
   background: var(--bg-deep);
   color: var(--muted);
-  font-size: 0.78rem;
-  cursor: pointer;
-  transition: background var(--duration-fast) var(--ease-out),
-    color var(--duration-fast) var(--ease-out);
+  letter-spacing: var(--tracking-snug);
 }
 
-.sheet-reader__mode-btn:hover {
+.registry-status--live {
   background: var(--accent-soft);
   color: var(--accent);
 }
 
-/* RWD：768px 以下 */
-@media (max-width: 768px) {
-  .sheet-reader__main {
-    max-width: 100%;
-  }
-
-  .sheet-reader__img--medium {
-    width: 100%;
-  }
-
-  .sheet-reader__img--large {
-    width: 100%;
-  }
-
-  .sheet-reader__thumb-img {
-    width: 44px;
-    height: 44px;
-  }
+.registry-status--pending {
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
-/* RWD：480px 以下 */
-@media (max-width: 480px) {
-  .sheet-reader__controls {
-    gap: var(--space-2);
-  }
-
-  .sheet-reader__zoom-btn {
-    padding: 4px 8px;
-    font-size: 0.72rem;
-  }
-}
-```
-
----
-
-## 第五階段：整合進 ArchiveDetailModal
-
-### Step 5.1 — 重構題目區渲染邏輯
-
-**修改**：`src/components/archive-detail-modal.tsx`
-
-**找到**現有的「題目區（題目卷正反面）」渲染區塊（`questionConfig.layout === "two-col"` 的那段），**替換為**使用 `SheetReader` 元件。
-
-**具體替換範圍**：從 `<section className="modal-section">`（第一個 section，標題為 `questionConfig.title`）到 `</section>`（第一個 section 結束）：
-
-```tsx
-// 替換這整個 section（舊代碼，約 50 行）
-<section className="modal-section">
-  <h3 className="section-title">{questionConfig.title}</h3>
-  {questionConfig.layout === "two-col" && questionImageUrl && finalRequirementUrl ? (
-    <div className="question-grid">
-      {/* 舊的兩欄並排代碼 */}
-    </div>
-  ) : /* ...舊邏輯... */}
-</section>
-
-// 換成（新代碼）：
-<section className="modal-section">
-  <h3 className="section-title">{questionConfig.title}</h3>
-
-  {/* 新邏輯：使用 SheetReader */}
-  <SheetDocRenderer
-    item={item}
-    sectionSlug={sectionSlug}
-    requirementUrl={finalRequirementUrl}
-    onOpenLightbox={setActiveImage}
-  />
-</section>
-```
-
-**新建輔助元件**（直接加在 archive-detail-modal.tsx 檔案末尾，在 `ModalUploadCard` 之後）：
-
-```tsx
-/**
- * SheetDocRenderer — 試卷閱讀器 Wrapper
- * 負責把 ArchiveItem + sectionSlug 轉換成 SheetDoc，再交給 SheetReader 渲染。
- */
-function SheetDocRenderer({
-  item,
-  sectionSlug,
-  requirementUrl,
-  onOpenLightbox,
-}: {
-  item: ArchiveItem;
-  sectionSlug: string;
-  requirementUrl: string | null;
-  onOpenLightbox: (url: string) => void;
-}) {
-  const doc = useMemo(
-    () => buildSheetDoc(item, sectionSlug, requirementUrl),
-    [item, sectionSlug, requirementUrl],
-  );
-
-  const { total, archived, description } = getSectionCoverage(sectionSlug);
-
-  if (!doc) {
-    return (
-      <div className="sheet-reader--empty">
-        <p className="sheet-reader--empty__code">{item.code}</p>
-        <p className="sheet-reader--empty__msg">
-          {sectionSlug === "perspective"
-            ? `${item.code.slice(0, 3)} 題的題目卷正反面尚未收錄，掃描建檔後會自動顯示。`
-            : "此題目的題目參考圖正在編校上傳中。"}
-        </p>
-        <p className="sheet-reader--empty__coverage">
-          {description} 共 {total} 題 · 已收錄 {archived} 題
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <SheetReader
-      doc={doc}
-      onOpenLightbox={(url) => onOpenLightbox(url)}
-      coverage={`${description} 共 ${total} 題 · 已收錄 ${archived} 題`}
-    />
-  );
-}
-```
-
-**新增 import**（在 archive-detail-modal.tsx 頂部）：
-
-```tsx
-import { SheetReader } from "@/components/sheet-reader";
-import { buildSheetDoc, getSectionCoverage } from "@/lib/sheet-reader";
-import { useMemo } from "react";
-```
-
-### Step 5.2 — 清理不再需要的舊邏輯
-
-**刪除**以下不再需要的變數與計算（在 archive-detail-modal.tsx 內）：
-
-1. `frontAlt` / `backAlt` 變數（已被 SheetReader 內部處理）
-2. `questionImageUrl` 計算（已被 buildSheetDoc 取代）
-3. `staticRequirementUrl` 計算（已被 buildSheetDoc 取代）
-4. `finalRequirementUrl` 保留（傳入 SheetDocRenderer）
-5. `QUESTION_CONFIGS` 內的 `frontLabel` / `backLabel` 靜態定義（改由 `PERSPECTIVE_SHEET_COPY` 動態提供）
-6. `FALLBACK_QUESTION_CONFIG`（若不再被引用）
-
-### Step 5.3 — 更新 Lightbox 點擊來源
-
-`SheetReader` 的 `onOpenLightbox` 傳入的是從 `buildSheetDoc` 來的 URL，這些 URL 必須在 `zoomableImages` 清單內，否則 Lightbox 的左右箭頭會失效。
-
-**檢查** `zoomableImages` 的建構邏輯（已在 archive-detail-modal.tsx 內）：
-
-```tsx
-const zoomableImages = useMemo(() => {
-  const urls: string[] = [];
-  if (questionImageUrl) urls.push(questionImageUrl);  // ← 需確認仍有此行
-  if (finalRequirementUrl) urls.push(finalRequirementUrl);  // ← 需確認仍有此行
-  for (const u of uploads) {
-    // ... 上傳圖片
-  }
-  return urls;
-}, [questionImageUrl, finalRequirementUrl, uploads]);
-```
-
-**確認**：若刪除了 `questionImageUrl`，需改為從 `SheetDoc` 取得 URL：
-
-```tsx
-const sheetDocUrls = useMemo(() => {
-  const doc = buildSheetDoc(item, sectionSlug, finalRequirementUrl);
-  return doc?.pages.map((p) => p.url) ?? [];
-}, [item, sectionSlug, finalRequirementUrl]);
-
-const zoomableImages = useMemo(() => {
-  const urls: string[] = [...sheetDocUrls];
-  for (const u of uploads) {
-    if (u.imageUrls && u.imageUrls.length > 0) {
-      urls.push(...u.imageUrls);
-    } else {
-      urls.push(u.imageUrl);
-    }
-  }
-  return urls;
-}, [sheetDocUrls, uploads]);
-```
-
----
-
-## 第六階段：區域放大（Lightbox 內疊網格）
-
-### Step 6.1 — 更新 Lightbox 支援分頁來源 URL
-
-在 archive-detail-modal.tsx 的 Lightbox 渲染區，找到 `zoomableImages` 的宣告位置，確認 `activeImage` 的 URL 來自正確的頁面 URL（已被 Step 5.3 處理）。
-
-### Step 6.2 — 在 Lightbox 內新增網格覆蓋（可選，本輪不做）
-
-**本輪不實作此步**，因為會增加開發複雜度。若日後需要，可在 Lightbox 內疊加 3×3 CSS 網格線，點擊任一格計算 `transform-origin` 並套用 `scale(2)`。
-
----
-
-## 第七階段：方向感知標註（208 專用）
-
-### Step 7.1 — 新建方向標註資料
-
-**新建檔案**：`src/data/perspective-markers.ts`
-
-```ts
-/**
- * perspective-markers.ts
- *
- * 208 透視圖的方向框標註資料。
- * 用於在題目卷正面的圖片上標示甲／乙／丙三個方向框位置。
- *
- * 設計背景：
- * 甲向 = 一消點透視圖（考場比例 1/3）
- * 乙丙向 = 二消點透視圖（考場比例 2/3）
- * 讓備考者一眼看出「甲向在這裡，乙丙向在那裡」，
- * 呼應 v1.3 附錄 H 的方向感知抽題邏輯。
- */
-
-export type PerspectiveMarker = {
-  direction: "甲" | "乙" | "丙";
-  /** 方向框相對位置（百分比，0-100） */
-  position: {
-    top: number;    // 從圖片頂部算起（%）
-    left: number;   // 從圖片左側算起（%）
-    width: number;  // 框寬度（%）
-    height: number; // 框高度（%）
-  };
-  /** 標籤顯示文字 */
-  label: string;
-  /** 消點類型 */
-  vpType: "一消點" | "二消點";
-};
-
-/** 208 題目卷正面的方向框標註（基於實際圖面測量） */
-export const PERSPECTIVE_208_MARKERS: PerspectiveMarker[] = [
-  {
-    direction: "甲",
-    position: { top: 15, left: 10, width: 25, height: 35 },
-    label: "甲向",
-    vpType: "一消點",
-  },
-  {
-    direction: "乙",
-    position: { top: 15, left: 38, width: 25, height: 35 },
-    label: "乙向",
-    vpType: "二消點",
-  },
-  {
-    direction: "丙",
-    position: { top: 15, left: 66, width: 25, height: 35 },
-    label: "丙向",
-    vpType: "二消點",
-  },
-];
-
-/**
- * 取得某個題號的方向標註（僅 208 有實測資料，其餘題號回傳空陣列）。
- */
-export function getPerspectiveMarkers(itemCode: string): PerspectiveMarker[] {
-  if (itemCode.startsWith("208")) return PERSPECTIVE_208_MARKERS;
-  return [];
-}
-```
-
-### Step 7.2 — 在 SheetReader 內渲染方向標註（208 限定）
-
-在 `SheetReader` 的主圖區內，針對第一頁（正面）且題號為 208 時，疊加方向框標註：
-
-**修改** `SheetReader` 的 JSX，找到主圖區的 `<SafeImage>`，在其外包一層 `<div className="sheet-reader__main">`，在此 div 內新增：
-
-```tsx
-{/* 方向標註（僅 208 正面顯示） */}
-{activePage === 0 && getPerspectiveMarkers(doc.code).length > 0 && (
-  <div className="sheet-reader__marker-overlay" aria-hidden="true">
-    {getPerspectiveMarkers(doc.code).map((marker) => (
-      <div
-        key={marker.direction}
-        className={`sheet-reader__marker sheet-reader__marker--${marker.vpType === "一消點" ? "1vp" : "2vp"}`}
-        style={{
-          top: `${marker.position.top}%`,
-          left: `${marker.position.left}%`,
-          width: `${marker.position.width}%`,
-          height: `${marker.position.height}%`,
-        }}
-      >
-        <span className="sheet-reader__marker-label">
-          {marker.label}
-          <small>{marker.vpType}</small>
-        </span>
-      </div>
-    ))}
-  </div>
-)}
-```
-
-**新增 CSS**（在 globals.css 的 SheetReader 區塊）：
-
-```css
-/* 方向框標註 */
-.sheet-reader__marker-overlay {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 2;
+.registry-status--rollback-ready {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
 
-.sheet-reader__marker {
-  position: absolute;
-  border: 2px dashed;
-  border-radius: 6px;
-  display: flex;
-  align-items: flex-start;
+.registry-status--missing {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.registry-upload {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  padding: 4px;
-  transition: border-color var(--duration-fast) var(--ease-out);
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
 }
 
-.sheet-reader__marker--1vp {
-  border-color: rgba(59, 130, 246, 0.7);
-  background: rgba(59, 130, 246, 0.06);
+.registry-upload:hover {
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
-.sheet-reader__marker--2vp {
-  border-color: rgba(139, 92, 246, 0.7);
-  background: rgba(139, 92, 246, 0.06);
+.registry-upload input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 
-.sheet-reader__marker-label {
-  font-size: 0.72rem;
-  font-weight: 700;
+.registry-slot__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  min-height: 2rem;
+}
+
+.registry-slot__actions button {
+  font-size: 0.74rem;
+  padding: 4px 10px;
+}
+
+.registry-spinner {
+  animation: registry-spin 900ms linear infinite;
+  color: var(--accent);
+}
+
+@keyframes registry-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.registry-preview {
   display: flex;
   flex-direction: column;
+  gap: var(--space-4);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--line);
+}
+
+.registry-preview__close {
+  align-self: flex-start;
+  display: inline-flex;
   align-items: center;
-  gap: 1px;
+  gap: var(--space-2);
+  font-size: 0.8rem;
+  color: var(--muted);
 }
 
-.sheet-reader__marker--1vp .sheet-reader__marker-label {
-  color: #1d4ed8;
+@media (max-width: 768px) {
+  .registry-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .registry-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+```
+
+**驗證**：
+
+```bash
+npx tsc --noEmit 2>&1 | head -20
+```
+
+**預期**：無 Error。
+
+---
+
+## 12. Phase 8 — 頁面
+
+### Step 8.1　新建 `src/app/admin/sheets/page.tsx`
+
+```tsx
+import type { Metadata } from "next";
+import { SheetRegistryPanel } from "@/components/admin/sheet-registry-panel";
+
+export const metadata: Metadata = {
+  title: "建檔中心｜乙級術科",
+  robots: { index: false, follow: false },
+};
+
+export default function SheetRegistryPage() {
+  return (
+    <main className="container" style={{ paddingBlock: "var(--space-10)" }}>
+      <SheetRegistryPanel />
+    </main>
+  );
+}
+```
+
+**驗收**：開啟 `http://localhost:3000/admin/sheets` 應看到「輸入管理密碼以繼續」的閘門畫面。
+
+---
+
+## 13. Phase 9 — 串接前台（SheetDoc 讀取 registry）
+
+### Step 9.1　新建 `src/hooks/use-sheet-registry.ts`
+
+```ts
+"use client";
+
+import { useEffect, useState } from "react";
+import { buildRegistryKey } from "@/lib/sheet-registry";
+import type { SheetRecord, SheetRegistry } from "@/types/sheet-registry";
+
+let cache: SheetRegistry | null = null;
+
+function toRegistry(records: SheetRecord[]): SheetRegistry {
+  const registry: SheetRegistry = {};
+  for (const record of records) {
+    registry[buildRegistryKey(record.sectionSlug, record.code, record.slot)] = record;
+  }
+  return registry;
 }
 
-.sheet-reader__marker--2vp .sheet-reader__marker-label {
-  color: #5b21b6;
+/** 失效快取（建檔中心寫入後呼叫，讓下次開啟 Modal 立即反映） */
+export function invalidateSheetRegistry(): void {
+  cache = null;
 }
 
-.sheet-reader__marker-label small {
-  font-size: 0.62rem;
-  font-weight: 400;
-  opacity: 0.8;
+export function useSheetRegistry(): { registry: SheetRegistry; isLoading: boolean } {
+  const [registry, setRegistry] = useState<SheetRegistry>(cache ?? {});
+  const [isLoading, setIsLoading] = useState(cache === null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (cache) return;
+
+    fetch("/api/sheets")
+      .then((response) => response.json())
+      .then((data: { records?: SheetRecord[] }) => {
+        cache = toRegistry(data.records ?? []);
+        if (!cancelled) setRegistry(cache);
+      })
+      .catch(() => {
+        // 讀取失敗時以空 registry 降級，前台維持靜態圖行為
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return { registry, isLoading };
 }
+```
+
+### Step 9.2　修改 `src/lib/sheet-reader.ts`
+
+1. 新增 import：
+
+```ts
+import { resolveSlotUrl } from "@/lib/sheet-registry";
+import { buildRegistryKey } from "@/lib/sheet-registry";
+import type { SheetRegistry } from "@/types/sheet-registry";
+```
+
+2. 把 `buildSheetDoc` 簽章改為多一個可選參數：
+
+```ts
+export function buildSheetDoc(
+  item: ArchiveItem,
+  sectionSlug: string,
+  answerUrl?: string | null,
+  registry: SheetRegistry = {},
+): SheetDoc | null {
+```
+
+3. 在函式開頭插入 registry 覆寫查詢，並於各分支使用：
+
+```ts
+  const registryQuestion =
+    resolveSlotUrl(registry[buildRegistryKey(sectionSlug, item.code, "question")]);
+  const registryAnswer =
+    resolveSlotUrl(registry[buildRegistryKey(sectionSlug, item.code, "answer")]);
+```
+
+- **perspective 分支**：在 `buildPerspectiveSheetDoc(item)` 前先判斷
+  `if (registryQuestion) { return { code: item.code, sectionSlug, pages: [{ url: registryQuestion, label: "題目卷正面", alt: \`${item.code} 題目卷正面\` }] }; }`
+- **detail 分支**：`const questionUrl = registryQuestion ?? \`/images/${item.code}/${item.code}-question.jpg\`;`
+  答案頁改為 `const answerPage = registryAnswer ?? answerUrl;`，僅在 `answerPage` 存在時 push。
+- **plan / ceiling-elevation 分支**：`const questionUrl = registryQuestion ?? \`/images/plan/question-${numPart}.jpg\`;`（其餘邏輯不動）
+
+> **修改紀律**：只加參數與「優先序」，**不得刪除或改寫既有分支邏輯**。registry 為空時行為必須與修改前完全一致。
+
+### Step 9.3　修改 `src/components/archive-detail-modal.tsx`
+
+1. 新增 import：`import { useSheetRegistry } from "@/hooks/use-sheet-registry";`
+2. 在元件內取得：`const { registry } = useSheetRegistry();`
+3. 找出所有呼叫 `buildSheetDoc(...)` 的位置，**只多加第 4 個參數** `registry`：
+
+```ts
+buildSheetDoc(item, sectionSlug, finalRequirementUrl, registry)
+```
+
+**驗證**：
+
+```bash
+npx tsc --noEmit 2>&1 | head -20 && npm test 2>&1 | tail -6
+```
+
+**預期**：無 Error、測試通過。
+
+---
+
+## 14. Phase 10 — 安全修補：共用需求圖寫入閘（地雷 B）
+
+### Step 10.1　修改 `src/app/api/uploads/route.ts`
+
+在 `if (confirmOverride && parsedKey && hasKvEnv()) {` **之前**插入：
+
+```ts
+  // 覆寫官方圖檔需要管理權限（方案 S Phase 10）
+  if (confirmOverride && parsedKey) {
+    const expectedToken = process.env.CURATOR_TOKEN;
+    const receivedToken = request.headers.get("x-curator-token");
+    if (!expectedToken) {
+      return NextResponse.json(
+        { message: "尚未設定 CURATOR_TOKEN，覆寫暫停。" },
+        { status: 503 },
+      );
+    }
+    if (receivedToken !== expectedToken) {
+      return NextResponse.json(
+        { message: "覆寫官方需求圖需要管理權限。" },
+        { status: 401 },
+      );
+    }
+  }
+```
+
+### Step 10.2　修改 `src/components/upload-studio.tsx`
+
+在送出「共用需求圖覆寫」請求的地方（帶 `confirmOverride: "true"` 的 FormData），補上 header：
+
+```ts
+import { getCuratorToken } from "@/lib/curator-token";
+// ...
+const response = await fetch("/api/uploads", {
+  method: "POST",
+  headers: { "x-curator-token": getCuratorToken() },
+  body: formData,
+});
+```
+
+若既有呼叫沒寫 `headers`，就補上這一行即可，其他參數不動。
+
+**驗證**：
+
+```bash
+npx tsc --noEmit 2>&1 | head -20
 ```
 
 ---
 
-## 第八階段：視覺驗收
+## 15. Phase 11 — 環境變數
 
-### Step 8.1 — 啟動開發伺服器
+### Step 11.1　`.env.local` 與 `.env.example` 各新增一行
+
+```
+# 建檔中心寫入權限（server-side only，絕不可加 NEXT_PUBLIC_ 前綴）
+CURATOR_TOKEN=
+```
+
+```bash
+printf '\n# 建檔中心寫入權限（server-side only）\nCURATOR_TOKEN=\n' >> .env.local
+printf '\n# 建檔中心寫入權限（server-side only）\nCURATOR_TOKEN=\n' >> .env.example
+```
+
+### Step 11.2　產生一組 token 給使用者填入
+
+```bash
+openssl rand -base64 24
+```
+
+**注意**：`CURATOR_TOKEN` **不可**加 `NEXT_PUBLIC_` 前綴。前端只在送出 request 時由 `sessionStorage` 帶入 header，任何會被打包進 client bundle 的環境變數都是資安違規（憲法第九條）。
+
+### Step 11.3　部署環境（Vercel）
+
+Settings → Environment Variables 新增 `CURATOR_TOKEN`（Production / Preview 各一），值為 Step 11.2 的輸出。若要讓上傳功能完全可用，確認既有的 `KV_REST_API_URL`、`KV_REST_API_TOKEN`、`CLOUDINARY_*` 仍存在。
+
+---
+
+## 16. Phase 12 — 視覺驗收與合規掃描
+
+### Step 12.1　啟動 dev server
 
 ```bash
 cd "/Users/liangzhiwei/Documents/VIbe Coding/室內設計乙級"
 npm run dev
 ```
 
-等待看見 `ready - started server on http://localhost:3000`，再進行視覺驗收。
+等待 `ready - started server on http://localhost:3000`。
 
-### Step 8.2 — 視覺檢查清單
+### Step 12.2　驗收清單
 
-打開瀏覽器，逐一確認：
-
-| # | 檢查點 | 預期結果 |
+| # | 檢查點 | 預期 |
 |---|---|---|
-| 1 | 首頁 Hero 正常渲染 | 暖米背景、品牌色無異常 |
-| 2 | 點擊任一試卷卡片 | Modal 開啟，題目區使用 SheetReader |
-| 3 | 208 透視圖試卷卡（已建檔） | SheetReader 顯示 2 頁，頁碼指示器 "1 / 2" |
-| 4 | 點擊 207 甲（未建檔） | 顯示誠實佔位狀態：「題目圖紙建置中」 |
-| 5 | 縮圖列 | 兩張縮圖，點擊可切換 |
-| 6 | 鍵盤左右鍵 | 可切換頁面 |
-| 7 | Zoom 控制 | 三段切換（符合 / 1400 / 2200）|
-| 8 | 比對模式按鈕 | 點擊後 UI 變化 |
-| 9 | 點擊主圖 | Lightbox 開啟 |
-| 10 | Lightbox 內左右箭頭 | 可在所有圖（題目 + 上傳）間切換 |
-| 11 | Console 無 Error | 無紅字錯誤、無 TypeScript 錯誤 |
-| 12 | 480px Mobile | 無橫向捲動，SheetReader 適配 |
+| 1 | `http://localhost:3000` | 首屏正常，試卷卡與點擊抽題無變化 |
+| 2 | 任一試卷 Modal | 題目區與修改前一致（registry 為空 → 行為不變） |
+| 3 | `http://localhost:3000/admin/sheets` | 顯示管理密碼閘門 |
+| 4 | 輸入錯誤密碼 | 停留在閘門，不進入 |
+| 5 | 輸入正確密碼 | 進入面板，四個區塊 tab 與統計列出現 |
+| 6 | 切換到 `detail` | 統計列顯示缺圖 9 題（214–221、223） |
+| 7 | 選一缺圖試卷 → 選檔 | 顯示「已上傳，待核准」與壓縮前後尺寸 |
+| 8 | 該槽位狀態燈 | 變為 `pending`，前台 Modal **不應**出現新圖 |
+| 9 | 按「核准」 | 狀態燈變 `live`，前台 Modal 該題**出現**新圖 |
+| 10 | 對同一槽位再上傳一張 → 核准 | `prevUrl` 生效，「回滾上一版」按鈕出現 |
+| 11 | 按「回滾上一版」 | 圖面回到前一版；再按一次可還原 |
+| 12 | 按「撤銷」 | 待核准圖消失，生效版本不變 |
+| 13 | 480px 視窗 | 統計列變 2 欄、tab 可橫向捲動、無橫向捲動軸 |
+| 14 | Console | 無紅字 Error |
+| 15 | 未帶 token 直接呼叫 `POST /api/sheets` | 回傳 401 |
 
-### Step 8.3 — 憲法合規 Pre-flight 掃描
+### Step 12.3　Pre-flight 與品質掃描
 
 ```bash
 cd "/Users/liangzhiwei/Documents/VIbe Coding/室內設計乙級"
 
-# 1. CSS 變數覆用（不得有寫死 hex）
+# 1. 不得有寫死 hex
 grep -rEn "color: #[0-9a-fA-F]{3,8}|background: #[0-9a-fA-F]{3,8}" \
-  src/components/sheet-reader.tsx \
-  src/components/archive-detail-modal.tsx \
-  src/app/globals.css 2>/dev/null | grep -v "var(--" | grep -v "node_modules" || echo "✅ 無寫死 hex"
+  src/components/admin src/app/admin src/app/api/sheets src/lib/sheet-registry*.ts \
+  src/lib/image-compress.ts src/lib/curator-token.ts src/hooks/use-sheet-registry.ts 2>/dev/null \
+  | grep -v "var(--" || echo "PASS-1 無寫死 hex"
 
-# 2. 字體合規（≥3rem 標題 ≤ 0.02em）
-grep -rn "letter-spacing:" src/components/sheet-reader.tsx | \
-  awk '$NF ~ /[0-9.]+em/ && $NF+0 > 0.05' || echo "✅ 字距合規"
+# 2. 字距合規（SOP 1）
+grep -rn "letter-spacing:" src/components/admin src/app/globals.css | \
+  awk '$NF ~ /[0-9.]+em/ && $NF+0 > 0.05' || echo "PASS-2 字距合規"
 
-# 3. 無新增非標準斷點（僅 480/768/1024/1200）
-grep -rEho "@media \(max-width: [0-9]+px\)" \
-  src/components/sheet-reader.tsx \
-  src/app/globals.css | sort | uniq -c | sort -rn
+# 3. 斷點僅限 480/768/1024/1200
+grep -rEho "@media \(max-width: [0-9]+px\)" src/components/admin src/app/globals.css | sort | uniq -c
 
-# 4. font-size 上限
-grep -rEn "font-size: [0-9]+\.[5-9]rem|font-size: [1-9][0-9]rem" \
-  src/components/sheet-reader.tsx || echo "✅ 字級合規"
+# 4. 字級上限 ≤ 6rem
+grep -rEn "font-size: [0-9]+\.[5-9]rem|font-size: [1-9][0-9]rem" src/components/admin || echo "PASS-4 字級合規"
 
-# 5. ≥3rem 標題有 text-wrap: balance
-grep -rn "heading--h1\|heading--h2\|clamp.*3\|clamp.*4" \
-  src/components/sheet-reader.tsx | grep -v "text-wrap" || echo "✅ text-wrap 合規"
+# 5. 禁用不存在的間距變數（SOP 9 教訓 3）
+grep -rn "var(--space-[0-9]*)" src/components/admin src/app/globals.css | \
+  grep -E "space-(7|9|11)\b" || echo "PASS-5 無不存在的間距變數"
 
-# 6. TypeScript 編譯
-npx tsc --noEmit 2>&1 | head -20 || echo "✅ 編譯無 Error"
+# 6. 禁止 max-width: NNch（§12）
+grep -rn "max-width: [0-9]\+ch" src/components/admin || echo "PASS-6 無窄寬斷尾"
+
+# 7. 測試
+npm test 2>&1 | tail -8
+
+# 8. 型別
+npx tsc --noEmit && echo "PASS-8 型別通過"
+
+# 9. 建置
+npm run build 2>&1 | tail -15
 ```
+
+**全部預期為 PASS 或無輸出。** 任一項失敗，修正後重跑該項再往下。
 
 ---
 
-## 第九階段：Commit 與憲章更新
+## 17. Phase 13 — 文檔與 Commit
 
-### Step 9.1 — Commit 訊息
-
-```
-feat(sheet-reader): 試卷閱讀器 — 分頁檢視 + 自動裁邊 + 方向感知標註
-
-- 新增 SheetDoc 資料模型，取代「兩 URL 欄位」的舊模型
-- 新增 SheetReader 元件：滿寬 912px + object-fit: contain + 分頁導航
-- 新增自動裁邊 build script（scripts/trim-sheets.mjs）
-- 新增方向框標註（208 透視圖專用，呼應 v1.3 方向感知抽題）
-- 新增方向感知標註資料（perspective-markers.ts）
-- 新增 SheetDocRenderer Wrapper，維護 archive-detail-modal.tsx 向後相容
-- 重構 buildSheetDoc / getSectionCoverage 至 src/lib/sheet-reader.ts
-- 重寫 perspective-sheets.ts（邏輯層，不含 UI）
-- Pre-flight 掃描全數通過（CSS 變數 / 字距 / 斷點 / 字級 / text-wrap）
-```
-
-### Step 9.2 — 更新 `AGENTS.md` 附錄 G
-
-在附錄 G 末尾新增條目：
+### Step 13.1　`AGENTS.md` 新增「附錄 J：建檔中心（Sheet Registry）更新（v1.5）」
 
 ```markdown
-# 附錄 I：試卷閱讀器（Sheet Reader）更新（v1.4）
+# 附錄 J：建檔中心（Sheet Registry）更新（v1.5）
 
 ## 更新日期
-2026-10-05
+2026-10-22
 
 ## 核心變更
-試卷閱讀從「兩欄並排正反面圖」升級為「分頁閱讀器」：
-- 單一文件物件（SheetDoc）取代「兩個 URL 欄位」
-- 滿寬 912px（舊 446px 的 2.05 倍）+ object-fit: contain
-- 分頁導航：頁碼指示器 + 縮圖列 + 鍵盤左右鍵
-- 自動裁邊 build script：有效解析度再提升 1.15 倍
-- 方向框標註（208 透視圖專用）
+試卷圖檔建檔從「IDE 搬檔 + git push + 部署」升級為「瀏覽器建檔中心」：
+- 資料層：Vercel KV **Hash** `sheet_registry`（非 List，避開 200 筆 LPOP 上限）
+- 治理：三態變更單（草稿 → 待核准 → 生效），前台只讀生效欄位
+- 回滾：保留 prevUrl / prevAt，一鍵回滾且可再次核准還原
+- 客戶端壓縮：canvas → WebP 長邊 3000px，解決 10MB 上限
+- 靜態圖探測：API 以 fs.existsSync 回報磁碟真實狀態，「缺圖」非推測
 
 ## 新增檔案
-- `src/types/sheet.ts`：SheetDoc / SheetPage 型別定義
-- `src/lib/sheet-reader.ts`：URL 解析邏輯（單一事實來源）
-- `src/components/sheet-reader.tsx`：試卷閱讀器元件
-- `src/data/perspective-markers.ts`：208 方向框標註資料
-- `scripts/trim-sheets.mjs`：自動裁邊 build script
+| 檔案 | 說明 |
+|---|---|
+| `src/types/sheet-registry.ts` | SheetRecord / SheetRegistry / SectionCoverage 型別 |
+| `src/lib/sheet-registry.ts` | key 建構、狀態機 reducer、覆蓋率（純邏輯，可測試） |
+| `src/lib/sheet-registry-kv.ts` | KV Hash 存取層 |
+| `src/lib/curator-token.ts` | curator token 的 sessionStorage 存取 |
+| `src/lib/image-compress.ts` | 瀏覽器端 canvas 壓縮 |
+| `src/lib/rate-limit.ts` | 極簡限流（僅供 /api/sheets） |
+| `src/app/api/sheets/route.ts` | GET（含 probe）/ POST（待核准）/ PATCH（核准·撤銷·回滾） |
+| `src/components/admin/sheet-registry-panel.tsx` | 建檔中心面板 |
+| `src/app/admin/sheets/page.tsx` | 建檔中心頁面（noindex） |
+| `src/hooks/use-sheet-registry.ts` | 前台 registry 快取讀取 |
+| `src/lib/__tests__/sheet-registry.test.ts` | 11 條單元測試 |
 
 ## 受影響檔案
-- `src/components/archive-detail-modal.tsx`：題目區改用 SheetReader
-- `src/app/globals.css`：新增 SheetReader / 方向標註樣式
-- `src/lib/perspective-sheets.ts`：重寫為純邏輯層（不含 UI）
+| 檔案 | 變更 |
+|---|---|
+| `src/lib/sheet-reader.ts` | `buildSheetDoc` 新增第 4 參數 `registry`，僅調整優先序 |
+| `src/components/archive-detail-modal.tsx` | 傳入 registry |
+| `src/app/api/uploads/route.ts` | 覆寫分支補 curator token 驗證（修既有漏洞） |
+| `src/components/upload-studio.tsx` | 覆寫請求帶 token header |
+| `src/app/globals.css` | 新增 registry-* 樣式 |
 
-## 設計權重
-| 軸 | 分數 | 理由 |
-|---|---|---|
-| 資訊準確度 | 10 | 單一事實來源，頁面語意正確 |
-| 圖面可讀性 | 9.5 | 2.05× 放大 × 1.15× 裁邊 = 2.35× 有效解析度 |
-| 資訊層級 | 9.5 | 文件 → 頁 → 區域 三層，Stripe 網格成立 |
-| RWD 穩健度 | 9 | 768px 單欄，縮圖列橫向捲動（§12 RWD 紀律）|
-| 維護成本 | 7 | 新增 viewer 元件 + build script，但複用既有 thumb/lightbox |
-| 跨 section 一致性 | 8 | 抽象成通用 SheetReader，plan/detail 可選用 |
-| **加權總分** | **9.1** | |
+## 環境變數
+`CURATOR_TOKEN`（server-side only，**禁止** NEXT_PUBLIC_ 前綴）
+
+## 設計權重評估
+| 軸 | 分數 | 權重 | 理由 |
+|---|---|---|---|
+| 每次入檔速度 | 10 | 25% | 單題 20 秒、批次 20 題 3 分鐘 |
+| 開發成本 | 7 | 20% | 1 頁面 + 3 端點 + 1 hash，複用 6 個既有元件 |
+| 內容治理 | 10 | 20% | 三態變更單 + curator 閘 |
+| 可追溯 / 回滾 | 9 | 15% | prevUrl + 稽核欄位；扣 1 為 KV 無不可竄改紀錄 |
+| 長期維護 | 9 | 20% | registry 成為缺圖單一事實來源 |
+| **加權總分** | **9.1** | | |
+
+## 違規豁免
+無新增豁免。
+```
+
+並把 `AGENTS.md` 抬頭的版本行改為 `v1.5（v1.5 整合建檔中心）`。
+
+### Step 13.2　Commit
+
+```bash
+git add -A
+git commit -m "feat(sheet-registry): 建檔中心 — 三態核准 + 一鍵回滾 + 客戶端壓縮
+
+- 新增 KV Hash sheet_registry，避開 practice_entries 的 200 筆 LPOP 上限
+- 新增三態變更單（草稿/待核准/生效），前台只讀生效欄位
+- 新增 /api/sheets：GET(含靜態圖 fs 探測)、POST(待核准)、PATCH(核准/撤銷/回滾)
+- 新增 /admin/sheets 建檔中心（noindex），複用 SheetReader / SafeImage / primitives
+- 新增客戶端 canvas 壓縮（WebP 長邊 3000px），解決 10MB 上限
+- buildSheetDoc 新增 registry 優先序參數，向後相容（registry 空時行為不變）
+- security: 共用需求圖覆寫補 curator token 驗證（修既有未授權覆寫漏洞）
+- 測試：sheet-registry 11 條，全數通過"
+git push -u origin feat/sheet-registry
 ```
 
 ---
 
-## 實作順序（低階模型照表操課）
+## 18. 實作順序總表（低階模型照表操課）
 
-| 順序 | 檔案 | 操作 |
+| # | Phase | 動作 | 完成判定 |
+|---|---|---|---|
+| 0 | 0 | **先獨立 commit 既有縮放功能改動** | `git status` 僅剩 tsbuildinfo |
+| 1 | 0 | `git checkout -b feat/sheet-registry` | 分支存在且工作區乾淨 |
+| 2 | 1 | 建 `src/types/sheet-registry.ts` | `tsc` 無 Error |
+| 3 | 1 | 建 `src/lib/curator-token.ts` | `tsc` 無 Error |
+| 4 | 2 | 建 `src/lib/sheet-registry.ts` | `tsc` 無 Error |
+| 5 | 2 | 建 `src/lib/__tests__/sheet-registry.test.ts` | `npm test` 全綠 |
+| 6 | 3 | 建 `src/lib/sheet-registry-kv.ts` | `tsc` + 測試通過 |
+| 7 | 4 | 建 `src/lib/rate-limit.ts` | `tsc` 無 Error |
+| 8 | 4 | 建 `src/app/api/sheets/route.ts`（**記得刪除 2 行無用 import**） | `tsc` 無 Error |
+| 9 | 5 | 建 `src/lib/image-compress.ts` | `tsc` 無 Error |
+| 10 | 6 | 建 `src/components/admin/sheet-registry-panel.tsx` | `tsc` 無 Error |
+| 11 | 7 | `globals.css` 追加 registry 樣式 | `tsc` 無 Error |
+| 12 | 8 | 建 `src/app/admin/sheets/page.tsx` | 頁面可開 |
+| 13 | 9 | 建 `src/hooks/use-sheet-registry.ts` | `tsc` 無 Error |
+| 14 | 9 | 改 `src/lib/sheet-reader.ts`（加參數 + 優先序） | 前台行為不變 |
+| 15 | 9 | 改 `archive-detail-modal.tsx`（傳 registry） | Modal 正常 |
+| 16 | 10 | 改 `/api/uploads` 覆寫閘 + `upload-studio` 帶 token | 401 可驗證 |
+| 17 | 11 | `.env.local` / `.env.example` 加 `CURATOR_TOKEN` | 檔案含該行 |
+| 18 | 12 | `npm run dev` + 15 項驗收 | 逐項打勾 |
+| 19 | 12 | 9 項 Pre-flight 掃描 | 全 PASS |
+| 20 | 13 | 寫 `AGENTS.md` 附錄 J、版本升 v1.5 | 檔案已更新 |
+| 21 | 13 | `git commit` + `git push` | push 成功 |
+
+---
+
+## 19. 常見錯誤與排除
+
+| 症狀 | 原因 | 處置 |
 |---|---|---|
-| 1 | — | Git 回滾（Step 1.1–1.5）|
-| 2 | 新建 `src/lib/perspective-sheets.ts` | 邏輯層重建（Step 1.5）|
-| 3 | 新建 `src/types/sheet.ts` | 資料模型（Step 2.1）|
-| 4 | 新建 `src/lib/sheet-reader.ts` | URL 解析（Step 2.2）|
-| 5 | 新建 `scripts/trim-sheets.mjs` | 裁邊 Script（Step 3.2）|
-| 6 | 執行 `node scripts/trim-sheets.mjs` | 裁邊處理（Step 3.3）|
-| 7 | 新建 `src/components/sheet-reader.tsx` | 閱讀器元件（Step 4.1）|
-| 8 | 修改 `src/app/globals.css` | SheetReader + 方向標註樣式（Step 4.2）|
-| 9 | 新建 `src/data/perspective-markers.ts` | 方向標註資料（Step 7.1）|
-| 10 | 修改 `src/components/sheet-reader.tsx` | 整合方向標註（Step 7.2）|
-| 11 | 修改 `src/components/archive-detail-modal.tsx` | 整合 SheetReader（Step 5）|
-| 12 | 執行 `npm run dev` | 視覺驗收（Step 8）|
-| 13 | 執行 Pre-flight 掃描 | 憲法合規（Step 8.3）|
-| 14 | Commit | Step 9.1 格式 |
-| 15 | 更新 `AGENTS.md` | 新增附錄 I（Step 9.2）|
+| `tsc` 報 `SheetReader` 型別錯誤 | 預覽型別寫法 | 改用 `import type { SheetDoc }` |
+| 建檔中心一直停在閘門 | `CURATOR_TOKEN` 未設 | Step 11.1 / 11.2 補設定後重啟 dev |
+| 上傳後前台沒變 | 正常，待核准 | 按「核准」才生效（治理機制，非 bug） |
+| 上傳回 429 | 限流 60 次/分 | 等待 `Retry-After` 秒數 |
+| 覆寫共用需求圖回 401 | 未帶 token 或 token 錯 | 先到建檔中心驗證密碼（token 存 sessionStorage） |
+| 選檔後沒反應 | 檔案 > 10MB 或非 JPG/PNG/WEBP | 確認格式；超大檔會自動壓縮後上傳 |
+| 統計列缺圖數與實際不符 | `probe` 未回傳（token 不符） | 重新驗證管理密碼 |
+| 版面 padding 消失 | 用了不存在的變數 | 檢查是否誤用 `--space-7`（Phase 12 檢查項 5） |
+
+---
+
+## 20. 本方案不做的事（明確排除）
+
+- 不重構 `/api/uploads` 既有限流實作（避免改動核心商業邏輯）
+- 不修改 `src/data/exam-content.ts` 任何內容
+- 不刪除 `public/images/**` 既有檔案（靜態圖為 immutable baseline）
+- 不做 CI 缺圖檢查（列為後續議題，不在本輪範圍）
+- 不做 Cloudinary 版本 API 整合（以 KV 欄位記錄上一版即可滿足回滾需求）

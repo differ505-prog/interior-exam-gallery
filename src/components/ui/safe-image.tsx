@@ -24,7 +24,7 @@ export function SafeImage({
   src,
   alt,
   className,
-  aspectRatio = "4 / 3",
+  aspectRatio,
   objectFit,
   fallbackLabel,
   loading = "lazy",
@@ -75,7 +75,7 @@ export function SafeImage({
         aria-label={fallbackLabel ?? alt}
         className={["safe-image safe-image--fallback", className].filter(Boolean).join(" ")}
         role="img"
-        style={{ aspectRatio }}
+        style={aspectRatio ? { aspectRatio } : undefined}
       >
         <span className="safe-image__fallback-text">{fallbackLabel ?? "圖片無法顯示"}</span>
       </div>
@@ -85,7 +85,7 @@ export function SafeImage({
   const finalObjectFit = objectFit || autoObjectFit || "cover";
 
   return (
-    <div className="safe-image" style={{ aspectRatio }}>
+    <div className="safe-image" style={aspectRatio ? { aspectRatio } : undefined}>
       <img
         alt={alt}
         className={className}

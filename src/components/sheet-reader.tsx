@@ -36,7 +36,8 @@ export function SheetReader({ doc, onOpenLightbox, coverage, unarchivedMessage }
   const [activePage, setActivePage] = useState(0);
   const [zoom, setZoom] = useState<ZoomLevel>("fit");
   const [viewMode, setViewMode] = useState<ViewMode>("reader");
-  const [holdTimer, setHoldTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isHoldFiredRef = useRef(false);
 
   const activePageRef = useRef(activePage);
   activePageRef.current = activePage;
@@ -62,6 +63,15 @@ export function SheetReader({ doc, onOpenLightbox, coverage, unarchivedMessage }
     return () => window.removeEventListener("keydown", handler);
   }, [totalPages]);
 
+  // Cleanup hold timer on unmount
+  useEffect(() => {
+    return () => {
+      if (holdTimerRef.current) {
+        clearTimeout(holdTimerRef.current);
+      }
+    };
+  }, []);
+
   const handlePrev = useCallback(() => {
     setActivePage((p) => Math.max(0, p - 1));
   }, []);
@@ -70,20 +80,31 @@ export function SheetReader({ doc, onOpenLightbox, coverage, unarchivedMessage }
     setActivePage((p) => Math.min(totalPages - 1, p + 1));
   }, [totalPages]);
 
-  // 長按翻面（快速在正/背面間來回）
+  // 長按翻面（快速在正/背面間來回，僅於兩頁時有效）
   const handleMouseDown = useCallback(() => {
-    const timer = setTimeout(() => {
-      setActivePage((p) => (p === 0 ? 1 : 0));
-    }, 400);
-    setHoldTimer(timer);
-  }, []);
+    isHoldFiredRef.current = false;
+    if (totalPages > 1) {
+      holdTimerRef.current = setTimeout(() => {
+        isHoldFiredRef.current = true;
+        setActivePage((p) => (p === 0 ? 1 : 0));
+      }, 400);
+    }
+  }, [totalPages]);
 
   const handleMouseUp = useCallback(() => {
-    if (holdTimer) {
-      clearTimeout(holdTimer);
-      setHoldTimer(null);
+    if (holdTimerRef.current) {
+      clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
     }
-  }, [holdTimer]);
+  }, []);
+
+  const handleClick = useCallback(() => {
+    if (isHoldFiredRef.current) {
+      isHoldFiredRef.current = false;
+      return;
+    }
+    onOpenLightbox?.(currentPage.url, activePage);
+  }, [currentPage.url, activePage, onOpenLightbox]);
 
   if (!doc || pages.length === 0) {
     return (
@@ -117,14 +138,14 @@ export function SheetReader({ doc, onOpenLightbox, coverage, unarchivedMessage }
 
       {/* 主圖區 */}
       <div
-        className="sheet-reader__main"
-        onClick={() => onOpenLightbox?.(currentPage.url, activePage)}
+        className={`sheet-reader__main${zoom !== "fit" ? " sheet-reader__main--zoomed" : ""}`}
+        onClick={handleClick}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         role="button"
         tabIndex={0}
-        aria-label={`放大查看 ${currentPage.label}（點擊或長按翻面）`}
+        aria-label={`放大查看 ${currentPage.label}（點擊放大或長按翻面）`}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
