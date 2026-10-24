@@ -20,6 +20,7 @@ import {
 } from "@/lib/requirement-resolver";
 import { SheetReader } from "@/components/sheet-reader";
 import { buildSheetDoc, getSectionCoverage } from "@/lib/sheet-reader";
+import { useSheetRegistry } from "@/hooks/use-sheet-registry";
 
 // ─── 配置驅動：題目區渲染參數 ───────────────────────────────
 type LayoutVariant = "two-col" | "one-col";
@@ -333,9 +334,10 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
   const finalRequirementUrl = isRequirementOverride ? referenceImageUrl : staticRequirementUrl;
 
   // ─── SheetDoc：用於 SheetReader 題目區呈現 ───────────────
+  const { registry } = useSheetRegistry();
   const sheetDoc = useMemo(
-    () => buildSheetDoc(item, sectionSlug, finalRequirementUrl),
-    [item, sectionSlug, finalRequirementUrl],
+    () => buildSheetDoc(item, sectionSlug, finalRequirementUrl, registry),
+    [item, sectionSlug, finalRequirementUrl, registry],
   );
 
   const sheetDocUrls = useMemo(() => {

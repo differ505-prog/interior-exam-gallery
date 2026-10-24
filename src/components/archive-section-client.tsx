@@ -56,7 +56,8 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
 
   const questions = ["201", "202", "203", "204", "205", "206"];
   const perspectiveQuestions = ["207", "208", "209", "210", "211", "212"];
-  const types = ["全部", "天花板配置圖", "客廳立面圖", "餐廳立面圖", "主臥立面圖"];
+  const ceilingTypes = ["客廳天花", "餐廳天花", "主臥天花", "全部天花"];
+  const elevationTypes = ["客廳立面", "餐廳立面", "主臥立面", "全部立面"];
 
   // Calculate section stats
   const totalItems = section.items.length;
@@ -92,14 +93,46 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
     if (isCeilingElevation) {
       const matchesQuestion = item.code.startsWith(selectedQuestion);
       let matchesType = true;
-      if (selectedType === "天花板配置圖") {
-        matchesType = item.code.endsWith("天花");
-      } else if (selectedType === "客廳立面圖") {
-        matchesType = item.code.endsWith("客立");
-      } else if (selectedType === "餐廳立面圖") {
-        matchesType = item.code.endsWith("餐立");
-      } else if (selectedType === "主臥立面圖") {
-        matchesType = item.code.endsWith("臥立");
+      if (selectedType === "全部") {
+        matchesType = true;
+      } else if (selectedType === "全部天花" || selectedType === "天花板配置圖") {
+        matchesType =
+          item.view?.endsWith("天") ||
+          item.code.endsWith("客天") ||
+          item.code.endsWith("餐天") ||
+          item.code.endsWith("臥天") ||
+          item.code.endsWith("天花");
+      } else if (selectedType === "客廳天花") {
+        matchesType =
+          item.view === "客天" ||
+          item.code.endsWith("客天") ||
+          item.code.endsWith("天花");
+      } else if (selectedType === "餐廳天花") {
+        matchesType =
+          item.view === "餐天" ||
+          item.code.endsWith("餐天");
+      } else if (selectedType === "主臥天花") {
+        matchesType =
+          item.view === "臥天" ||
+          item.code.endsWith("臥天");
+      } else if (selectedType === "全部立面") {
+        matchesType =
+          item.view?.endsWith("立") ||
+          item.code.endsWith("客立") ||
+          item.code.endsWith("餐立") ||
+          item.code.endsWith("臥立");
+      } else if (selectedType === "客廳立面" || selectedType === "客廳立面圖") {
+        matchesType =
+          item.view === "客立" ||
+          item.code.endsWith("客立");
+      } else if (selectedType === "餐廳立面" || selectedType === "餐廳立面圖") {
+        matchesType =
+          item.view === "餐立" ||
+          item.code.endsWith("餐立");
+      } else if (selectedType === "主臥立面" || selectedType === "主臥立面圖") {
+        matchesType =
+          item.view === "臥立" ||
+          item.code.endsWith("臥立");
       }
       return matchesQuestion && matchesType;
     }
@@ -200,13 +233,37 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
                     {q} 題
                   </button>
                 ))}
+                <span className="filter-divider" aria-hidden="true" />
+                <button
+                  className={`filter-btn ${selectedType === "全部" ? "filter-btn--active" : ""}`}
+                  onClick={() => setSelectedType("全部")}
+                  type="button"
+                >
+                  全部圖面
+                </button>
               </div>
             </div>
 
             <div className="filter-group">
-              <span className="filter-label">圖面種類：</span>
+              <span className="filter-label">天花板圖：</span>
               <div className="filter-options">
-                {types.map((t) => (
+                {ceilingTypes.map((t) => (
+                  <button
+                    key={t}
+                    className={`filter-btn ${selectedType === t ? "filter-btn--active" : ""}`}
+                    onClick={() => setSelectedType(t)}
+                    type="button"
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="filter-group">
+              <span className="filter-label">空間立面：</span>
+              <div className="filter-options">
+                {elevationTypes.map((t) => (
                   <button
                     key={t}
                     className={`filter-btn ${selectedType === t ? "filter-btn--active" : ""}`}

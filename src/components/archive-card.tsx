@@ -85,7 +85,14 @@ export function ArchiveCard({ item, sectionSlug, uploads = [], examNotes, onDele
         <p className="archive-card__focus">{item.focus}</p>
         <small className="archive-card__notes">{item.notes}</small>
         {item.view && (
-          <span className="archive-card__view-chip" aria-label={`視角：${item.view}`}>
+          <span
+            className={`archive-card__view-chip ${
+              item.view.endsWith("天")
+                ? "archive-card__view-chip--ceiling"
+                : "archive-card__view-chip--elevation"
+            }`}
+            aria-label={`視角：${item.view}`}
+          >
             {item.view}
           </span>
         )}

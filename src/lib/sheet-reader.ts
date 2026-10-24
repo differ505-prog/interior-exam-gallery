@@ -13,6 +13,8 @@
 
 import { ArchiveItem } from "@/types/exam";
 import { SheetDoc, SheetPage } from "@/types/sheet";
+import { buildRegistryKey, resolveSlotUrl } from "@/lib/sheet-registry";
+import type { SheetRegistry } from "@/types/sheet-registry";
 import { resolvePerspectiveSheets } from "./perspective-sheets";
 
 /** 透視圖題目卷的圖說（配置驅動） */
@@ -31,28 +33,64 @@ const PERSP_PAGE_COPY: Record<"front" | "back", { label: string; alt: string }> 
  * 從 ArchiveItem + sectionSlug 建構 SheetDoc。
  *
  * 優先順序：
- * 1. 透視圖：使用 resolvePerspectiveSheets（僅 208 有圖）
+ * 0. registry：建檔中心已「核准生效」的 URL（最高優先，前台只讀 url 欄位）
+ * 1. 透視圖：使用 resolvePerspectiveSheets（僅 208 / 211 有圖）
  * 2. 大樣圖：題目圖 + 官方答案圖
  * 3. 平面圖 / 天花板與立面圖：題目圖
  *
  * 未建檔時回傳 null，讓 UI 顯示誠實佔位狀態。
+ *
+ * 向後相容：registry 為空（預設值）時，行為與加入 registry 前完全一致。
  */
 export function buildSheetDoc(
   item: ArchiveItem,
   sectionSlug: string,
   answerUrl?: string | null,
+  registry: SheetRegistry = {},
 ): SheetDoc | null {
+  const registryQuestion = resolveSlotUrl(
+    registry[buildRegistryKey(sectionSlug, item.code, "question")],
+  );
+  const registryAnswer = resolveSlotUrl(
+    registry[buildRegistryKey(sectionSlug, item.code, "answer")],
+  );
+
   if (sectionSlug === "perspective") {
+    if (registryQuestion) {
+      const pages: SheetPage[] = [
+        {
+          url: registryQuestion,
+          label: PERSP_PAGE_COPY.front.label,
+          alt: `${item.code} 題目卷正面：${PERSP_PAGE_COPY.front.alt}`,
+        },
+      ];
+      if (registryAnswer) {
+        pages.push({
+          url: registryAnswer,
+          label: PERSP_PAGE_COPY.back.label,
+          alt: `${item.code} 題目卷背面：${PERSP_PAGE_COPY.back.alt}`,
+          isAnswer: true,
+        });
+      }
+      return { code: item.code, sectionSlug, pages };
+    }
     return buildPerspectiveSheetDoc(item);
   }
 
   if (sectionSlug === "detail") {
-    const questionUrl = `/images/${item.code}/${item.code}-question.jpg`;
+    const questionUrl =
+      registryQuestion ?? `/images/${item.code}/${item.code}-question.jpg`;
     const pages: SheetPage[] = [
       { url: questionUrl, label: "題目圖", alt: `${item.code} 大樣圖題目` },
     ];
-    if (answerUrl) {
-      pages.push({ url: answerUrl, label: "官方答案圖", alt: `${item.code} 官方答案`, isAnswer: true });
+    const answerPage = registryAnswer ?? answerUrl;
+    if (answerPage) {
+      pages.push({
+        url: answerPage,
+        label: "官方答案圖",
+        alt: `${item.code} 官方答案`,
+        isAnswer: true,
+      });
     }
     return { code: item.code, sectionSlug, pages };
   }
@@ -60,12 +98,18 @@ export function buildSheetDoc(
   if (sectionSlug === "plan" || sectionSlug === "ceiling-elevation") {
     const numPart = item.code.slice(0, 3);
     if (!/^\d{3}$/.test(numPart)) return null;
-    const questionUrl = `/images/plan/question-${numPart}.jpg`;
+    const questionUrl =
+      registryQuestion ?? `/images/plan/question-${numPart}.jpg`;
     const pages: SheetPage[] = [
       { url: questionUrl, label: "題目圖", alt: `${item.code} 題目圖` },
     ];
-    if (answerUrl) {
-      pages.push({ url: answerUrl, label: "需求圖", alt: `${item.code} 需求圖`, isAnswer: true });
+    if (registryAnswer) {
+      pages.push({
+        url: registryAnswer,
+        label: "需求圖",
+        alt: `${item.code} 需求圖`,
+        isAnswer: true,
+      });
     }
     return { code: item.code, sectionSlug, pages };
   }

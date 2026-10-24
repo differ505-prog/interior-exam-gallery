@@ -16,15 +16,6 @@ questions.forEach((q) => {
       notes: `${q}題型${v}版平面配置圖練習，專注通道淨寬、家具尺度與動線流暢性。`
     });
 
-    // 1. 天花板配置圖
-    ceilingElevationItems.push({
-      code: `${q}${v}天花`,
-      title: `${q}${v} 天花板配置圖`,
-      variants: ["天花配置", "燈具迴路"],
-      focus: "天花配置、燈具配置與出風口投影",
-      notes: `${q}題型${v}版天花配置圖，注意燈槽尺寸與迴路配線。`,
-      view: "客天",
-    });
     // 2. 客廳立面圖
     ceilingElevationItems.push({
       code: `${q}${v}客立`,
