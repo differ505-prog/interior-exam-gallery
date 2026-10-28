@@ -126,14 +126,26 @@ export function resolveRequirementImageUrl(
     return { url: "", isOverride: false, is404: true };
   }
 
-  // 嘗試找共用覆寫圖
+  // 1. 優先找該題專屬的標記試卷/需求圖（例如直接針對 206C 上傳的標記試卷）
+  const cleanItem = itemCode.replace(/[\s\-_]/g, "").toLowerCase();
+  const itemOverride = uploads.find(
+    (u) =>
+      u.kind === "標記試卷" &&
+      u.sheetCode.replace(/[\s\-_]/g, "").toLowerCase() === cleanItem,
+  );
+  if (itemOverride) {
+    const url = itemOverride.imageUrls?.[0] ?? itemOverride.imageUrl;
+    return { url, isOverride: true, is404: false };
+  }
+
+  // 2. 嘗試找共用覆寫圖（如 plan-C）
   const override = findSharedRequirementOverride(uploads, sectionSlug, variant);
   if (override) {
     const url = override.imageUrls?.[0] ?? override.imageUrl;
     return { url, isOverride: true, is404: false };
   }
 
-  // Fallback 靜態圖
+  // 3. Fallback 靜態圖
   const staticUrl = buildStaticRequirementUrl(sectionSlug, itemCode, variant);
   return { url: staticUrl, isOverride: false, is404: false };
 }
@@ -160,20 +172,12 @@ function extractVariant(itemCode: string): string | null {
  * 建立靜態需求圖 URL。
  *
  * 優先順序（由上而下）：
- * 1. 205 A-F 有專屬題目圖（question-205.jpg），優先使用
- * 2. 透視圖 207-212 共用 208 題目圖
- * 3. 大樣圖使用各題號資料夾
- * 4. 其餘平面圖使用共用 requirement-{variant}.jpg
+ * 1. 平面圖 / 天花板與立面圖使用共用 requirement-{variant}.jpg
+ * 2. 大樣圖使用各題號資料夾
+ * 3. 透視圖 207-212 共用 208 題目圖
  */
 function buildStaticRequirementUrl(sectionSlug: string, itemCode: string, variant: string): string {
-  if (sectionSlug === "plan") {
-    // 205 A-F 專屬題目圖
-    if (itemCode.startsWith("205") && /^[A-Z]$/.test(variant)) {
-      return `/images/plan/question-205.jpg`;
-    }
-    return `/images/plan/requirement-${variant}.jpg`;
-  }
-  if (sectionSlug === "ceiling-elevation") {
+  if (sectionSlug === "plan" || sectionSlug === "ceiling-elevation") {
     return `/images/plan/requirement-${variant}.jpg`;
   }
   if (sectionSlug === "detail") {

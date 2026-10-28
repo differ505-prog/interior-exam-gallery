@@ -312,6 +312,7 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
                 key={`${section.slug}-${item.code}`}
                 sectionSlug={section.slug}
                 uploads={matchedUploads}
+                allUploads={uploads}
                 examNotes={examNotes}
                 onDeleteEntry={handleDeleteEntry}
               />

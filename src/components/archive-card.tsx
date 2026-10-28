@@ -10,6 +10,7 @@ type ArchiveCardProps = {
   item: ArchiveItem;
   sectionSlug: string;
   uploads?: UploadEntry[];
+  allUploads?: UploadEntry[];
   examNotes?: ExamNoteCategory[];
   onDeleteEntry?: (id: string) => Promise<void>;
 };
@@ -19,7 +20,7 @@ type ArchiveCardProps = {
  * 從原本 archive-section.tsx 抽離出來的可複用卡片，
  * 加入 hover 微互動 + 流體排版防溢出，並加入點擊開啟題目與練習圖面詳情 Modal 的功能。
  */
-export function ArchiveCard({ item, sectionSlug, uploads = [], examNotes, onDeleteEntry }: ArchiveCardProps) {
+export function ArchiveCard({ item, sectionSlug, uploads = [], allUploads = [], examNotes, onDeleteEntry }: ArchiveCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const hasUpload = uploads.length > 0;
   const uploadCount = uploads.length;
@@ -102,6 +103,7 @@ export function ArchiveCard({ item, sectionSlug, uploads = [], examNotes, onDele
         <ArchiveDetailModal
           item={item}
           uploads={uploads}
+          allUploads={allUploads.length > 0 ? allUploads : uploads}
           sectionSlug={sectionSlug}
           examNotes={examNotes}
           onClose={() => setIsOpen(false)}

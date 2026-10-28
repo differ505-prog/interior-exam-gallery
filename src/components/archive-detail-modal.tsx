@@ -14,6 +14,7 @@ import { getSheetData, saveScratchNote } from "@/lib/user-data";
 import { UPLOAD_KINDS } from "@/lib/upload-constants";
 import {
   resolveRequirementImageUrl,
+  buildSharedRequirementKey,
   parseSharedRequirementKey,
   listAffectedSheetCodes,
   isSharedRequirement,
@@ -53,13 +54,14 @@ const QUESTION_CONFIGS: Record<string, QuestionConfig> = {
 type ArchiveDetailModalProps = {
   item: ArchiveItem;
   uploads: UploadEntry[];
+  allUploads?: UploadEntry[];
   sectionSlug: string;
   examNotes?: ExamNoteCategory[];
   onClose: () => void;
   onDelete?: (id: string) => Promise<void>;
 };
 
-export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onClose, onDelete }: ArchiveDetailModalProps) {
+export function ArchiveDetailModal({ item, uploads, allUploads = [], sectionSlug, examNotes, onClose, onDelete }: ArchiveDetailModalProps) {
   const [activeImage, setActiveImage] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState<"fit" | "medium" | "large">("fit");
   // Modal 使用 createPortal 渲染到 document.body；SSR 階段 document 尚未存在，
@@ -293,8 +295,17 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
   }, [uploads, item.code]);
 
   const markedSheets = useMemo(() => {
-    return uploads.filter((u) => u.kind === UPLOAD_KINDS.MARKED_SHEET);
-  }, [uploads]);
+    const list = [...uploads.filter((u) => u.kind === UPLOAD_KINDS.MARKED_SHEET)];
+    const variantMatch = item.code.match(/^\d{3}([A-Z])/);
+    if (variantMatch && allUploads && allUploads.length > 0) {
+      const sharedKey = buildSharedRequirementKey({ sectionSlug, variant: variantMatch[1] });
+      const shared = allUploads.find((u) => u.sheetCode === sharedKey && u.kind === UPLOAD_KINDS.MARKED_SHEET);
+      if (shared && !list.some((u) => u.id === shared.id)) {
+        list.push(shared);
+      }
+    }
+    return list;
+  }, [uploads, allUploads, item.code, sectionSlug]);
 
   // ─── 題目圖 URL 解析（共用）：根據 sectionSlug + item.code 決定兩張圖紙 URL ────
   // plan：題目圖（按數字前綴）+ 需求圖（按字母末位）
@@ -312,17 +323,20 @@ export function ArchiveDetailModal({ item, uploads, sectionSlug, examNotes, onCl
     return null;
   })();
 
+  const uploadsForResolver = allUploads && allUploads.length > 0 ? allUploads : uploads;
+
   // ─── 需求圖 URL 解析（使用 resolver）────────────────────
   const { url: referenceImageUrl, isOverride: isRequirementOverride } = resolveRequirementImageUrl(
     sectionSlug,
     item.code,
-    uploads,
+    uploadsForResolver,
   );
 
   // ─── 備用：靜態需求圖（當無 KV 共用覆寫時使用）───────────
   const staticRequirementUrl = (() => {
     if (sectionSlug === "plan" || sectionSlug === "ceiling-elevation") {
-      const letterPart = item.code.slice(3, 4);
+      const letterMatch = item.code.match(/^\d{3}([A-Z])/);
+      const letterPart = letterMatch ? letterMatch[1] : item.code.slice(3, 4);
       return `/images/plan/requirement-${letterPart}.jpg`;
     }
     if (sectionSlug === "detail") return `/images/${item.code}/${item.code}-answer.jpg`;

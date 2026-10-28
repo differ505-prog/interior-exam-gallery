@@ -79,7 +79,14 @@ function buildStaticUrl(
       : `/images/${code}/${code}-answer.jpg`;
   }
   if (sectionSlug === "perspective") return "";
-  return slot === "question" ? `/images/plan/question-${questionNo}.jpg` : "";
+  if (sectionSlug === "plan" || sectionSlug === "ceiling-elevation") {
+    if (slot === "question") return `/images/plan/question-${questionNo}.jpg`;
+    const variantMatch = code.match(/^\d{3}([A-Z])/);
+    if (variantMatch) {
+      return `/images/plan/requirement-${variantMatch[1]}.jpg`;
+    }
+  }
+  return "";
 }
 
 /**

@@ -103,11 +103,14 @@ export function buildSheetDoc(
     const pages: SheetPage[] = [
       { url: questionUrl, label: "題目圖", alt: `${item.code} 題目圖` },
     ];
-    if (registryAnswer) {
+    const answerPage = registryAnswer ?? answerUrl;
+    if (answerPage) {
+      const variantMatch = item.code.match(/^\d{3}([A-Z])/);
+      const label = variantMatch ? `需求單 ${variantMatch[1]}` : "需求圖";
       pages.push({
-        url: registryAnswer,
-        label: "需求圖",
-        alt: `${item.code} 需求圖`,
+        url: answerPage,
+        label,
+        alt: `${item.code} ${label}`,
         isAnswer: true,
       });
     }
