@@ -510,6 +510,7 @@ grep -rEn "font-size: [0-9]+\.[5-9]rem|font-size: [1-9][0-9]rem" src/
 | `src/components/sheet-reader.tsx` | 試卷閱讀器元件 |
 | `src/data/perspective-markers.ts` | 208 方向框標註資料 |
 | `scripts/trim-sheets.mjs` | 自動裁邊 build script |
+| `scripts/place-detail-sheets.mjs` | 大樣圖批次置入 script（來源檔名 `<標題>-<code>-<題目卷\|官方答案>.jpg` → `public/images/<code>/<code>-{question,answer}.jpg`，長邊 2400px / JPEG q88） |
 
 ## 受影響檔案
 
