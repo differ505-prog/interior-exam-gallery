@@ -67,6 +67,14 @@
   /* Layout */
   --container: min(1200px, calc(100% - 40px));
   --container-tight: min(960px, calc(100% - 40px));
+
+  /* Semantic aliases — 憲法規格詞彙，映射至上方 palette token（不新增色碼） */
+  --color-accent: var(--accent);
+  --color-theme: var(--bg);
+  --color-text: var(--text);
+  --color-text-muted: var(--muted);
+  --color-surface: var(--surface-frosted);
+  --color-border: var(--line);
 }
 
 /* =========================================================================
@@ -2962,6 +2970,110 @@ main {
 
   .bar-label__count {
     font-size: 0.85rem;
+  }
+}
+
+/* ── 平面圖版本平衡儀（A~F 六格）─────────────────────────────── */
+.variant-balance {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.variant-balance__eyebrow {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0 0 var(--space-3) 0;
+}
+
+.variant-balance__grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.variant-cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  transition: background var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+  min-width: 0;
+}
+
+.variant-cell--lean {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-color: var(--accent);
+}
+
+.variant-cell:hover {
+  transform: translateY(-1px);
+}
+
+.variant-cell__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.variant-cell__letter {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1.2;
+}
+
+.variant-cell__chip {
+  font-size: 0.65rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.variant-cell__count {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 0;
+  color: var(--text);
+  line-height: 1;
+}
+
+.variant-cell__unit {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--muted);
+  margin-left: 4px;
+}
+
+.variant-cell__hint {
+  font-size: 0.7rem;
+  margin: 0;
+  color: var(--muted);
+}
+
+.variant-cell__hint--lean {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+@media (max-width: 480px) {
+  .variant-balance__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .variant-cell {
+    padding: var(--space-3);
   }
 }
 

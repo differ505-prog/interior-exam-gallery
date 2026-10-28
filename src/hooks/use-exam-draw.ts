@@ -18,6 +18,7 @@
 import { ArchiveItem } from "@/types/exam";
 import { UPLOAD_KINDS } from "@/lib/upload-constants";
 import { examSections } from "@/data/exam-content";
+import { calcVariantBalance, extractPlanVariant } from "@/lib/plan-variant";
 
 /** 試卷組合區塊 slug */
 export type DrawGroup = "plan-ceiling-elevation" | "perspective-detail";
@@ -145,7 +146,7 @@ export function calcPerspectiveBalance(
         const uCode = u.sheetCode.replace(/[\s\-_]/g, "").toLowerCase();
         const cleanI = iCode.replace(/[\s\-_]/g, "").toLowerCase();
         return (
-          (uCode === cleanI || uCode.includes(cleanI)) &&
+          uCode === cleanI &&
           u.kind === UPLOAD_KINDS.MY_PRACTICE
         );
       })
@@ -406,12 +407,29 @@ export function drawExamGroup(
     const dResult = drawOneFromItems(detailItems, practiceCountMap);
     if (dResult) results.push(dResult);
   } else if (group === "plan-ceiling-elevation") {
-    // ── Step 1：抽平面圖 ──────────────────────────────
+    // ── Step 1：抽平面圖（版本感知兩層，方案 A）────────
+    // Layer 1：計算 A~F 各版本 deficit，選出落後版本
+    // Layer 2：在目標版本內抽最少練習的試卷
     const planItems = examSections.find((s) => s.slug === "plan")?.items ?? [];
-    const planResult = drawOneFromItems(planItems, practiceCountMap);
+    const variantBalance = calcVariantBalance(planItems, practiceCountMap);
+    const targetVariant =
+      variantBalance.lean === "balanced" ? null : variantBalance.lean;
+
+    const planPool = targetVariant
+      ? planItems.filter(
+          (item) => extractPlanVariant(item.code) === targetVariant
+        )
+      : planItems;
+    const planResult = drawOneFromItems(planPool, practiceCountMap);
 
     if (planResult) {
-      results.push(planResult);
+      const targetCount = Math.round(variantBalance.totalCount / 6);
+      results.push({
+        ...planResult,
+        directionReason: targetVariant
+          ? `${targetVariant} 需求單落後（已練 ${variantBalance.variantCounts[targetVariant]} 張，目標 ${targetCount} 張）`
+          : "各版本均衡，隨機抽取",
+      });
 
       // ── Step 2：取同題號的 CE 試卷 ─────────────────
       const baseCode = planResult.item.code;

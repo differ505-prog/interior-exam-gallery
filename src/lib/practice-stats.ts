@@ -23,7 +23,7 @@ export function countPracticePerItem(
       .filter((u) => {
         const uCode = u.sheetCode.replace(/[\s\-_]/g, "").toLowerCase();
         const cleanI = iCode.replace(/[\s\-_]/g, "").toLowerCase();
-        const isMatch = uCode === cleanI || uCode.includes(cleanI);
+        const isMatch = uCode === cleanI;
         return isMatch && u.kind === UPLOAD_KINDS.MY_PRACTICE;
       })
       .reduce(
@@ -56,7 +56,7 @@ export function sumByGroup(
         const uCode = u.sheetCode.replace(/[\s\-_]/g, "").toLowerCase();
         const cleanI = iCode.replace(/[\s\-_]/g, "").toLowerCase();
         return (
-          (uCode === cleanI || uCode.includes(cleanI)) &&
+          uCode === cleanI &&
           u.kind === UPLOAD_KINDS.MY_PRACTICE
         );
       })

@@ -7,7 +7,7 @@
 ---
 
 ## 憲法生效日期：2026-07-13
-> 版本：v1.4（v1.1 整合 Gemini 分享內容，v1.2 整合 CE 對稱化，v1.3 整合透視圖方向感知抽題，v1.4 整合試卷閱讀器）
+> 版本：v1.5（v1.1 整合 Gemini 分享內容，v1.2 整合 CE 對稱化，v1.3 整合透視圖方向感知抽題，v1.4 整合試卷閱讀器，v1.5 整合平面圖版本感知抽題）
 
 ---
 
@@ -431,8 +431,10 @@ grep -rEn "font-size: [0-9]+\.[5-9]rem|font-size: [1-9][0-9]rem" src/
 | `src/types/exam-note.ts` | 型別定義 | 備考知識庫型別 |
 | `src/lib/site-config.ts` | 品牌設定 | 品牌名、色票、SEO 關鍵字 |
 | `src/lib/practice-stats.ts` | 統計單一事實來源 | 練習統計口徑統一（v1.3） |
+| `src/lib/plan-variant.ts` | 平面圖版本平衡 | A~F 需求單 deficit 計算（v1.5 新增） |
 | `vitest.config.ts` | 測試設定 | vitest 單元測試設定 |
 | `src/lib/__tests__/practice-stats.test.ts` | 單元測試 | 10 條測試，含權重不變式與邏輯驗證 |
+| `src/lib/__tests__/plan-variant-balance.test.ts` | 單元測試 | 16 條測試，版本權重不變式與 deficit 邏輯（v1.5 新增） |
 
 ---
 
@@ -531,3 +533,62 @@ grep -rEn "font-size: [0-9]+\.[5-9]rem|font-size: [1-9][0-9]rem" src/
 | 維護成本 | 7 | 新增 viewer 元件 + build script，但複用既有 thumb/lightbox |
 | 跨 section 一致性 | 8 | 抽象成通用 SheetReader，plan/detail 可選用 |
 | **加權總分** | **9.1** | |
+
+---
+
+# 附錄 J：平面圖版本感知抽題更新（v1.5）
+
+## 更新日期
+
+2026-10-28
+
+## 核心變更
+
+平面圖抽題從「整題最少練習」升級為「版本感知兩層抽題」，確保 A~F 六種需求單練習量均衡：
+
+- **統計口徑**：圖片張數（`imageUrls.length`），非去重 sheetCode
+- **權重常數鎖定**：A~F 六版本均等 1/6（單一事實來源於 `src/lib/plan-variant.ts`）
+- **雙層抽題演算法**：先算版本 deficit，再在落後版本內抽最少練習試卷
+- **0.5% DEADBAND 遲滯帶**：防止各版本來回震盪
+- **完成線**：單版本 ≥ 30 張（6 題 × 5 次）列入 `completedVariants`
+
+## 設計背景
+
+平面圖試卷（201–206）分為 A~F 六種需求單版本，每版本 6 題。原 `drawOneFromItems` 只按整題練習次數取最小值，A~F 字母完全不進計算——201A 練十次、201F 零次仍判定為均衡。透視圖已有方向感知機制（附錄 H），平面圖無對應機制，設計不對稱。
+
+CE 連動抽取（`item.code.startsWith(baseCode)`）鎖死同題號版本，需求單其他字母永遠沾不到光，本輪保留此語意（改動屬第三級哲學衝突，需另行修憲）。
+
+## 附帶修正
+
+| 位置 | 問題 | 修正 |
+|------|------|------|
+| `src/lib/practice-stats.ts` ×2 | `uCode.includes(cleanI)` 使「201A」的練習被算進「201」名下 | 改為精確比對 `uCode === cleanI` |
+| `src/hooks/use-exam-draw.ts` ×1 | 同式樣內聯比對 | 改為精確比對 |
+| `src/app/globals.css` | `--color-surface`／`--color-border`／`--color-accent`／`--color-theme`／`--color-text`／`--color-text-muted` 六個語意 token 在 `:root` 從未定義，卻被現有程式引用 48 處（CSS 屬性整個失效） | 於 `:root` 補上別名映射，指向既有 palette token（零新增 hex） |
+
+## 新增檔案
+
+| 檔案 | 說明 |
+|------|------|
+| `src/lib/plan-variant.ts` | 版本平衡單一事實來源，含 `PlanVariant` type、`PLAN_VARIANT_WEIGHTS`、`extractPlanVariant`、`calcVariantBalance` |
+| `src/lib/__tests__/plan-variant-balance.test.ts` | 16 條單元測試 |
+
+## 受影響檔案
+
+| 檔案 | 變更 |
+|------|------|
+| `src/hooks/use-exam-draw.ts` | `plan-ceiling-elevation` 分支改為版本感知兩層抽題，附 `directionReason` 理由 |
+| `src/components/exam-draw-section.tsx` | 新增 A~F 六格版本儀表、需求單版本 chip |
+| `src/app/globals.css` | 新增 `.variant-balance` / `.variant-cell` 系列樣式（480px 雙欄）；補上語意 token 別名 |
+| `src/lib/practice-stats.ts` | 精確比對修正 |
+
+## 不變式測試（阻擋迴歸）
+
+- 六版本權重和 === 1
+- 每版本權重均等為 1/6
+- `extractPlanVariant("201A")` → "A"；`("201A客天")` → "A"；`("208甲")` → null
+- `variantShares` 加總為 1
+- `variantDeficits` 加總為 0
+- 全 0 練習時 `lean === "balanced"`
+- 達 30 張完成線的版本列入 `completedVariants` 且不作為 lean
+- deficit 平手時依 A→F 教學序

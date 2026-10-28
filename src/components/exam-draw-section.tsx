@@ -15,6 +15,12 @@ import {
   PerspectiveBalance,
   ExtendedDrawResult,
 } from "@/hooks/use-exam-draw";
+import {
+  calcVariantBalance,
+  extractPlanVariant,
+  PlanVariantBalance,
+  PLAN_VARIANTS,
+} from "@/lib/plan-variant";
 import { countPracticePerItem } from "@/lib/practice-stats";
 import { ArchiveItem, UploadEntry } from "@/types/exam";
 
@@ -22,7 +28,7 @@ import { ArchiveItem, UploadEntry } from "@/types/exam";
 const GROUP_META: Record<DrawGroup, { title: string; subtitle: string }> = {
   "plan-ceiling-elevation": {
     title: "平面圖＋CE（天/立）",
-    subtitle: "平面圖＋天花板/立面圖，池級平衡（最少練習優先）",
+    subtitle: "平面圖版本感知＋天花板/立面圖池級平衡",
   },
   "perspective-detail": {
     title: "透視＋大樣圖",
@@ -48,6 +54,14 @@ export function ExamDrawSection() {
     directionDeficits: { 甲: 0, 乙: 0, 丙: 0 },
     lean: "balanced",
     completedDirections: [],
+  });
+  const [variantBalance, setVariantBalance] = useState<PlanVariantBalance>({
+    variantCounts: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 },
+    totalCount: 0,
+    variantShares: { A: 1 / 6, B: 1 / 6, C: 1 / 6, D: 1 / 6, E: 1 / 6, F: 1 / 6 },
+    variantDeficits: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 },
+    lean: "balanced",
+    completedVariants: [],
   });
   const fetchedRef = useRef(false);
 
@@ -78,6 +92,20 @@ export function ExamDrawSection() {
         const perspItems =
           examSections.find((s) => s.slug === "perspective")?.items ?? [];
         setPerspBalance(calcPerspectiveBalance(perspItems, entries));
+
+        // 計算平面圖版本平衡（A~F 需求單）
+        const planItems =
+          examSections.find((s) => s.slug === "plan")?.items ?? [];
+        const allItems: ArchiveItem[] = [];
+        for (const section of examSections) {
+          allItems.push(...section.items);
+        }
+        setVariantBalance(
+          calcVariantBalance(
+            planItems,
+            countPracticePerItem(allItems, entries)
+          )
+        );
       })
       .catch(() => {
         // fetch 失敗：降級為空陣列，不中斷抽題
@@ -193,6 +221,13 @@ export function ExamDrawSection() {
       const perspItems =
         examSections.find((s) => s.slug === "perspective")?.items ?? [];
       setPerspBalance(calcPerspectiveBalance(perspItems, uploads));
+
+      // 同步更新平面圖版本平衡（A~F）
+      const planItems =
+        examSections.find((s) => s.slug === "plan")?.items ?? [];
+      setVariantBalance(
+        calcVariantBalance(planItems, countPracticePerItem(allItems, uploads))
+      );
 
       if (process.env.NODE_ENV === "development") {
         // eslint-disable-next-line no-console
@@ -416,6 +451,57 @@ export function ExamDrawSection() {
           </div>
         </div>
 
+        {/* 平面圖版本平衡儀（A~F 六格，方案 A 新增） */}
+        <div
+          className="variant-balance"
+          aria-label="平面圖需求單版本練習平衡狀態"
+          style={{ marginTop: "var(--space-5)" }}
+        >
+          <p className="variant-balance__eyebrow">平面圖需求單版本</p>
+          <div className="variant-balance__grid">
+            {PLAN_VARIANTS.map((variant) => {
+              const count = variantBalance.variantCounts[variant];
+              const target = Math.round(variantBalance.totalCount / 6);
+              const isLean = variantBalance.lean === variant;
+              const isCompleted =
+                variantBalance.completedVariants.includes(variant);
+
+              return (
+                <div
+                  key={variant}
+                  className={`variant-cell${
+                    isLean && !isCompleted ? " variant-cell--lean" : ""
+                  }`}
+                  aria-current={isLean && !isCompleted ? "true" : undefined}
+                >
+                  <div className="variant-cell__head">
+                    <span className="variant-cell__letter">{variant}</span>
+                    <span className="variant-cell__chip">需求單</span>
+                  </div>
+                  <p className="variant-cell__count">
+                    {count}
+                    <span className="variant-cell__unit">張</span>
+                  </p>
+                  {isLean && !isCompleted && (
+                    <p className="variant-cell__hint variant-cell__hint--lean">
+                      → 下一題
+                    </p>
+                  )}
+                  {isCompleted && (
+                    <p className="variant-cell__hint">✓ 已完成</p>
+                  )}
+                  {!isLean && !isCompleted && variantBalance.totalCount > 0 && (
+                    <p className="variant-cell__hint">目標 {target} 張</p>
+                  )}
+                  {!isLean && !isCompleted && variantBalance.totalCount === 0 && (
+                    <p className="variant-cell__hint">尚未開始</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
         {/* 抽題按鈕 */}
         <div
           className="exam-draw-buttons"
@@ -536,6 +622,21 @@ export function ExamDrawSection() {
                             }}
                           >
                             二消點
+                          </span>
+                        )}
+                        {/* 需求單版本 chip（平面圖／CE 限定） */}
+                        {extractPlanVariant(res.item.code) && (
+                          <span
+                            style={{
+                              fontSize: "0.65rem",
+                              padding: "2px 8px",
+                              borderRadius: "999px",
+                              background: "color-mix(in srgb, var(--color-accent) 12%, transparent)",
+                              color: "var(--color-accent)",
+                              fontWeight: 500,
+                            }}
+                          >
+                            {extractPlanVariant(res.item.code)} 版需求單
                           </span>
                         )}
                       </div>
