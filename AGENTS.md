@@ -7,7 +7,7 @@
 ---
 
 ## 憲法生效日期：2026-07-13
-> 版本：v1.5（v1.1 整合 Gemini 分享內容，v1.2 整合 CE 對稱化，v1.3 整合透視圖方向感知抽題，v1.4 整合試卷閱讀器，v1.5 整合平面圖版本感知抽題）
+> 版本：v1.6（v1.1 整合 Gemini 分享內容，v1.2 整合 CE 對稱化，v1.3 整合透視圖方向感知抽題，v1.4 整合試卷閱讀器，v1.5 整合平面圖版本感知抽題，v1.6 整合題型筆記）
 
 ---
 
@@ -352,6 +352,8 @@ grep -rEn "font-size: [0-9]+\.[5-9]rem|font-size: [1-9][0-9]rem" src/
 | 練習圖上傳 | 上傳作品、提交練習 |
 | 扣分點分析 | 缺點檢討 |
 | 自評複盤 | 自我檢討 |
+| 題型筆記 | 題型備註、共用筆記、共享筆記 |
+| 速記本 | 備忘錄、草稿 |
 
 ---
 
@@ -435,6 +437,10 @@ grep -rEn "font-size: [0-9]+\.[5-9]rem|font-size: [1-9][0-9]rem" src/
 | `vitest.config.ts` | 測試設定 | vitest 單元測試設定 |
 | `src/lib/__tests__/practice-stats.test.ts` | 單元測試 | 10 條測試，含權重不變式與邏輯驗證 |
 | `src/lib/__tests__/plan-variant-balance.test.ts` | 單元測試 | 16 條測試，版本權重不變式與 deficit 邏輯（v1.5 新增） |
+| `src/lib/question-note.ts` | 題型筆記單一事實來源 | 題號 ↔ 受影響試卷解析、`qtype-` key builder（v1.6 新增） |
+| `src/lib/__tests__/question-note.test.ts` | 單元測試 | 16 條測試，含 42 筆同步範圍與 key 一致性不變式（v1.6 新增） |
+| `src/components/question-note-panel.tsx` | Modal 內題型筆記面板 | 跨版本共用輸入框 + 同步範圍清單（v1.6 新增） |
+| `src/components/question-note-overview.tsx` | 201–206 六格總覽 | 區塊級可發現性補丁（v1.6 新增） |
 
 ---
 
@@ -593,3 +599,74 @@ CE 連動抽取（`item.code.startsWith(baseCode)`）鎖死同題號版本，需
 - 全 0 練習時 `lean === "balanced"`
 - 達 30 張完成線的版本列入 `completedVariants` 且不作為 lean
 - deficit 平手時依 A→F 教學序
+
+---
+
+# 附錄 K：題型筆記（Question Type Note）更新（v1.6）
+
+## 更新日期
+
+2026-10-29
+
+## 核心變更
+
+速記本（試卷級）之上新增「題型筆記」（題號級）層：
+
+- **既有**：速記本以「試卷 code」為 key（201A、206F 各一份）
+- **新增**：題型筆記以「題號」為 key（206 一份）
+- 同一題號 42 張試卷（平面圖 6 張 + 天花板與立面圖 36 張）**共用同一份內容**
+
+設計理由：201–206 題型的題目卷（`question-2xx.jpg`）與需求單（`requirement-A~F.jpg`）在同一題號的 A~F 版本之間完全相同。分別寫進 6 份速記本會造成內容漂移與維護負擔。
+
+## 範圍
+
+| 項目 | 內容 |
+|------|------|
+| 章節 | plan + ceiling-elevation |
+| 題號 | 201–206 |
+| 受影響試卷數 | 每題號 42 筆（6 + 36） |
+| 不適用 | perspective（207–212）、detail（213–224）——題號不在 201–206 範圍 |
+
+## 儲存
+
+- **表**：`public.user_data`（零 migration，沿用既有 schema）
+- **key**：`sheet_code = "qtype-<題號>"`，例如 `qtype-206`
+- **內容欄位**：寫入 `scratch_note`（欄位重用），`teaching_links` 固定 `[]`
+- **`qtype-` 為保留命名空間**：與所有真實試卷 code（`201A` / `206A客立` / `208甲` / `213`）不重疊；`user_data` 唯一鍵為 `(user_id, sheet_code)`，新命名空間獨立成列
+- **列數上限**：僅 6 種題號，上限 6 列／使用者
+
+## 受影響檔案
+
+| 檔案 | 變更 |
+|------|------|
+| `src/lib/question-note.ts` | 新增。題型筆記單一事實來源：題號清單、`qtype-` key builder、code 解析、42 筆受影響範圍列舉 |
+| `src/lib/__tests__/question-note.test.ts` | 新增。16 條單元測試 |
+| `src/lib/user-data.ts` | 新增 `getQuestionNote` / `saveQuestionNote`，沿用既有 read-through cache 與防抖流程；補上 `qtype-` 保留命名空間說明 |
+| `src/app/globals.css` | 新增 `.qnote-panel__*` 與 `.qnote-overview__*` 樣式（零新增 hex，斷點僅 1024px / 480px） |
+| `src/components/question-note-panel.tsx` | 新增。Modal 內題型筆記面板（輸入框 + 同步範圍 `<details>`） |
+| `src/components/archive-detail-modal.tsx` | 接入題型筆記面板（速記本區塊之前）；perspective / detail 不渲染 |
+| `src/components/question-note-overview.tsx` | 新增。201–206 六格總覽，監聽 `question-note-changed` 事件即時刷新 |
+| `src/components/archive-section-client.tsx` | 平面圖與天花板立面圖兩區塊接入六格總覽（同一元件，DRY） |
+| `src/types/exam-note.ts` | `ExamNoteCategory` 新增選填欄位 `sections?: string[]` |
+| `src/data/exam-notes.ts` | 三個分類補 `sections: ["perspective"]`；208甲 相關筆記補 `relatedCodes: ["208甲"]` |
+| `src/app/page.tsx` | 備考知識過濾由 `cat.slug === section.slug` 改為 `cat.sections?.includes(section.slug)`（修正備考知識面板全站不渲染的 bug） |
+| `AGENTS.md` | 版本升至 v1.6；附錄 C 品牌詞庫、附錄 G 檔案結構、附錄 K 新增 |
+
+## 不變式測試（阻擋迴歸）
+
+1. 同一題號的 plan 與 ceiling-elevation 試卷解析出**同一個** key
+2. 每題號受影響試卷數 === 42
+3. `qtype-` 命名空間不得與任何真實試卷 code 相撞
+4. perspective / detail 的 code 解析結果為 `null`
+
+## 設計權重評估
+
+| 軸 | 分數 | 理由 |
+|---|---|---|
+| 資訊準確度 | 9.5 | 題號單一事實來源，42 筆範圍由程式列舉，非人工維護 |
+| 圖面可讀度 | 9 | 六格總覽 + 同步範圍 `<details>` 收合，資訊密度可控 |
+| 資訊層級 | 9 | 題號 + 狀態 + 預覽三層（§12-B 條文 2），highlight 以 `aria-current` 標註且維持低對比（§12-A 條文 2） |
+| RWD 穩健度 | 9 | 1024px 三欄 / 480px 雙欄（§12 統計卡紀律），未新增非標準斷點 |
+| 維護成本 | 8.5 | 零 migration、零新增 hex、既有快取與防抖流程直接沿用 |
+| 跨 section 一致性 | 9.5 | plan 與 ceiling-elevation 同一元件、同一份內容、同一個 key |
+| **加權總分** | **9.2** | |
