@@ -31,6 +31,8 @@ export interface ExamNoteCategory {
   title: string;
   description: string;
   icon: string;
+  /** 本分類適用的章節 slug（plan / ceiling-elevation / perspective / detail）；未指定視為不適用任何章節 */
+  sections?: string[];
   notes: ExamNote[];
 }
 

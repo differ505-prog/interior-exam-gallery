@@ -17,6 +17,7 @@ export const examNotes: ExamNoteCategory[] = [
     title: "比例尺實戰換算工具",
     description: "術科比例尺直接選用法與實體測量投影公式",
     icon: "📐",
+    sections: ["perspective"],
     notes: [
       {
         id: "scale-001",
@@ -45,6 +46,7 @@ export const examNotes: ExamNoteCategory[] = [
     title: "208甲 繪圖練習重點彙整",
     description: "1:12.5 比例下，208甲 客廳主視角的完整戰術 SOP",
     icon: "🎯",
+    sections: ["perspective"],
     notes: [
       {
         id: "208甲-001",
@@ -53,6 +55,7 @@ export const examNotes: ExamNoteCategory[] = [
         content:
           "採用比例 1:12.5（1/125 比例尺）。圖紙定位：左側 2 cm、上緣 2 cm。",
         detail: "圖框建立後，先抓出左右牆面寬度與 EL 眼平線位置，再依序建立 V.P. 消失點。",
+        relatedCodes: ["208甲"],
         tags: ["圖紙定位", "EL", "V.P.", "208甲"],
       },
       {
@@ -66,6 +69,7 @@ export const examNotes: ExamNoteCategory[] = [
 | 量點 M.P. (點位) | 430 | 34.40 cm | 圖框右邊界再往右加 2.4 cm |`,
         detail:
           "消失點橫向位置以現場 245cm 計算，展櫃深度（430cm）對應圖面 M.P. 量點需延伸至圖框外 2.4cm，此為標準 1:12.5 放樣技巧。",
+        relatedCodes: ["208甲"],
         tags: ["數據表", "V.P.", "M.P.", "208甲"],
       },
       {
@@ -76,6 +80,7 @@ export const examNotes: ExamNoteCategory[] = [
           "框體標記：左 2 / 上 2。深度標記 100, 200, 300, 400, 430。透視建立：定位 E.L.（9.6cm）與 V.P.（19.6cm）。",
         detail:
           "細節放樣時需注意：展示櫃外框厚度與層板退縮量。櫃頂不可接天花板（天花板 H300，展示櫃最高 261，留有 39cm 缺口）。",
+        relatedCodes: ["208甲"],
         tags: ["繪圖SOP", "深度標記", "208甲"],
       },
       {
@@ -91,6 +96,7 @@ export const examNotes: ExamNoteCategory[] = [
 □ 展示櫃中下格陰影線佈局（無招牌光區域）`,
         detail:
           "以上七點為 208甲 最常見的扣分區域。建議在練習時對照王本楷老師示範影片，確認展示櫃層板為 8cm 厚。",
+        relatedCodes: ["208甲"],
         tags: ["扣分點", "不熟練區", "208甲"],
       },
     ],
@@ -100,6 +106,7 @@ export const examNotes: ExamNoteCategory[] = [
     title: "208甲 上色與光影重點",
     description: "第五階段：208甲 上色策略與陰影線處理 SOP",
     icon: "🎨",
+    sections: ["perspective"],
     notes: [
       {
         id: "208甲-color-001",
@@ -111,6 +118,7 @@ export const examNotes: ExamNoteCategory[] = [
 4. 深度層次：無燈光的中下格背板轉角處（最深處）陰影線需較密集，與最外緣外框形成強烈對比。`,
         detail:
           "此為 208甲 最關鍵的線稿處理區域。陰影線密度由外而內遞增，造成深度錯覺。",
+        relatedCodes: ["208甲"],
         tags: ["陰影線", "線稿", "208甲", "上色"],
       },
       {
@@ -122,6 +130,7 @@ export const examNotes: ExamNoteCategory[] = [
 口字型天花板：橫樑下緣需有暗面，與天花板水平面做出區隔。`,
         detail:
           "光源方向假設為左上方，所有陰影方向應保持一致。燈箱比櫃體淺一個色階（明度 +2 級）。",
+        relatedCodes: ["208甲"],
         tags: ["光影", "燈箱", "天花板", "208甲"],
       },
       {
@@ -132,6 +141,7 @@ export const examNotes: ExamNoteCategory[] = [
           "右側四座櫃子的側面與正面光比，通常側面會稍微暗半階。展示櫃層板參考王本楷老師示範，為 8cm 厚。",
         detail:
           "木皮/美耐板紋理可用細筆輕輕點出，避免大面積填色使櫃體失去立體感。",
+        relatedCodes: ["208甲"],
         tags: ["材質", "光比", "櫃子", "208甲"],
       },
     ],
