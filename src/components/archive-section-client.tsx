@@ -6,6 +6,7 @@ import { ChevronDown } from "lucide-react";
 import { ArchiveSection, UploadEntry } from "@/types/exam";
 import { ExamNoteCategory } from "@/types/exam-note";
 import { ArchiveCard } from "@/components/archive-card";
+import { QuestionNoteOverview } from "@/components/question-note-overview";
 
 type ArchiveSectionClientProps = {
   section: ArchiveSection;
@@ -208,6 +209,11 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
               </div>
             </div>
 
+            <QuestionNoteOverview
+              activeQuestion={selectedPlanQuestion}
+              onSelectQuestion={(q) => setSelectedPlanQuestion(q)}
+            />
+
             {/* 使用引導：標記試卷上傳流程 */}
             <div className="guide-hint" role="note" aria-label="標記試卷上傳說明">
               <p className="guide-hint__text">
@@ -275,6 +281,11 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
                 ))}
               </div>
             </div>
+
+            <QuestionNoteOverview
+              activeQuestion={selectedQuestion}
+              onSelectQuestion={(q) => setSelectedQuestion(q)}
+            />
           </div>
         )}
 
