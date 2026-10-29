@@ -13,6 +13,15 @@
  * UUID 存入 sessionStorage，同瀏覽器復用，換機即同步。
  */
 
+/**
+ * 保留命名空間：
+ * sheet_code 以 "qtype-<題號>"（例如 "qtype-206"）開頭的資料列，
+ * 專供「題型筆記」使用（同一題號的所有試卷共用一份內容）。
+ * 該命名空間與真實試卷 code（201A、206A客立…）不衝突。
+ */
+
+import { buildQuestionNoteKey } from "@/lib/question-note";
+
 // ─── 型別 ──────────────────────────────────────────────────
 
 export type TeachingLinkEntry = {
@@ -201,6 +210,39 @@ export async function saveScratchNote(
   if (remoteOk) {
     await saveRemoteSheetData({ sheetCode, scratchNote: note, teachingLinks });
   }
+}
+
+/**
+ * 讀取題型筆記。
+ * 以 "qtype-<題號>" 為 key 走既有 read-through cache（localStorage → Supabase → fallback）。
+ *
+ * @param question 題號，例如 "206"
+ */
+export async function getQuestionNote(question: string): Promise<string> {
+  const key = buildQuestionNoteKey(question);
+  try {
+    const data = await getSheetData(key);
+    return data.scratchNote ?? "";
+  } catch {
+    // Supabase 未設定或網路異常時靜默降級為空字串
+    return "";
+  }
+}
+
+/**
+ * 寫入題型筆記。
+ * 沿用既有 saveScratchNote 的「先寫 localStorage、再背景寫 Supabase」流程。
+ * 題型筆記列不使用 teaching_links，固定寫入 []。
+ *
+ * @param question 題號，例如 "206"
+ * @param note 筆記內容
+ */
+export async function saveQuestionNote(
+  question: string,
+  note: string
+): Promise<void> {
+  const key = buildQuestionNoteKey(question);
+  await saveScratchNote(key, note);
 }
 
 /**
