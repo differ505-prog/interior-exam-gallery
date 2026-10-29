@@ -96,7 +96,9 @@ export default function HomePage() {
           </SurfacePanel>
         ) : (
           examSections.map((section) => {
-            const sectionExamNotes = examNotes.filter((cat) => cat.slug === section.slug);
+            const sectionExamNotes = examNotes.filter(
+              (cat) => cat.sections?.includes(section.slug) ?? false
+            );
             return (
               <ArchiveSectionBlock
                 key={section.slug}
