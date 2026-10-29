@@ -11,6 +11,8 @@ import { MarkerPalette } from "@/components/ui/marker-palette";
 import { ExamNotesPanel } from "@/components/exam-notes-panel";
 import { DimensionTable } from "@/components/ui/dimension-table";
 import { getSheetData, saveScratchNote } from "@/lib/user-data";
+import { resolveQuestionNoteTarget } from "@/lib/question-note";
+import { QuestionNotePanel } from "@/components/question-note-panel";
 import { UPLOAD_KINDS } from "@/lib/upload-constants";
 import {
   resolveRequirementImageUrl,
@@ -70,6 +72,12 @@ export function ArchiveDetailModal({ item, uploads, allUploads = [], sectionSlug
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // 題型筆記目標：201–206 題號的試卷共用同一份筆記；perspective / detail 為 null
+  const questionNoteTarget = useMemo(
+    () => resolveQuestionNoteTarget(item.code),
+    [item.code]
+  );
 
   // ─── 刪除確認對話框 ────────────────────────────────────────
   const [deleteTarget, setDeleteTarget] = useState<UploadEntry | null>(null);
@@ -610,6 +618,14 @@ export function ArchiveDetailModal({ item, uploads, allUploads = [], sectionSlug
               </div>
             )}
           </section>
+
+          {/* 題型筆記：201–206 題號共用，跨版本同步 */}
+          {questionNoteTarget && (
+            <QuestionNotePanel
+              question={questionNoteTarget.question}
+              affectedCodes={questionNoteTarget.affectedCodes}
+            />
+          )}
 
           {/* 速記本：作圖時自由記錄，之後彙整 */}
           <section className="modal-section modal-section--notes">
