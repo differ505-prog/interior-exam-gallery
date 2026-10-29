@@ -1745,6 +1745,208 @@ main {
   margin: 0;
 }
 
+/* 題型筆記（跨版本共用，201–206） */
+.qnote-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-3);
+}
+
+.qnote-panel__title {
+  margin: 0;
+}
+
+.qnote-panel__scope {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  background: var(--accent-soft);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+}
+
+.qnote-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.qnote-panel__input {
+  width: 100%;
+  min-height: 96px;
+  padding: var(--space-3);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--text);
+  resize: vertical;
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.qnote-panel__input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.qnote-panel__meta {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-align: right;
+  margin: 0;
+}
+
+.qnote-panel__scope-list {
+  margin-top: var(--space-2);
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.qnote-panel__scope-list > summary {
+  cursor: pointer;
+  letter-spacing: 0.02em;
+}
+
+.qnote-panel__scope-codes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.qnote-panel__scope-code {
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  padding: 1px 8px;
+}
+
+/* 題型筆記總覽（201–206 六格） */
+.qnote-overview {
+  margin-top: var(--space-4);
+}
+
+.qnote-overview__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-3);
+}
+
+.qnote-overview__title {
+  margin: 0;
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  text-transform: none;
+}
+
+.qnote-overview__grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.qnote-overview__cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  text-align: left;
+  min-width: 0;
+  padding: var(--space-4);
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.qnote-overview__cell:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.qnote-overview__cell--active {
+  border-color: var(--accent);
+  background: var(--panel);
+}
+
+.qnote-overview__num {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  line-height: 1.25;
+  color: var(--text-strong);
+  letter-spacing: 0.01em;
+}
+
+.qnote-overview__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.qnote-overview__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--line-strong);
+}
+
+.qnote-overview__dot--filled {
+  background: var(--accent);
+}
+
+.qnote-overview__preview {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--muted);
+  min-height: 3.2em; /* 鎖定 2 行高度，避免六格棋盤式錯位 */
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.qnote-overview__empty {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--muted);
+  min-height: 3.2em;
+}
+
+@media (max-width: 1024px) {
+  .qnote-overview__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .qnote-overview__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)); /* §12：統計卡 ≤480px 改雙欄 */
+  }
+}
+
 /* Uploads Grid */
 .modal-uploads-grid {
   display: grid;
