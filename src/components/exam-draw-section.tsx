@@ -14,6 +14,7 @@ import {
   calcPerspectiveBalance,
   PerspectiveBalance,
   ExtendedDrawResult,
+  PerspectiveFocusMode,
 } from "@/hooks/use-exam-draw";
 import {
   calcVariantBalance,
@@ -55,6 +56,7 @@ export function ExamDrawSection() {
     lean: "balanced",
     completedDirections: [],
   });
+  const [perspFocusMode, setPerspFocusMode] = useState<PerspectiveFocusMode>("auto");
   const [variantBalance, setVariantBalance] = useState<PlanVariantBalance>({
     variantCounts: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 },
     totalCount: 0,
@@ -194,7 +196,9 @@ export function ExamDrawSection() {
             : [planResult as ExtendedDrawResult];
         }
       } else {
-        results = drawExamGroup(group, practiceCountMap);
+        results = drawExamGroup(group, practiceCountMap, {
+          perspectiveFocusMode: perspFocusMode,
+        });
       }
 
       if (results.length === 0) {
@@ -243,12 +247,169 @@ export function ExamDrawSection() {
         });
       }
     },
-    [uploads, ceBalance, perspBalance]
+    [uploads, ceBalance, perspBalance, perspFocusMode]
   );
 
   // 計算 CE 平衡儀百分比
   const total = ceBalance.ceilingCount + ceBalance.elevationCount;
   const ceilingPct = total > 0 ? (ceBalance.ceilingCount / total) * 100 : 50;
+
+  // 計算透視圖消點比例（1VP vs 2VP 考場 1:2 達標率）
+  const oneVpCount = perspBalance.directionCounts.甲;
+  const twoVpCount =
+    perspBalance.directionCounts.乙 + perspBalance.directionCounts.丙;
+  const totalPerspCount = oneVpCount + twoVpCount;
+  const oneVpPct =
+    totalPerspCount > 0
+      ? Math.round((oneVpCount / totalPerspCount) * 100)
+      : 33;
+  const twoVpPct = totalPerspCount > 0 ? 100 - oneVpPct : 67;
+
+  // 達標診斷
+  const perspStatus = (() => {
+    if (totalPerspCount === 0) {
+      return { text: "尚未開始練習", tone: "neutral" };
+    }
+    if (twoVpPct < 58) {
+      return {
+        text: `二消偏少（目前 ${twoVpPct}%，考場佔 67%，建議專攻二消）`,
+        tone: "warning",
+      };
+    }
+    if (twoVpPct > 76) {
+      return {
+        text: `一消偏少（目前 ${oneVpPct}%，考場佔 33%，建議補強一消）`,
+        tone: "warning",
+      };
+    }
+    return {
+      text: "✓ 消點比例健康（二消約為一消 2 倍）",
+      tone: "success",
+    };
+  })();
+
+  const renderDirectionCard = (dir: "甲" | "乙" | "丙") => {
+    const count = perspBalance.directionCounts[dir];
+    const target = Math.round(perspBalance.totalCount / 3);
+    const isLean = perspBalance.lean === dir;
+    const isCompleted = perspBalance.completedDirections.includes(dir);
+    const vpType = dir === "甲" ? "一消點" : "二消點";
+
+    return (
+      <div
+        key={dir}
+        style={{
+          padding: "var(--space-4)",
+          borderRadius: "12px",
+          background: isLean
+            ? "color-mix(in srgb, var(--color-accent) 12%, transparent)"
+            : "var(--color-surface)",
+          border: isLean
+            ? "1px solid var(--color-accent)"
+            : "1px solid var(--color-border)",
+          transition: "all 200ms ease-out",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "var(--space-2)",
+          }}
+        >
+          <span
+            style={{
+              fontSize: "1.1rem",
+              fontWeight: 700,
+              color: "var(--color-accent)",
+            }}
+          >
+            {dir}
+          </span>
+          <span
+            style={{
+              fontSize: "0.65rem",
+              padding: "2px 8px",
+              borderRadius: "999px",
+              background:
+                "color-mix(in srgb, var(--color-accent) 12%, transparent)",
+              color: "var(--color-accent)",
+              fontWeight: 500,
+            }}
+          >
+            {vpType}
+          </span>
+        </div>
+        <p
+          style={{
+            fontSize: "1.5rem",
+            fontWeight: 800,
+            margin: "0 0 4px 0",
+            color: "var(--color-text)",
+            lineHeight: 1,
+          }}
+        >
+          {count}
+          <span
+            style={{
+              fontSize: "0.75rem",
+              fontWeight: 400,
+              color: "var(--color-text-muted)",
+              marginLeft: "4px",
+            }}
+          >
+            張
+          </span>
+        </p>
+        {isLean && !isCompleted && (
+          <p
+            style={{
+              fontSize: "0.7rem",
+              color: "var(--color-accent)",
+              margin: 0,
+              fontWeight: 500,
+            }}
+          >
+            → 下一題
+          </p>
+        )}
+        {isCompleted && (
+          <p
+            style={{
+              fontSize: "0.7rem",
+              color: "var(--color-text-muted)",
+              margin: 0,
+            }}
+          >
+            ✓ 已完成
+          </p>
+        )}
+        {!isLean && !isCompleted && perspBalance.totalCount > 0 && (
+          <p
+            style={{
+              fontSize: "0.7rem",
+              color: "var(--color-text-muted)",
+              margin: 0,
+            }}
+          >
+            目標 {target} 張
+          </p>
+        )}
+        {!isLean && !isCompleted && perspBalance.totalCount === 0 && (
+          <p
+            style={{
+              fontSize: "0.7rem",
+              color: "var(--color-text-muted)",
+              margin: 0,
+            }}
+          >
+            尚未開始
+          </p>
+        )}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -303,151 +464,130 @@ export function ExamDrawSection() {
           )}
         </div>
 
-        {/* 透視圖平衡儀（v2 新增） */}
+        {/* 透視圖消點平衡儀（1VP vs 2VP 雙段考場對比，v3 升級） */}
         <div
-          aria-label="透視圖方向練習平衡狀態"
-          style={{ marginTop: "var(--space-5)" }}
+          className="persp-balance-container"
+          aria-label="透視圖消點練習平衡狀態"
         >
-          <p
-            style={{
-              fontSize: "0.75rem",
-              color: "var(--color-text-muted)",
-              marginBottom: "var(--space-3)",
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-            }}
-          >
-            透視圖方向
-          </p>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: "var(--space-3)",
-            }}
-          >
-            {(["甲", "乙", "丙"] as const).map((dir) => {
-              const count = perspBalance.directionCounts[dir];
-              const target = Math.round(perspBalance.totalCount / 3);
-              const isLean = perspBalance.lean === dir;
-              const isCompleted =
-                perspBalance.completedDirections.includes(dir);
-              const vpType = dir === "甲" ? "一消點" : "二消點";
+          <div className="persp-balance-header">
+            <div className="persp-balance-eyebrow">
+              <span>透視圖消點平衡</span>
+              <span
+                className={`persp-balance-status ${
+                  perspStatus.tone === "warning"
+                    ? "persp-balance-status--warning"
+                    : perspStatus.tone === "success"
+                    ? "persp-balance-status--success"
+                    : ""
+                }`}
+              >
+                {perspStatus.text}
+              </span>
+            </div>
 
-              return (
-                <div
-                  key={dir}
-                  style={{
-                    padding: "var(--space-4)",
-                    borderRadius: "12px",
-                    background: isLean
-                      ? "color-mix(in srgb, var(--color-accent) 12%, transparent)"
-                      : "var(--color-surface)",
-                    border: isLean
-                      ? "1px solid var(--color-accent)"
-                      : "1px solid var(--color-border)",
-                    transition: "all 200ms ease-out",
-                  }}
+            {/* 抽題模式切換器 */}
+            <div className="persp-mode-control">
+              <span className="persp-mode-label">抽題模式：</span>
+              <div
+                className="persp-mode-segmented"
+                role="radiogroup"
+                aria-label="透視圖抽題模式"
+              >
+                <button
+                  type="button"
+                  className={`persp-mode-btn ${
+                    perspFocusMode === "auto" ? "persp-mode-btn--active" : ""
+                  }`}
+                  onClick={() => setPerspFocusMode("auto")}
+                  role="radio"
+                  aria-checked={perspFocusMode === "auto"}
+                  title="依考場黃金比例 2:1 自動抽題"
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: "var(--space-2)",
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: "1.1rem",
-                        fontWeight: 700,
-                        color: "var(--color-accent)",
-                      }}
-                    >
-                      {dir}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: "0.65rem",
-                        padding: "2px 8px",
-                        borderRadius: "999px",
-                        background: "color-mix(in srgb, var(--color-accent) 12%, transparent)",
-                        color: "var(--color-accent)",
-                        fontWeight: 500,
-                      }}
-                    >
-                      {vpType}
-                    </span>
-                  </div>
-                  <p
-                    style={{
-                      fontSize: "1.5rem",
-                      fontWeight: 800,
-                      margin: "0 0 4px 0",
-                      color: "var(--color-text)",
-                      lineHeight: 1,
-                    }}
-                  >
-                    {count}
-                    <span
-                      style={{
-                        fontSize: "0.75rem",
-                        fontWeight: 400,
-                        color: "var(--color-text-muted)",
-                        marginLeft: "4px",
-                      }}
-                    >
-                      張
-                    </span>
-                  </p>
-                  {isLean && !isCompleted && (
-                    <p
-                      style={{
-                        fontSize: "0.7rem",
-                        color: "var(--color-accent)",
-                        margin: 0,
-                        fontWeight: 500,
-                      }}
-                    >
-                      → 下一題
-                    </p>
-                  )}
-                  {isCompleted && (
-                    <p
-                      style={{
-                        fontSize: "0.7rem",
-                        color: "var(--color-text-muted)",
-                        margin: 0,
-                      }}
-                    >
-                      ✓ 已完成
-                    </p>
-                  )}
-                  {!isLean && !isCompleted && perspBalance.totalCount > 0 && (
-                    <p
-                      style={{
-                        fontSize: "0.7rem",
-                        color: "var(--color-text-muted)",
-                        margin: 0,
-                      }}
-                    >
-                      目標 {target} 張
-                    </p>
-                  )}
-                  {!isLean && !isCompleted && perspBalance.totalCount === 0 && (
-                    <p
-                      style={{
-                        fontSize: "0.7rem",
-                        color: "var(--color-text-muted)",
-                        margin: 0,
-                      }}
-                    >
-                      尚未開始
-                    </p>
-                  )}
-                </div>
-              );
-            })}
+                  考場均衡 (1:2)
+                </button>
+                <button
+                  type="button"
+                  className={`persp-mode-btn ${
+                    perspFocusMode === "2vp" ? "persp-mode-btn--active" : ""
+                  }`}
+                  onClick={() => setPerspFocusMode("2vp")}
+                  role="radio"
+                  aria-checked={perspFocusMode === "2vp"}
+                  title="鎖定二消點（乙、丙）特訓，攻克作圖瓶頸"
+                >
+                  二消特訓 (2VP)
+                </button>
+                <button
+                  type="button"
+                  className={`persp-mode-btn ${
+                    perspFocusMode === "1vp" ? "persp-mode-btn--active" : ""
+                  }`}
+                  onClick={() => setPerspFocusMode("1vp")}
+                  role="radio"
+                  aria-checked={perspFocusMode === "1vp"}
+                  title="鎖定一消點（甲）速刷基礎功"
+                >
+                  一消速刷 (1VP)
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* 雙段進度條（Macro Ratio Bar） */}
+          <div className="persp-macro-bar">
+            <div className="persp-macro-track" aria-hidden="true">
+              <div
+                className="persp-macro-fill--1vp"
+                style={{ width: `${oneVpPct}%` }}
+                title={`一消點 (甲)：${oneVpPct}%`}
+              />
+              <div
+                className="persp-macro-fill--2vp"
+                style={{ width: `${twoVpPct}%` }}
+                title={`二消點 (乙＋丙)：${twoVpPct}%`}
+              />
+              <div
+                className="persp-macro-benchmark"
+                title="考場基準線：一消 33.3% / 二消 66.7%"
+              />
+            </div>
+
+            <div className="persp-macro-labels">
+              <span className="persp-macro-legend">
+                <span className="persp-macro-dot persp-macro-dot--1vp" />
+                一消點 (甲) <strong>{oneVpCount}</strong> 張 · {oneVpPct}%（考場目標 33%）
+              </span>
+              <span className="persp-macro-legend">
+                <span className="persp-macro-dot persp-macro-dot--2vp" />
+                二消點 (乙＋丙) <strong>{twoVpCount}</strong> 張 · {twoVpPct}%（考場目標 67%）
+              </span>
+            </div>
+          </div>
+
+          {/* 階層群組網格（左側 1VP : 右側 2VP） */}
+          <div className="persp-groups-grid">
+            <div className="persp-group persp-group--1vp">
+              <div className="persp-group__header">
+                <span className="persp-group__title">一消點（1VP）</span>
+                <span className="persp-group__ratio">考場佔比 33% · 6 題</span>
+              </div>
+              <div className="persp-group__cards">
+                {renderDirectionCard("甲")}
+              </div>
+            </div>
+
+            <div className="persp-group persp-group--2vp">
+              <div className="persp-group__header">
+                <span className="persp-group__title">二消點（2VP）</span>
+                <span className="persp-group__ratio">
+                  考場佔比 67% · 12 題（合計 {twoVpCount} 張）
+                </span>
+              </div>
+              <div className="persp-group__cards">
+                {renderDirectionCard("乙")}
+                {renderDirectionCard("丙")}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -511,19 +651,28 @@ export function ExamDrawSection() {
         >
           {(Object.keys(GROUP_META) as DrawGroup[]).map((group) => {
             const meta = GROUP_META[group];
+            const dynamicSubtitle =
+              group === "perspective-detail"
+                ? perspFocusMode === "2vp"
+                  ? "透視圖（鎖定二消特訓 2VP）＋大樣圖"
+                  : perspFocusMode === "1vp"
+                  ? "透視圖（鎖定一消速刷 1VP）＋大樣圖"
+                  : "透視圖（1:2 考場感知）＋大樣圖"
+                : meta.subtitle;
+
             return (
               <button
                 key={group}
                 className="exam-draw-btn"
                 onClick={() => handleDraw(group)}
                 disabled={loading}
-                aria-label={`抽題：${meta.title}，${meta.subtitle}`}
+                aria-label={`抽題：${meta.title}，${dynamicSubtitle}`}
               >
                 <span className="exam-draw-btn__icon" aria-hidden="true">
                   <Dices size={24} />
                 </span>
                 <span className="exam-draw-btn__label">{meta.title}</span>
-                <span className="exam-draw-btn__sub">{meta.subtitle}</span>
+                <span className="exam-draw-btn__sub">{dynamicSubtitle}</span>
               </button>
             );
           })}

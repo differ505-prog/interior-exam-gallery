@@ -3279,6 +3279,252 @@ main {
   }
 }
 
+/* ── 透視圖消點平衡儀（1VP vs 2VP 雙段考場對比）─────────────────────────── */
+.persp-balance-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
+.persp-balance-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.persp-balance-eyebrow {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.persp-balance-status {
+  font-size: 0.75rem;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.persp-balance-status--warning {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.persp-balance-status--success {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* 雙段巨觀進度條 */
+.persp-macro-bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+
+.persp-macro-track {
+  display: flex;
+  height: 8px;
+  background: var(--color-theme);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.persp-macro-fill--1vp {
+  background: var(--accent);
+  height: 100%;
+  transition: width 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.persp-macro-fill--2vp {
+  background: color-mix(in srgb, var(--accent) 60%, var(--text));
+  height: 100%;
+  transition: width 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.persp-macro-benchmark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 33.333%;
+  width: 2px;
+  background: var(--color-surface);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.35);
+  z-index: 1;
+}
+
+.persp-macro-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.persp-macro-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.persp-macro-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.persp-macro-dot--1vp {
+  background: var(--accent);
+}
+
+.persp-macro-dot--2vp {
+  background: color-mix(in srgb, var(--accent) 60%, var(--text));
+}
+
+/* 階層群組網格（一消 1 份 : 二消 2 份） */
+.persp-groups-grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: var(--space-3);
+}
+
+.persp-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: color-mix(in srgb, var(--color-surface) 60%, transparent);
+  border: 1px dashed var(--color-border);
+  border-radius: 12px;
+  min-width: 0;
+}
+
+.persp-group--1vp {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--color-border));
+}
+
+.persp-group--2vp {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--color-border));
+}
+
+.persp-group__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 var(--space-1);
+}
+
+.persp-group__title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+
+.persp-group__ratio {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.persp-group__cards {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.persp-group--1vp .persp-group__cards {
+  grid-template-columns: 1fr;
+}
+
+.persp-group--2vp .persp-group__cards {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* 抽題模式切換器（Segmented Control） */
+.persp-mode-control {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.persp-mode-label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.persp-mode-segmented {
+  display: inline-flex;
+  padding: 2px;
+  background: var(--color-theme);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.persp-mode-btn {
+  font-size: 0.72rem;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration-base) var(--ease-out);
+  white-space: nowrap;
+}
+
+.persp-mode-btn:hover {
+  color: var(--text);
+}
+
+.persp-mode-btn--active {
+  background: var(--color-surface);
+  color: var(--accent);
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+}
+
+@media (max-width: 768px) {
+  .persp-groups-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .persp-group--2vp .persp-group__cards {
+    grid-template-columns: 1fr;
+  }
+  .persp-mode-segmented {
+    width: 100%;
+    display: flex;
+  }
+  .persp-mode-btn {
+    flex: 1;
+    text-align: center;
+    padding: 6px 4px;
+    font-size: 0.68rem;
+  }
+}
+
 .exam-draw-buttons {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

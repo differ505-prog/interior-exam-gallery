@@ -300,19 +300,29 @@ function drawOneFromItems(
   };
 }
 
+/** 透視圖備考專攻模式 */
+export type PerspectiveFocusMode = "auto" | "1vp" | "2vp";
+
+export interface DrawExamOptions {
+  perspectiveFocusMode?: PerspectiveFocusMode;
+}
+
 /**
  * 依據抽題組合抽出對應的題目陣列
  * v2：透視圖改為方向感知抽題（兩層：先算方向 deficit，再在方向內抽題）
+ * v3：支援消點專攻模式（auto 考場均衡 1:2 / 1vp 一消特訓 / 2vp 二消特訓）
  */
 export function drawExamGroup(
   group: DrawGroup,
-  practiceCountMap: Record<string, number>
+  practiceCountMap: Record<string, number>,
+  options?: DrawExamOptions
 ): ExtendedDrawResult[] {
   const results: ExtendedDrawResult[] = [];
 
   if (group === "perspective-detail") {
     const perspectiveItems =
       examSections.find((s) => s.slug === "perspective")?.items ?? [];
+    const focusMode = options?.perspectiveFocusMode ?? "auto";
 
     // ── Layer 1：計算各方向 deficit ───────────────
     const directionCounts: Record<PerspectiveDirection, number> = {
@@ -366,9 +376,25 @@ export function drawExamGroup(
         directionDeficits[d] > PERSPECTIVE_DEADBAND
     );
 
-    // 決定抽題方向：取 deficit 最大者，平手時依 甲→乙→丙 教學序
+    // 決定抽題方向
     let targetDirection: PerspectiveDirection | null = null;
-    if (activeDirections.length > 0) {
+    if (focusMode === "1vp") {
+      targetDirection = "甲";
+    } else if (focusMode === "2vp") {
+      // 二消模式：在 乙、丙 中挑選 deficit 較大或未練滿者
+      const twoVpCandidates = (["乙", "丙"] as PerspectiveDirection[]).filter(
+        (d) => !completedDirections.includes(d)
+      );
+      const candidates = twoVpCandidates.length > 0 ? twoVpCandidates : (["乙", "丙"] as PerspectiveDirection[]);
+      candidates.sort((a, b) => {
+        const diff = directionDeficits[b] - directionDeficits[a];
+        if (Math.abs(diff) < 0.001) {
+          return (directionCounts[a] ?? 0) - (directionCounts[b] ?? 0);
+        }
+        return diff;
+      });
+      targetDirection = candidates[0];
+    } else if (activeDirections.length > 0) {
       activeDirections.sort((a, b) => {
         const diff = directionDeficits[b] - directionDeficits[a];
         if (Math.abs(diff) < 0.001) {
@@ -393,12 +419,23 @@ export function drawExamGroup(
 
     const pResult = drawOneFromItems(pool, practiceCountMap);
     if (pResult) {
-      const targetCount = Math.round(totalPerspectiveCount / 3);
+      let reason = "各向均衡，隨機抽取";
+      if (focusMode === "1vp") {
+        reason = `🎯 一消特訓：鎖定甲向（1VP 基礎功，已練 ${directionCounts.甲} 張）`;
+      } else if (focusMode === "2vp" && targetDirection) {
+        reason = `🎯 二消特訓：鎖定 ${targetDirection}向（2VP 考場 67% 重點，已練 ${directionCounts[targetDirection]} 張）`;
+      } else if (targetDirection) {
+        const isOneVp = targetDirection === "甲";
+        const count = directionCounts[targetDirection];
+        const targetCount = Math.round(totalPerspectiveCount / 3);
+        reason = isOneVp
+          ? `甲向落後（一消點 1VP：已練 ${count} 張，目標 ${targetCount} 張，考場佔比 33%）`
+          : `${targetDirection}向落後（二消點 2VP：已練 ${count} 張，目標 ${targetCount} 張，二消合佔 67%）`;
+      }
+
       results.push({
         ...pResult,
-        directionReason: targetDirection
-          ? `${targetDirection}向落後（已練 ${directionCounts[targetDirection]} 張，目標 ${targetCount} 張）`
-          : "各向均衡，隨機抽取",
+        directionReason: reason,
       });
     }
 

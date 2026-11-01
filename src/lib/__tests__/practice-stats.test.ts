@@ -12,6 +12,7 @@ import {
   VP_TARGET_RATIO,
   extractPerspectiveDirection,
   calcPerspectiveBalance,
+  drawExamGroup,
 } from "@/hooks/use-exam-draw";
 import { countPracticePerItem } from "@/lib/practice-stats";
 import { ArchiveItem, UploadEntry } from "@/types/exam";
@@ -173,5 +174,46 @@ describe("calcPerspectiveBalance — 方向平衡計算", () => {
     const balance = calcPerspectiveBalance(items, uploads);
     expect(balance.completedDirections).toContain("甲");
     expect(balance.lean).not.toBe("甲");
+  });
+});
+
+describe("drawExamGroup — 透視圖備考專攻模式", () => {
+  const practiceMap: Record<string, number> = {
+    "207甲": 0,
+    "208甲": 0,
+    "207乙": 0,
+    "208乙": 0,
+    "207丙": 0,
+    "208丙": 0,
+  };
+
+  it("一消特訓模式（1vp）：必抽甲向試卷", () => {
+    const results = drawExamGroup("perspective-detail", practiceMap, {
+      perspectiveFocusMode: "1vp",
+    });
+    expect(results.length).toBeGreaterThanOrEqual(1);
+    const perspResult = results[0];
+    expect(perspResult.item.code.endsWith("甲")).toBe(true);
+    expect(perspResult.directionReason).toContain("一消");
+  });
+
+  it("二消特訓模式（2vp）：必抽乙或丙向試卷", () => {
+    const results = drawExamGroup("perspective-detail", practiceMap, {
+      perspectiveFocusMode: "2vp",
+    });
+    expect(results.length).toBeGreaterThanOrEqual(1);
+    const perspResult = results[0];
+    const isTwoVp =
+      perspResult.item.code.endsWith("乙") ||
+      perspResult.item.code.endsWith("丙");
+    expect(isTwoVp).toBe(true);
+    expect(perspResult.directionReason).toContain("二消");
+  });
+
+  it("考場均衡模式（auto 或省略）：抽題結果包含方向理由", () => {
+    const results = drawExamGroup("perspective-detail", practiceMap);
+    expect(results.length).toBeGreaterThanOrEqual(1);
+    const perspResult = results[0];
+    expect(perspResult.directionReason).toBeDefined();
   });
 });
