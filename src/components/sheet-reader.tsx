@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, X, Maximize2 } from "lucide-react";
+import { ZoomIn, Maximize2 } from "lucide-react";
 import { SheetDoc } from "@/types/sheet";
 import { getPerspectiveMarkers } from "@/data/perspective-markers";
 import { SafeImage } from "@/components/ui/safe-image";
@@ -23,14 +23,18 @@ type SheetReaderProps = {
 /**
  * SheetReader — 試卷閱讀器
  *
- * 設計：
- * - 單一試卷文件呈現（替代舊的兩欄並排 question + requirement grid）
- * - 分頁導航：左右箭頭 + 頁碼指示器 + 縮圖列
- * - 滿寬顯示：max-width: 912px（現行 446px 的 2.05 倍）+ object-fit: contain
- * - 翻面比較：長按按鈕可在正/背面間快速翻頁，保持縮放倍率與平移位置同步
- * - 自動偵測圖片比例，必要時切換 contain
+ * 設計重點（UI/UX 總監精簡版）：
+ * - 移除舊版 1/2 頁碼標籤與底部縮圖方塊，消除「題目圖」字樣重複
+ * - 頂部採用 Apple / Stripe 風格的極簡分段頁籤（Segmented Control）
+ * - 放大主圖可視範圍，底部保留 Zoom 控制與檢視模式切換
+ * - 完整保留鍵盤 ← / → 切換與滑鼠長按翻面特性
  */
-export function SheetReader({ doc, onOpenLightbox, coverage, unarchivedMessage }: SheetReaderProps) {
+export function SheetReader({
+  doc,
+  onOpenLightbox,
+  coverage,
+  unarchivedMessage,
+}: SheetReaderProps) {
   const { pages, code } = doc;
 
   const [activePage, setActivePage] = useState(0);
@@ -39,15 +43,12 @@ export function SheetReader({ doc, onOpenLightbox, coverage, unarchivedMessage }
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isHoldFiredRef = useRef(false);
 
-  const activePageRef = useRef(activePage);
-  activePageRef.current = activePage;
-
   const totalPages = pages.length;
   const currentPage = pages[activePage];
 
   const markers = getPerspectiveMarkers(code);
 
-  // Keyboard navigation
+  // 鍵盤左右鍵切換頁面
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
@@ -63,7 +64,7 @@ export function SheetReader({ doc, onOpenLightbox, coverage, unarchivedMessage }
     return () => window.removeEventListener("keydown", handler);
   }, [totalPages]);
 
-  // Cleanup hold timer on unmount
+  // 清除長按計時器
   useEffect(() => {
     return () => {
       if (holdTimerRef.current) {
@@ -71,14 +72,6 @@ export function SheetReader({ doc, onOpenLightbox, coverage, unarchivedMessage }
       }
     };
   }, []);
-
-  const handlePrev = useCallback(() => {
-    setActivePage((p) => Math.max(0, p - 1));
-  }, []);
-
-  const handleNext = useCallback(() => {
-    setActivePage((p) => Math.min(totalPages - 1, p + 1));
-  }, [totalPages]);
 
   // 長按翻面（快速在正/背面間來回，僅於兩頁時有效）
   const handleMouseDown = useCallback(() => {
@@ -113,9 +106,7 @@ export function SheetReader({ doc, onOpenLightbox, coverage, unarchivedMessage }
         <p className="sheet-reader--empty__msg">
           {unarchivedMessage ?? "題目圖紙建置中，掃描建檔後會自動顯示。"}
         </p>
-        {coverage && (
-          <p className="sheet-reader--empty__coverage">{coverage}</p>
-        )}
+        {coverage && <p className="sheet-reader--empty__coverage">{coverage}</p>}
       </div>
     );
   }
@@ -126,19 +117,51 @@ export function SheetReader({ doc, onOpenLightbox, coverage, unarchivedMessage }
       role="region"
       aria-label={`試卷 ${code} 閱讀器`}
     >
-      {/* 頁碼指示器 */}
+      {/* 頂部直觀分段頁籤（取代舊 1/2 標籤與底部重複縮圖） */}
       {totalPages > 1 && (
-        <div className="sheet-reader__page-indicator" aria-live="polite" aria-atomic="true">
-          <span className="sheet-reader__page-current">{activePage + 1}</span>
-          <span className="sheet-reader__page-sep">/</span>
-          <span className="sheet-reader__page-total">{totalPages}</span>
-          <span className="sheet-reader__page-label">{currentPage.label}</span>
+        <div
+          className="sheet-reader__segmented-tabs"
+          role="tablist"
+          aria-label={`${code} 題目圖紙切換`}
+        >
+          {pages.map((page, idx) => {
+            const isActive = idx === activePage;
+            const icon =
+              page.isAnswer ||
+              page.label.includes("需求") ||
+              page.label.includes("答案")
+                ? "📋"
+                : page.label.includes("背面")
+                ? "📑"
+                : "📐";
+
+            return (
+              <button
+                key={idx}
+                role="tab"
+                aria-selected={isActive}
+                aria-controls={`sheet-page-${idx}`}
+                className={`sheet-reader__tab-btn${
+                  isActive ? " sheet-reader__tab-btn--active" : ""
+                }`}
+                onClick={() => setActivePage(idx)}
+                type="button"
+              >
+                <span className="sheet-reader__tab-icon" aria-hidden="true">
+                  {icon}
+                </span>
+                <span className="sheet-reader__tab-label">{page.label}</span>
+              </button>
+            );
+          })}
         </div>
       )}
 
       {/* 主圖區 */}
       <div
-        className={`sheet-reader__main${zoom !== "fit" ? " sheet-reader__main--zoomed" : ""}`}
+        className={`sheet-reader__main${
+          zoom !== "fit" ? " sheet-reader__main--zoomed" : ""
+        }`}
         onClick={handleClick}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
@@ -159,7 +182,9 @@ export function SheetReader({ doc, onOpenLightbox, coverage, unarchivedMessage }
             {markers.map((marker) => (
               <div
                 key={marker.direction}
-                className={`sheet-reader__marker sheet-reader__marker--${marker.vpType === "一消點" ? "1vp" : "2vp"}`}
+                className={`sheet-reader__marker sheet-reader__marker--${
+                  marker.vpType === "一消點" ? "1vp" : "2vp"
+                }`}
                 style={{
                   top: `${marker.position.top}%`,
                   left: `${marker.position.left}%`,
@@ -199,67 +224,20 @@ export function SheetReader({ doc, onOpenLightbox, coverage, unarchivedMessage }
         )}
       </div>
 
-      {/* 縮圖列 */}
-      {totalPages > 1 && (
-        <div
-          className="sheet-reader__thumbs"
-          role="tablist"
-          aria-label={`${code} 圖頁切換，共 ${totalPages} 頁`}
-        >
-          {pages.map((page, idx) => (
-            <button
-              key={idx}
-              role="tab"
-              aria-selected={idx === activePage}
-              aria-controls={`sheet-page-${idx}`}
-              className={`sheet-reader__thumb-btn${idx === activePage ? " sheet-reader__thumb-btn--active" : ""}`}
-              onClick={() => setActivePage(idx)}
-              type="button"
-            >
-              <SafeImage
-                src={page.url}
-                alt={`${page.label} 縮圖`}
-                aspectRatio="1 / 1"
-                objectFit="cover"
-                className="sheet-reader__thumb-img"
-              />
-              <span className="sheet-reader__thumb-label">{page.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* 導航控制列 */}
+      {/* 控制列（保留 Zoom 與檢視模式，移除冗餘左右箭頭） */}
       <div className="sheet-reader__controls">
-        {totalPages > 1 && (
-          <>
-            <button
-              className="sheet-reader__nav-btn"
-              onClick={handlePrev}
-              disabled={activePage === 0}
-              aria-label="上一頁"
-              type="button"
-            >
-              <ChevronLeft size={20} />
-            </button>
-            <button
-              className="sheet-reader__nav-btn"
-              onClick={handleNext}
-              disabled={activePage === totalPages - 1}
-              aria-label="下一頁"
-              type="button"
-            >
-              <ChevronRight size={20} />
-            </button>
-          </>
-        )}
-
         {/* Zoom 控制 */}
-        <div className="sheet-reader__zoom-btns" role="group" aria-label="縮放控制">
+        <div
+          className="sheet-reader__zoom-btns"
+          role="group"
+          aria-label="縮放控制"
+        >
           {(["fit", "medium", "large"] as ZoomLevel[]).map((z) => (
             <button
               key={z}
-              className={`sheet-reader__zoom-btn${zoom === z ? " sheet-reader__zoom-btn--active" : ""}`}
+              className={`sheet-reader__zoom-btn${
+                zoom === z ? " sheet-reader__zoom-btn--active" : ""
+              }`}
               onClick={() => setZoom(z)}
               type="button"
               aria-pressed={zoom === z}
@@ -272,7 +250,9 @@ export function SheetReader({ doc, onOpenLightbox, coverage, unarchivedMessage }
         {/* 檢視模式切換 */}
         <button
           className="sheet-reader__mode-btn"
-          onClick={() => setViewMode((m) => (m === "reader" ? "compare" : "reader"))}
+          onClick={() =>
+            setViewMode((m) => (m === "reader" ? "compare" : "reader"))
+          }
           type="button"
           aria-pressed={viewMode === "compare"}
         >

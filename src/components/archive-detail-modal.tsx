@@ -37,19 +37,19 @@ type QuestionConfig = {
 
 const QUESTION_CONFIGS: Record<string, QuestionConfig> = {
   perspective: {
-    title: "題目區（平面圖＋立面圖）",
+    title: "透視題目卷（正反面）",
     layout: "two-col",
   },
   detail: {
-    title: "題目區（大樣圖）",
+    title: "大樣題目與官方答案",
     layout: "two-col",
   },
   plan: {
-    title: "題目區（題目圖＋需求圖）",
+    title: "試卷題目與需求單",
     layout: "two-col",
   },
   "ceiling-elevation": {
-    title: "題目區（平面圖＋立面圖）",
+    title: "試卷題目與需求單",
     layout: "two-col",
   },
 };
