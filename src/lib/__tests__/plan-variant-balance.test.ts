@@ -14,7 +14,12 @@ import {
   ITEMS_PER_VARIANT,
   extractPlanVariant,
   calcVariantBalance,
+  extractBaseQuestion,
+  calcPlanBaseQuestionCounts,
+  selectEligibleBaseQuestions,
+  PLAN_BASE_QUESTIONS,
 } from "@/lib/plan-variant";
+import { drawExamGroup } from "@/hooks/use-exam-draw";
 import { ArchiveItem } from "@/types/exam";
 
 /** 建立假平面圖試卷池（201–206 × A–F） */
@@ -151,5 +156,88 @@ describe("calcVariantBalance — 版本平衡計算", () => {
       0
     );
     expect(sum).toBeCloseTo(0, 5);
+  });
+});
+
+describe("extractBaseQuestion — 大題號抽出", () => {
+  it("包含 201–206 六大空間題號常數鎖定", () => {
+    expect(PLAN_BASE_QUESTIONS).toHaveLength(6);
+    expect([...PLAN_BASE_QUESTIONS]).toEqual(["201", "202", "203", "204", "205", "206"]);
+  });
+
+  it("從 code 抽出 201–206 大題號", () => {
+    expect(extractBaseQuestion("201A")).toBe("201");
+    expect(extractBaseQuestion("205C")).toBe("205");
+    expect(extractBaseQuestion("206F")).toBe("206");
+  });
+
+  it("CE 試卷同規則抽出大題號", () => {
+    expect(extractBaseQuestion("201A客天")).toBe("201");
+    expect(extractBaseQuestion("205D客立")).toBe("205");
+  });
+
+  it("非 201–206 題號回傳 null", () => {
+    expect(extractBaseQuestion("208甲")).toBeNull();
+    expect(extractBaseQuestion("213尺度")).toBeNull();
+  });
+});
+
+describe("calcPlanBaseQuestionCounts & selectEligibleBaseQuestions — 空間格局均衡", () => {
+  it("累計各題號總練習張數", () => {
+    const counts = makeCounts({ "205A": 1, "205B": 2, "201A": 1 });
+    const baseCounts = calcPlanBaseQuestionCounts(makePlanItems(), counts);
+    expect(baseCounts["205"]).toBe(3);
+    expect(baseCounts["201"]).toBe(1);
+    expect(baseCounts["202"]).toBe(0);
+    expect(baseCounts["203"]).toBe(0);
+    expect(baseCounts["204"]).toBe(0);
+    expect(baseCounts["206"]).toBe(0);
+  });
+
+  it("當 205 已練 1 次其餘為 0 時，205 必須被排除在候選大題之外", () => {
+    const baseCounts = {
+      "201": 0,
+      "202": 0,
+      "203": 0,
+      "204": 0,
+      "205": 1,
+      "206": 0,
+    };
+    const eligible = selectEligibleBaseQuestions(baseCounts);
+    expect(eligible).not.toContain("205");
+    expect(eligible).toEqual(["201", "202", "203", "204", "206"]);
+  });
+
+  it("當平手時，最近練習過的題號自動避讓", () => {
+    const baseCounts = {
+      "201": 0,
+      "202": 0,
+      "203": 0,
+      "204": 0,
+      "205": 0,
+      "206": 0,
+    };
+    const eligible = selectEligibleBaseQuestions(baseCounts, "205");
+    expect(eligible).not.toContain("205");
+    expect(eligible).toHaveLength(5);
+  });
+});
+
+describe("drawExamGroup — 空間矩陣三層抽題（阻擋 205A 後再抽 205C）", () => {
+  it("上傳過 205A 後，抽題絕不再抽中 205 的任何版本（含 205C）", () => {
+    // 模擬使用者練習過 205A
+    const practiceMap: Record<string, number> = {
+      "205A": 1,
+    };
+
+    // 重複抽題 20 次，驗證 100% 絕不抽出 205 題型
+    for (let i = 0; i < 20; i++) {
+      const results = drawExamGroup("plan-ceiling-elevation", practiceMap);
+      expect(results.length).toBeGreaterThanOrEqual(1);
+      const planItem = results[0].item;
+      expect(planItem.code.startsWith("205")).toBe(false);
+      expect(planItem.code).not.toBe("205C");
+      expect(results[0].directionReason).toContain("題型優先");
+    }
   });
 });

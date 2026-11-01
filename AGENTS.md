@@ -7,7 +7,7 @@
 ---
 
 ## 憲法生效日期：2026-07-13
-> 版本：v1.7（v1.1 整合 Gemini 分享內容，v1.2 整合 CE 對稱化，v1.3 整合透視圖方向感知抽題，v1.4 整合試卷閱讀器，v1.5 整合平面圖版本感知抽題，v1.6 整合題型筆記，v1.7 整合透視圖消點平衡儀與專攻模式）
+> 版本：v1.8（v1.1 整合 Gemini 分享內容，v1.2 整合 CE 對稱化，v1.3 整合透視圖方向感知抽題，v1.4 整合試卷閱讀器，v1.5 整合平面圖版本感知抽題，v1.6 整合題型筆記，v1.7 整合透視圖消點平衡儀與專攻模式，v1.8 整合平面圖空間矩陣三層抽題）
 
 ---
 
@@ -704,3 +704,34 @@ CE 連動抽取（`item.code.startsWith(baseCode)`）鎖死同題號版本，需
 | `src/app/globals.css` | 新增 `.persp-balance-*`、`.persp-macro-*`、`.persp-groups-*`、`.persp-mode-*` 樣式（零新增 hex，嚴守 SOP 1-9） |
 | `src/lib/__tests__/practice-stats.test.ts` | 新增 3 條專攻模式與抽題理由單元測試（全套 75 條測試全綠） |
 | `AGENTS.md` | 更新至 v1.7，新增附錄 L |
+
+---
+
+# 附錄 M：平面圖空間矩陣三層抽題升級（v1.8）
+
+## 更新日期
+
+2026-11-01
+
+## 核心變更
+
+解決使用者在練完 `205A` 後，抽題又抽出同房型 `205C` 的題型連續撞題（Recency Colliding）體驗缺陷：
+
+- **空間格局與需求單二維解耦**：
+  大題號（201–206）代表 6 種完全不同的空間格局與放樣結構；A–F 代表 6 種不同業主需求單。兩者屬於不同維度，必須在抽題層進行交集矩陣計算。
+- **三層矩陣感知抽題演算法（Plan Matrix Draw）**：
+  1. **Layer 1（大題號空間格局均衡）**：統計 201–206 各大題號的總練習張數，鎖定最少練習的大題號池；若遇平手且最近剛練過該題號，主動觸發最近題號避讓（Recent Cooldown）。
+  2. **Layer 2（需求單版本均衡）**：計算 A–F 需求單的佔比 Deficit，鎖定落後版本。
+  3. **Layer 3（空間矩陣交集鎖定）**：取候選大題號與目標需求單的交集（例如 205 已練 1 次，候選題號排除 205，在 `[201C, 202C, 203C, 204C, 206C]` 中抽取），徹底阻絕連續撞題。
+- **抽題理由透明化**：
+  抽題結果清楚標示：`🎯 空間矩陣：202 題型優先（已練 0 次）＋ C 需求單補強（已練 0 張，目標 1 張）`。
+
+## 新增與受影響檔案
+
+| 檔案 | 變更 |
+|------|------|
+| `src/lib/plan-variant.ts` | 新增 `PLAN_BASE_QUESTIONS` 常數、`extractBaseQuestion`、`calcPlanBaseQuestionCounts`、`selectEligibleBaseQuestions` |
+| `src/hooks/use-exam-draw.ts` | 平面圖抽題重構為空間矩陣三層演算法，`DrawExamOptions` 支援傳入 `uploads` 達成題號避讓 |
+| `src/components/exam-draw-section.tsx` | 抽題觸發時向下透傳 `uploads` 實體記錄 |
+| `src/lib/__tests__/plan-variant-balance.test.ts` | 新增大題號抽出、格局均衡、205A 排除 205C 阻擋迴歸單元測試（83 條全綠） |
+| `AGENTS.md` | 更新至 v1.8，新增附錄 M |

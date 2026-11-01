@@ -18,7 +18,13 @@
 import { ArchiveItem } from "@/types/exam";
 import { UPLOAD_KINDS } from "@/lib/upload-constants";
 import { examSections } from "@/data/exam-content";
-import { calcVariantBalance, extractPlanVariant } from "@/lib/plan-variant";
+import {
+  calcVariantBalance,
+  extractPlanVariant,
+  extractBaseQuestion,
+  calcPlanBaseQuestionCounts,
+  selectEligibleBaseQuestions,
+} from "@/lib/plan-variant";
 
 /** 試卷組合區塊 slug */
 export type DrawGroup = "plan-ceiling-elevation" | "perspective-detail";
@@ -305,6 +311,7 @@ export type PerspectiveFocusMode = "auto" | "1vp" | "2vp";
 
 export interface DrawExamOptions {
   perspectiveFocusMode?: PerspectiveFocusMode;
+  uploads?: import("@/types/exam").UploadEntry[];
 }
 
 /**
@@ -444,28 +451,72 @@ export function drawExamGroup(
     const dResult = drawOneFromItems(detailItems, practiceCountMap);
     if (dResult) results.push(dResult);
   } else if (group === "plan-ceiling-elevation") {
-    // ── Step 1：抽平面圖（版本感知兩層，方案 A）────────
-    // Layer 1：計算 A~F 各版本 deficit，選出落後版本
-    // Layer 2：在目標版本內抽最少練習的試卷
+    // ── 空間矩陣三層抽題（Plan Matrix Draw）──────
     const planItems = examSections.find((s) => s.slug === "plan")?.items ?? [];
+
+    // Layer 1：各大題號（201–206 空間格局）練習張數統計
+    const baseCounts = calcPlanBaseQuestionCounts(planItems, practiceCountMap);
+
+    // 取得最近練習過的題號（用於同頻平手時避讓）
+    const recentUpload = options?.uploads?.find(
+      (u) =>
+        u.kind === UPLOAD_KINDS.MY_PRACTICE &&
+        (u.sectionSlug === "plan" || !u.sectionSlug) &&
+        /^\d{3}/.test(u.sheetCode)
+    );
+    const recentBase = recentUpload
+      ? extractBaseQuestion(recentUpload.sheetCode)
+      : null;
+
+    const eligibleBaseQuestions = selectEligibleBaseQuestions(
+      baseCounts,
+      recentBase
+    );
+
+    // Layer 2：計算 A~F 各需求單版本 deficit，選出落後版本
     const variantBalance = calcVariantBalance(planItems, practiceCountMap);
     const targetVariant =
       variantBalance.lean === "balanced" ? null : variantBalance.lean;
 
-    const planPool = targetVariant
-      ? planItems.filter(
-          (item) => extractPlanVariant(item.code) === targetVariant
-        )
-      : planItems;
+    // Layer 3：空間矩陣交集（候選大題號 ∩ 目標需求單）
+    let planPool = planItems.filter((item) => {
+      const base = extractBaseQuestion(item.code);
+      const variant = extractPlanVariant(item.code);
+      const matchBase = base && eligibleBaseQuestions.includes(base);
+      const matchVariant = targetVariant ? variant === targetVariant : true;
+      return matchBase && matchVariant;
+    });
+
+    // 容錯防禦：若交集為空，降級為最少大題號池
+    if (planPool.length === 0) {
+      planPool = planItems.filter((item) => {
+        const base = extractBaseQuestion(item.code);
+        return base && eligibleBaseQuestions.includes(base);
+      });
+    }
+    // 二次降級：若仍為空，回歸所有平面試卷
+    if (planPool.length === 0) {
+      planPool = planItems;
+    }
+
     const planResult = drawOneFromItems(planPool, practiceCountMap);
 
     if (planResult) {
+      const pickedBase = extractBaseQuestion(planResult.item.code);
+      const pickedVariant = extractPlanVariant(planResult.item.code);
+      const basePractices = pickedBase ? baseCounts[pickedBase] : 0;
       const targetCount = Math.round(variantBalance.totalCount / 6);
+
+      let reason = "空間格局與需求單均衡，隨機抽取";
+      if (pickedBase && pickedVariant) {
+        reason = `🎯 空間矩陣：${pickedBase} 題型優先（已練 ${basePractices} 次）＋ ${pickedVariant} 需求單補強（已練 ${variantBalance.variantCounts[pickedVariant]} 張，目標 ${targetCount} 張）`;
+      } else if (targetVariant) {
+        reason = `${targetVariant} 需求單落後補強（已練 ${variantBalance.variantCounts[targetVariant]} 張，目標 ${targetCount} 張）`;
+      }
+
       results.push({
         ...planResult,
-        directionReason: targetVariant
-          ? `${targetVariant} 需求單落後（已練 ${variantBalance.variantCounts[targetVariant]} 張，目標 ${targetCount} 張）`
-          : "各版本均衡，隨機抽取",
+        directionReason: reason,
       });
 
       // ── Step 2：取同題號的 CE 試卷 ─────────────────

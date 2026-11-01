@@ -63,6 +63,78 @@ export const VARIANT_ORDER: Record<PlanVariant, number> = {
   F: 5,
 };
 
+/** 平面圖 6 大空間題號清單（201–206） */
+export const PLAN_BASE_QUESTIONS = [
+  "201",
+  "202",
+  "203",
+  "204",
+  "205",
+  "206",
+] as const;
+
+export type PlanBaseQuestion = (typeof PLAN_BASE_QUESTIONS)[number];
+
+/**
+ * 從試卷 code 抽出平面圖 3 位數大題號。
+ * "201A" → "201"
+ * "205C" → "205"
+ * "201A客天" → "201"
+ * "208甲" → null（非 201–206 平面題號）
+ */
+export function extractBaseQuestion(code: string): PlanBaseQuestion | null {
+  const match = code.match(/^(\d{3})/);
+  if (!match) return null;
+  const num = match[1];
+  return (PLAN_BASE_QUESTIONS as readonly string[]).includes(num)
+    ? (num as PlanBaseQuestion)
+    : null;
+}
+
+/**
+ * 統計 201–206 各大題號的總練習張數（跨 A~F 版本加總）
+ */
+export function calcPlanBaseQuestionCounts(
+  planItems: ArchiveItem[],
+  practiceCountMap: Record<string, number>
+): Record<PlanBaseQuestion, number> {
+  const counts: Record<PlanBaseQuestion, number> = {
+    "201": 0,
+    "202": 0,
+    "203": 0,
+    "204": 0,
+    "205": 0,
+    "206": 0,
+  };
+
+  for (const item of planItems) {
+    const base = extractBaseQuestion(item.code);
+    if (base) {
+      counts[base] += practiceCountMap[item.code] ?? 0;
+    }
+  }
+
+  return counts;
+}
+
+/**
+ * 挑選候選大題號池（最少練習優先，並支援最近大題避讓）
+ */
+export function selectEligibleBaseQuestions(
+  baseCounts: Record<PlanBaseQuestion, number>,
+  recentBase?: PlanBaseQuestion | null
+): PlanBaseQuestion[] {
+  const minCount = Math.min(...Object.values(baseCounts));
+  const least = PLAN_BASE_QUESTIONS.filter((q) => baseCounts[q] === minCount);
+
+  // 若有多個最少題號，且最近剛練過其中一個，優先避讓該最近題號（避免連續兩次同空間格局）
+  if (least.length > 1 && recentBase && least.includes(recentBase)) {
+    return least.filter((q) => q !== recentBase);
+  }
+
+  return least;
+}
+
 /**
  * 從試卷 code 抽出平面圖版本。
  * "201A" → "A"

@@ -144,7 +144,8 @@ export function ExamDrawSection() {
         // ── 自訂 CE 平衡抽題邏輯 ──────────────────────
         const planResult = drawExamGroup(
           "plan-ceiling-elevation",
-          practiceCountMap
+          practiceCountMap,
+          { uploads }
         )[0];
         if (!planResult) {
           results = [];
@@ -198,6 +199,7 @@ export function ExamDrawSection() {
       } else {
         results = drawExamGroup(group, practiceCountMap, {
           perspectiveFocusMode: perspFocusMode,
+          uploads,
         });
       }
 
