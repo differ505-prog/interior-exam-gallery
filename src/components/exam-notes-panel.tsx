@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ExamNote,
   ExamNoteCategory,
@@ -10,6 +10,8 @@ type ExamNotesPanelProps = {
   categories: ExamNoteCategory[];
   /** 只顯示與指定試卷相關的筆記（如 "208甲"） */
   relatedCode?: string;
+  /** 預設選中類別 slug */
+  defaultCategorySlug?: string;
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -193,10 +195,69 @@ function FormulaBlock() {
   );
 }
 
-export function ExamNotesPanel({ categories, relatedCode }: ExamNotesPanelProps) {
-  const [activeCategory, setActiveCategory] = useState<string>(
-    categories[0]?.slug ?? ""
+function resolveDefaultCategory(
+  categories: ExamNoteCategory[],
+  relatedCode?: string,
+  defaultSlug?: string
+): string {
+  if (defaultSlug && categories.some((c) => c.slug === defaultSlug)) {
+    return defaultSlug;
+  }
+  if (relatedCode) {
+    if (relatedCode.endsWith("客天")) {
+      const match = categories.find((c) => c.slug === "living-ceiling");
+      if (match) return match.slug;
+    }
+    if (relatedCode.endsWith("餐天")) {
+      const match = categories.find((c) => c.slug === "dining-ceiling");
+      if (match) return match.slug;
+    }
+    if (relatedCode.endsWith("臥天")) {
+      const match = categories.find((c) => c.slug === "bedroom-ceiling");
+      if (match) return match.slug;
+    }
+    if (relatedCode.endsWith("客立")) {
+      const match = categories.find((c) => c.slug === "living-elevation");
+      if (match) return match.slug;
+    }
+    if (relatedCode.endsWith("餐立")) {
+      const match = categories.find((c) => c.slug === "dining-elevation");
+      if (match) return match.slug;
+    }
+    if (relatedCode.endsWith("臥立")) {
+      const match = categories.find((c) => c.slug === "bedroom-elevation");
+      if (match) return match.slug;
+    }
+    if (relatedCode.endsWith("甲")) {
+      if (relatedCode === "208甲") {
+        const d = categories.find((c) => c.slug === "208甲-detailed");
+        if (d) return d.slug;
+      }
+      const match = categories.find((c) => c.slug === "1vp-perspective");
+      if (match) return match.slug;
+    }
+    if (relatedCode.endsWith("乙") || relatedCode.endsWith("丙")) {
+      const match = categories.find((c) => c.slug === "2vp-perspective");
+      if (match) return match.slug;
+    }
+  }
+  return categories[0]?.slug ?? "";
+}
+
+export function ExamNotesPanel({
+  categories,
+  relatedCode,
+  defaultCategorySlug,
+}: ExamNotesPanelProps) {
+  const [activeCategory, setActiveCategory] = useState<string>(() =>
+    resolveDefaultCategory(categories, relatedCode, defaultCategorySlug)
   );
+
+  useEffect(() => {
+    setActiveCategory(
+      resolveDefaultCategory(categories, relatedCode, defaultCategorySlug)
+    );
+  }, [categories, relatedCode, defaultCategorySlug]);
 
   const current = categories.find((c) => c.slug === activeCategory);
 

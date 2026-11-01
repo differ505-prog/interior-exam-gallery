@@ -13,6 +13,8 @@ import { DimensionTable } from "@/components/ui/dimension-table";
 import { getSheetData, saveScratchNote } from "@/lib/user-data";
 import { resolveQuestionNoteTarget } from "@/lib/question-note";
 import { QuestionNotePanel } from "@/components/question-note-panel";
+import { resolveViewNoteTarget } from "@/lib/view-note";
+import { ViewNotePanel } from "@/components/view-note-panel";
 import { UPLOAD_KINDS } from "@/lib/upload-constants";
 import {
   resolveRequirementImageUrl,
@@ -77,6 +79,12 @@ export function ArchiveDetailModal({ item, uploads, allUploads = [], sectionSlug
   const questionNoteTarget = useMemo(
     () => resolveQuestionNoteTarget(item.code),
     [item.code]
+  );
+
+  // 視角專用筆記目標：8 大專用視角（1VP/2VP、餐天/客天/臥天、餐立/客立/臥立）
+  const viewNoteTarget = useMemo(
+    () => resolveViewNoteTarget(item.code, item.view),
+    [item.code, item.view]
   );
 
   // ─── 刪除確認對話框 ────────────────────────────────────────
@@ -625,6 +633,11 @@ export function ArchiveDetailModal({ item, uploads, allUploads = [], sectionSlug
               question={questionNoteTarget.question}
               affectedCodes={questionNoteTarget.affectedCodes}
             />
+          )}
+
+          {/* 視角專用筆記：8 大工法視角跨卷同步（如客立 36 張、一消透視 6 張） */}
+          {viewNoteTarget && (
+            <ViewNotePanel target={viewNoteTarget} />
           )}
 
           {/* 速記本：作圖時自由記錄，之後彙整 */}

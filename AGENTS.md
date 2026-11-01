@@ -7,7 +7,7 @@
 ---
 
 ## 憲法生效日期：2026-07-13
-> 版本：v1.8（v1.1 整合 Gemini 分享內容，v1.2 整合 CE 對稱化，v1.3 整合透視圖方向感知抽題，v1.4 整合試卷閱讀器，v1.5 整合平面圖版本感知抽題，v1.6 整合題型筆記，v1.7 整合透視圖消點平衡儀與專攻模式，v1.8 整合平面圖空間矩陣三層抽題）
+> 版本：v1.9（v1.1 整合 Gemini 分享內容，v1.2 整合 CE 對稱化，v1.3 整合透視圖方向感知抽題，v1.4 整合試卷閱讀器，v1.5 整合平面圖版本感知抽題，v1.6 整合題型筆記，v1.7 整合透視圖消點平衡儀與專攻模式，v1.8 整合平面圖空間矩陣三層抽題，v1.9 整合 8 大工法專項筆記雙軌系統）
 
 ---
 
@@ -735,3 +735,44 @@ CE 連動抽取（`item.code.startsWith(baseCode)`）鎖死同題號版本，需
 | `src/components/exam-draw-section.tsx` | 抽題觸發時向下透傳 `uploads` 實體記錄 |
 | `src/lib/__tests__/plan-variant-balance.test.ts` | 新增大題號抽出、格局均衡、205A 排除 205C 阻擋迴歸單元測試（83 條全綠） |
 | `AGENTS.md` | 更新至 v1.8，新增附錄 M |
+
+---
+
+# 附錄 N：8 大工法專項筆記雙軌系統（v1.9）
+
+## 更新日期
+
+2026-11-01
+
+## 核心變更
+
+新增 8 大專業工法專用筆記體系，覆蓋乙級術科三大作圖視角群：
+1. **一消點透視圖**（`1vp-perspective`）：207–212 甲向（6 張）
+2. **二消點透視圖**（`2vp-perspective`）：207–212 乙/丙向（12 張）
+3. **餐廳天花板圖**（`dining-ceiling`）：201–206 A–F 餐天（36 張）
+4. **客廳天花板圖**（`living-ceiling`）：201–206 A–F 客天（36 張）
+5. **主臥天花板圖**（`bedroom-ceiling`）：201–206 A–F 臥天（36 張）
+6. **餐廳立面圖**（`dining-elevation`）：201–206 A–F 餐立（36 張）
+7. **客廳立面圖**（`living-elevation`）：201–206 A–F 客立（36 張）
+8. **主臥立面圖**（`bedroom-elevation`）：201–206 A–F 臥立（36 張）
+
+## 雙軌兼備架構（Dual-Track Architecture）
+
+- **軌道一：官方備考專用知識卡（8 大知識模組）**：
+  定義於 `src/data/exam-notes.ts`，內建標準放樣 SOP、人體工學尺寸數據表、扣分防禦檢核清單；`ExamNotesPanel` 支援依目前試卷視角智慧預選匹配 Tab。
+- **軌道二：考生自編視角跨卷同步筆記（View-Scoped Note）**：
+  定義於 `src/lib/view-note.ts` 與 `src/components/view-note-panel.tsx`，以 `vnote-` 命名空間儲存。在任何一張試卷上編輯特定視角筆記，即自動同步至該視角底下所有試卷（客立 36 張、一消 6 張等），免除 36 次重複謄寫負擔。
+
+## 新增與受影響檔案
+
+| 檔案 | 變更 |
+|------|------|
+| `src/lib/view-note.ts` | 新增 8 大工法視角型別定義、元資料、儲存 key 建立器、試卷清單生成與目標解析器 |
+| `src/lib/user-data.ts` | 新增 `getViewNote`、`saveViewNote` 讀取與寫入同步介面 |
+| `src/data/exam-notes.ts` | 新增 8 大官方專業備考知識模組（24 則高標準 SOP/數據表/檢核表） |
+| `src/components/exam-notes-panel.tsx` | 新增智慧視角 Tab 預選，開啟試卷自動聚焦對應工法筆記 |
+| `src/components/view-note-panel.tsx` | 新增考生自編視角同步筆記元件，支援防抖自動暫存與同步範圍展示 |
+| `src/components/archive-detail-modal.tsx` | 掛載 `ViewNotePanel` |
+| `src/app/globals.css` | 新增 `.vnote-panel` 相關樣式，零硬編碼 Hex 色碼，完全嚴守 CSS 變數 |
+| `src/lib/__tests__/view-note.test.ts` | 新增 10 條單元測試（全套 93 條測試全綠） |
+| `AGENTS.md` | 更新至 v1.9，新增附錄 N |

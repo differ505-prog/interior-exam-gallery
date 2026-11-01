@@ -21,6 +21,7 @@
  */
 
 import { buildQuestionNoteKey } from "@/lib/question-note";
+import { buildViewNoteKey, ViewNoteType } from "@/lib/view-note";
 
 // ─── 型別 ──────────────────────────────────────────────────
 
@@ -242,6 +243,37 @@ export async function saveQuestionNote(
   note: string
 ): Promise<void> {
   const key = buildQuestionNoteKey(question);
+  await saveScratchNote(key, note);
+}
+
+/**
+ * 讀取視角專用筆記。
+ * 以 "vnote-<type>" 為 key 走既有 read-through cache（localStorage → Supabase → fallback）。
+ *
+ * @param type 視角類型，例如 "living-elevation" 或 "1vp-perspective"
+ */
+export async function getViewNote(type: ViewNoteType | string): Promise<string> {
+  const key = buildViewNoteKey(type as ViewNoteType);
+  try {
+    const data = await getSheetData(key);
+    return data.scratchNote ?? "";
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * 寫入視角專用筆記。
+ * 沿用既有 saveScratchNote 流程，自動跨卷同步。
+ *
+ * @param type 視角類型，例如 "living-elevation" 或 "1vp-perspective"
+ * @param note 筆記內容
+ */
+export async function saveViewNote(
+  type: ViewNoteType | string,
+  note: string
+): Promise<void> {
+  const key = buildViewNoteKey(type as ViewNoteType);
   await saveScratchNote(key, note);
 }
 

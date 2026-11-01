@@ -1832,6 +1832,109 @@ main {
   padding: 1px 8px;
 }
 
+/* 視角專用筆記（8 大工法跨卷同步） */
+.vnote-panel__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+
+.vnote-panel__title-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.vnote-panel__title {
+  margin: 0;
+}
+
+.vnote-panel__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+}
+
+.vnote-panel__desc {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.vnote-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.vnote-panel__input {
+  width: 100%;
+  min-height: 96px;
+  padding: var(--space-3);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--text);
+  resize: vertical;
+  transition: border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.vnote-panel__input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.vnote-panel__meta {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-align: right;
+  margin: 0;
+}
+
+.vnote-panel__scope-list {
+  margin-top: var(--space-2);
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.vnote-panel__scope-list > summary {
+  cursor: pointer;
+  letter-spacing: 0.02em;
+}
+
+.vnote-panel__scope-codes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  margin-top: var(--space-2);
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+.vnote-panel__scope-code {
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  padding: 1px 8px;
+}
+
 /* 題型筆記總覽（201–206 六格） */
 .qnote-overview {
   margin-top: var(--space-4);
