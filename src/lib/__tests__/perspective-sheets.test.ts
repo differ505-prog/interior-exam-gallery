@@ -1,0 +1,30 @@
+import { describe, expect, it } from "vitest";
+import {
+  hasPerspectiveSheets,
+  resolvePerspectiveSheets,
+} from "../perspective-sheets";
+
+describe("perspective-sheets", () => {
+  it("210 回傳正反面各一張（正面＝210-平面、背面＝210-立面）", () => {
+    const pair = resolvePerspectiveSheets("210甲");
+    expect(pair).not.toBeNull();
+    expect(pair?.front).toBe("/images/210/210-平面.JPG");
+    expect(pair?.back).toBe("/images/210/210-立面.JPG");
+  });
+
+  it("210 甲乙丙三向共用同一組題目卷", () => {
+    expect(resolvePerspectiveSheets("210乙")).toEqual(
+      resolvePerspectiveSheets("210甲"),
+    );
+    expect(resolvePerspectiveSheets("210丙")).toEqual(
+      resolvePerspectiveSheets("210甲"),
+    );
+  });
+
+  it("未建檔題號仍回傳 null（207、209、212）", () => {
+    expect(resolvePerspectiveSheets("207甲")).toBeNull();
+    expect(resolvePerspectiveSheets("209乙")).toBeNull();
+    expect(resolvePerspectiveSheets("212丙")).toBeNull();
+    expect(hasPerspectiveSheets({ code: "212甲" } as never)).toBe(false);
+  });
+});
