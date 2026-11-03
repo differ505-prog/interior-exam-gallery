@@ -10,8 +10,8 @@ import {
 import { examNotes } from "@/data/exam-notes";
 
 describe("view-note 單一事實來源", () => {
-  it("應恰好定義 8 大工法專項視角", () => {
-    expect(VIEW_NOTE_TYPES).toHaveLength(8);
+  it("應恰好定義 9 大工法專項視角", () => {
+    expect(VIEW_NOTE_TYPES).toHaveLength(9);
     expect(VIEW_NOTE_TYPES).toEqual([
       "1vp-perspective",
       "2vp-perspective",
@@ -21,6 +21,7 @@ describe("view-note 單一事實來源", () => {
       "dining-elevation",
       "living-elevation",
       "bedroom-elevation",
+      "detail-drawing",
     ]);
   });
 
@@ -61,6 +62,13 @@ describe("view-note 單一事實來源", () => {
     expect(vp2).toContain("212丙");
 
     expect(vp1.length + vp2.length).toBe(18);
+  });
+
+  it("大樣圖工法專項試卷張數恆為 12 張（213–224）", () => {
+    const detailList = listAffectedSheetsByView("detail-drawing");
+    expect(detailList).toHaveLength(12);
+    expect(detailList[0]).toBe("213");
+    expect(detailList[detailList.length - 1]).toBe("224");
   });
 
   it("天花板與立面圖各視角試卷張數恆為 36 張（6 題型 × 6 版型）", () => {
@@ -122,10 +130,21 @@ describe("view-note 單一事實來源", () => {
       expect(resolveViewNoteTarget("205C餐立")?.type).toBe("dining-elevation");
     });
 
-    it("平面圖與大樣圖不屬於 8 大視角，安全回傳 null", () => {
+    it("正確解析大樣圖 213~224 全體 12 題共用 detail-drawing 專用筆記", () => {
+      for (let q = 213; q <= 224; q++) {
+        const target = resolveViewNoteTarget(String(q));
+        expect(target).not.toBeNull();
+        expect(target?.type).toBe("detail-drawing");
+        expect(target?.affectedCodes).toHaveLength(12);
+        expect(target?.affectedCodes).toContain("213");
+        expect(target?.affectedCodes).toContain("224");
+      }
+      expect(resolveViewNoteTarget("detail-215")?.type).toBe("detail-drawing");
+    });
+
+    it("平面圖不屬於工法專項視角，安全回傳 null", () => {
       expect(resolveViewNoteTarget("201A")).toBeNull();
       expect(resolveViewNoteTarget("206F")).toBeNull();
-      expect(resolveViewNoteTarget("213")).toBeNull();
       expect(resolveViewNoteTarget("unknown")).toBeNull();
     });
   });

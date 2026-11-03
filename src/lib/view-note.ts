@@ -8,7 +8,7 @@
  * 所累積的人體工學尺寸（電視櫃高 45cm、吊燈離地 160cm）、放樣 SOP、
  * 容易扣分的通病，是跨試卷完全適用的共通工法知識。
  *
- * 本模組支援 8 大專項視角：
+ * 本模組支援 9 大專項工法視角：
  * 1. 一消點透視圖（1vp-perspective）：207–212 甲向（6 張）
  * 2. 二消點透視圖（2vp-perspective）：207–212 乙/丙向（12 張）
  * 3. 餐廳天花板圖（dining-ceiling）：201–206 A~F 餐天（36 張）
@@ -17,6 +17,7 @@
  * 6. 餐廳立面圖（dining-elevation）：201–206 A~F 餐立（36 張）
  * 7. 客廳立面圖（living-elevation）：201–206 A~F 客立（36 張）
  * 8. 主臥立面圖（bedroom-elevation）：201–206 A~F 臥立（36 張）
+ * 9. 大樣工法圖（detail-drawing）：213–224 全體大樣圖（12 張）
  *
  * 純邏輯層：不得 import React / KV / Cloudinary / Supabase。
  */
@@ -32,6 +33,7 @@ export const VIEW_NOTE_TYPES = [
   "dining-elevation",
   "living-elevation",
   "bedroom-elevation",
+  "detail-drawing",
 ] as const;
 
 export type ViewNoteType = (typeof VIEW_NOTE_TYPES)[number];
@@ -40,7 +42,7 @@ export interface ViewNoteMeta {
   type: ViewNoteType;
   title: string;
   shortLabel: string;
-  sectionSlug: "perspective" | "ceiling-elevation";
+  sectionSlug: "perspective" | "ceiling-elevation" | "detail";
   description: string;
   placeholder: string;
   affectedCount: number;
@@ -127,6 +129,16 @@ export const VIEW_NOTE_METAS: Record<ViewNoteType, ViewNoteMeta> = {
       "記錄主臥立面圖共通規範：床頭背板高 90~110cm、壁燈離地 140cm、衣櫃深度 60cm/長衣區淨高 140cm/抽屜高 16~20cm、化妝桌檯面高 75cm。寫一次，201~206 A~F 臥立 36 張試卷全部同步。",
     affectedCount: 36,
   },
+  "detail-drawing": {
+    type: "detail-drawing",
+    title: "大樣工法專用筆記",
+    shortLabel: "大樣工法",
+    sectionSlug: "detail",
+    description: "材料足尺規格、板材厚度、角材間距、收邊填縫與標註規範",
+    placeholder:
+      "在此記錄所有大樣圖通用的構造標準：市售板材足尺規格（如 6 分木心板 18mm、2 分夾板 6mm）、角材斷面（常用 30×36mm）、填縫膠厚度、五金鉸鏈固定法與閱卷扣分重點。在此輸入將自動同步至 213~224 共 12 題大樣圖全體試卷。",
+    affectedCount: 12,
+  },
 };
 
 /** 視角專用筆記儲存 key 保留前綴 */
@@ -176,6 +188,8 @@ export function listAffectedSheetsByView(type: ViewNoteType): string[] {
       return generateCeCodes("客立");
     case "bedroom-elevation":
       return generateCeCodes("臥立");
+    case "detail-drawing":
+      return Array.from({ length: 12 }, (_, i) => String(213 + i));
   }
 }
 
@@ -198,7 +212,7 @@ export interface ViewNoteTarget {
 
 /**
  * 由試卷代碼與視角標籤解析所屬視角專項筆記目標
- * 若該試卷不屬於 8 大專用視角（例如平面圖 201~206、大樣圖 213~224）則回傳 null
+ * 若該試卷不屬於 9 大專用工法視角（例如平面圖 201~206）則回傳 null
  */
 export function resolveViewNoteTarget(
   code: string,
@@ -219,6 +233,12 @@ export function resolveViewNoteTarget(
     const dir = persMatch[2];
     if (dir === "甲") return makeTarget("1vp-perspective");
     if (dir === "乙" || dir === "丙") return makeTarget("2vp-perspective");
+  }
+
+  // 3. 判斷大樣圖 213~224（支援純數字如 215 或帶前綴/後綴如 detail-215）
+  const cleanCode = code.trim().replace(/^detail-/, "").replace(/-.*$/, "");
+  if (/^2(1[3-9]|2[0-4])$/.test(cleanCode)) {
+    return makeTarget("detail-drawing");
   }
 
   return null;

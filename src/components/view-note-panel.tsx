@@ -67,7 +67,7 @@ export function ViewNotePanel({ target }: ViewNotePanelProps) {
             {target.meta.title}
           </h3>
           <span className="vnote-panel__badge">
-            工法專用 · {target.affectedCodes.length} 張試卷跨卷同步
+            工法專用 · {target.affectedCodes.length} {target.meta.sectionSlug === "detail" ? "題大樣跨題同步" : "張試卷跨卷同步"}
           </span>
         </div>
         <p className="vnote-panel__desc">{target.meta.description}</p>
@@ -85,7 +85,9 @@ export function ViewNotePanel({ target }: ViewNotePanelProps) {
         {saveStatus === "saving" ? (
           <p className="vnote-panel__meta">儲存中…</p>
         ) : saveStatus === "saved" ? (
-          <p className="vnote-panel__meta">已自動暫存並同步至所有同視角試卷</p>
+          <p className="vnote-panel__meta">
+            已自動暫存並同步至所有{target.meta.sectionSlug === "detail" ? "大樣圖" : "同視角試卷"}
+          </p>
         ) : note ? (
           <p className="vnote-panel__meta">輸入時自動儲存</p>
         ) : null}
@@ -93,7 +95,7 @@ export function ViewNotePanel({ target }: ViewNotePanelProps) {
 
       <details className="vnote-panel__scope-list">
         <summary>
-          查看跨卷同步範圍（{target.affectedCodes.length} 張試卷）
+          查看跨{target.meta.sectionSlug === "detail" ? "題" : "卷"}同步範圍（{target.affectedCodes.length} {target.meta.sectionSlug === "detail" ? "題大樣圖" : "張試卷"}）
         </summary>
         <div className="vnote-panel__scope-codes">
           {target.affectedCodes.map((code) => (
