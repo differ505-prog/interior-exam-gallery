@@ -10,8 +10,8 @@ import {
 import { examNotes } from "@/data/exam-notes";
 
 describe("view-note 單一事實來源", () => {
-  it("應恰好定義 9 大工法專項視角", () => {
-    expect(VIEW_NOTE_TYPES).toHaveLength(9);
+  it("應恰好定義 10 大工法專項視角", () => {
+    expect(VIEW_NOTE_TYPES).toHaveLength(10);
     expect(VIEW_NOTE_TYPES).toEqual([
       "1vp-perspective",
       "2vp-perspective",
@@ -22,6 +22,7 @@ describe("view-note 單一事實來源", () => {
       "living-elevation",
       "bedroom-elevation",
       "detail-drawing",
+      "plan-universal",
     ]);
   });
 
@@ -69,6 +70,13 @@ describe("view-note 單一事實來源", () => {
     expect(detailList).toHaveLength(12);
     expect(detailList[0]).toBe("213");
     expect(detailList[detailList.length - 1]).toBe("224");
+  });
+
+  it("平面圖通用規範試卷張數恆為 36 張（201–206 A–F）", () => {
+    const planList = listAffectedSheetsByView("plan-universal");
+    expect(planList).toHaveLength(36);
+    expect(planList[0]).toBe("201A");
+    expect(planList[planList.length - 1]).toBe("206F");
   });
 
   it("天花板與立面圖各視角試卷張數恆為 36 張（6 題型 × 6 版型）", () => {
@@ -142,10 +150,22 @@ describe("view-note 單一事實來源", () => {
       expect(resolveViewNoteTarget("detail-215")?.type).toBe("detail-drawing");
     });
 
-    it("平面圖不屬於工法專項視角，安全回傳 null", () => {
-      expect(resolveViewNoteTarget("201A")).toBeNull();
-      expect(resolveViewNoteTarget("206F")).toBeNull();
+    it("正確解析平面圖 201~206 A~F 全體 36 張共用 plan-universal 通用筆記", () => {
+      const target1 = resolveViewNoteTarget("201A");
+      expect(target1).not.toBeNull();
+      expect(target1?.type).toBe("plan-universal");
+      expect(target1?.affectedCodes).toHaveLength(36);
+      expect(target1?.affectedCodes).toContain("201A");
+      expect(target1?.affectedCodes).toContain("206F");
+
+      const target2 = resolveViewNoteTarget("206F");
+      expect(target2?.type).toBe("plan-universal");
+      expect(resolveViewNoteTarget("plan-203C")?.type).toBe("plan-universal");
+    });
+
+    it("未知試卷代碼安全回傳 null", () => {
       expect(resolveViewNoteTarget("unknown")).toBeNull();
+      expect(resolveViewNoteTarget("999X")).toBeNull();
     });
   });
 

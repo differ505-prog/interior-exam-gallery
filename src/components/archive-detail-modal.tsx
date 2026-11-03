@@ -642,17 +642,17 @@ export function ArchiveDetailModal({ item, uploads, allUploads = [], sectionSlug
             )}
           </section>
 
-          {/* 題型筆記：201–206 題號共用，跨版本同步 */}
+          {/* 通用規範與工法筆記：全平面 36 張通用、8 大視角、大樣 12 張跨題同步 */}
+          {viewNoteTarget && (
+            <ViewNotePanel target={viewNoteTarget} />
+          )}
+
+          {/* 題型筆記：201–206 題號共用，跨版本同步（例如 201-A~F 共 6 張） */}
           {questionNoteTarget && (
             <QuestionNotePanel
               question={questionNoteTarget.question}
               affectedCodes={questionNoteTarget.affectedCodes}
             />
-          )}
-
-          {/* 視角專用筆記：8 大工法視角跨卷同步（如客立 36 張、一消透視 6 張） */}
-          {viewNoteTarget && (
-            <ViewNotePanel target={viewNoteTarget} />
           )}
 
           {/* 速記本：作圖時自由記錄，之後彙整 */}

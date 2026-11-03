@@ -8,7 +8,7 @@
  * 所累積的人體工學尺寸（電視櫃高 45cm、吊燈離地 160cm）、放樣 SOP、
  * 容易扣分的通病，是跨試卷完全適用的共通工法知識。
  *
- * 本模組支援 9 大專項工法視角：
+ * 本模組支援 10 大專項工法視角：
  * 1. 一消點透視圖（1vp-perspective）：207–212 甲向（6 張）
  * 2. 二消點透視圖（2vp-perspective）：207–212 乙/丙向（12 張）
  * 3. 餐廳天花板圖（dining-ceiling）：201–206 A~F 餐天（36 張）
@@ -18,6 +18,7 @@
  * 7. 客廳立面圖（living-elevation）：201–206 A~F 客立（36 張）
  * 8. 主臥立面圖（bedroom-elevation）：201–206 A~F 臥立（36 張）
  * 9. 大樣工法圖（detail-drawing）：213–224 全體大樣圖（12 張）
+ * 10. 平面配置圖（plan-universal）：201–206 A~F 全體平面配置圖（36 張）
  *
  * 純邏輯層：不得 import React / KV / Cloudinary / Supabase。
  */
@@ -34,6 +35,7 @@ export const VIEW_NOTE_TYPES = [
   "living-elevation",
   "bedroom-elevation",
   "detail-drawing",
+  "plan-universal",
 ] as const;
 
 export type ViewNoteType = (typeof VIEW_NOTE_TYPES)[number];
@@ -42,7 +44,7 @@ export interface ViewNoteMeta {
   type: ViewNoteType;
   title: string;
   shortLabel: string;
-  sectionSlug: "perspective" | "ceiling-elevation" | "detail";
+  sectionSlug: "perspective" | "ceiling-elevation" | "detail" | "plan";
   description: string;
   placeholder: string;
   affectedCount: number;
@@ -139,6 +141,16 @@ export const VIEW_NOTE_METAS: Record<ViewNoteType, ViewNoteMeta> = {
       "在此記錄所有大樣圖通用的構造標準：市售板材足尺規格（如 6 分木心板 18mm、2 分夾板 6mm）、角材斷面（常用 30×36mm）、填縫膠厚度、五金鉸鏈固定法與閱卷扣分重點。在此輸入將自動同步至 213~224 共 12 題大樣圖全體試卷。",
     affectedCount: 12,
   },
+  "plan-universal": {
+    type: "plan-universal",
+    title: "平面通用規範筆記",
+    shortLabel: "平面通用",
+    sectionSlug: "plan",
+    description: "人體工學尺寸（走道/門扇/廚衛）、出入口淨寬、指北針與圖面必備扣分地雷",
+    placeholder:
+      "在此記錄所有平面配置圖通用的黃金法則：走道人體工學（主走道 ≥ 90cm、走道轉折 ≥ 80cm、床側 ≥ 60cm）、門扇淨寬（玄關大門 90~100cm、房門 80cm、浴廁 70cm）、廚衛動線（水槽-瓦斯爐-冰箱三角、瓦斯爐不對門窗）、指北針與圖名比例標註。在此輸入將自動同步至 201~206 A~F 全數 36 張平面圖。",
+    affectedCount: 36,
+  },
 };
 
 /** 視角專用筆記儲存 key 保留前綴 */
@@ -190,6 +202,15 @@ export function listAffectedSheetsByView(type: ViewNoteType): string[] {
       return generateCeCodes("臥立");
     case "detail-drawing":
       return Array.from({ length: 12 }, (_, i) => String(213 + i));
+    case "plan-universal": {
+      const codes: string[] = [];
+      for (const q of CE_QUESTIONS) {
+        for (const v of CE_VARIANTS) {
+          codes.push(`${q}${v}`);
+        }
+      }
+      return codes;
+    }
   }
 }
 
@@ -212,7 +233,7 @@ export interface ViewNoteTarget {
 
 /**
  * 由試卷代碼與視角標籤解析所屬視角專項筆記目標
- * 若該試卷不屬於 9 大專用工法視角（例如平面圖 201~206）則回傳 null
+ * 若該試卷不屬於 10 大專用工法視角則回傳 null
  */
 export function resolveViewNoteTarget(
   code: string,
@@ -239,6 +260,12 @@ export function resolveViewNoteTarget(
   const cleanCode = code.trim().replace(/^detail-/, "").replace(/-.*$/, "");
   if (/^2(1[3-9]|2[0-4])$/.test(cleanCode)) {
     return makeTarget("detail-drawing");
+  }
+
+  // 4. 判斷平面圖 201~206（A~F 36 張全體）
+  const planMatch = code.trim().replace(/^plan-/, "").match(/^20[1-6][A-F]$/);
+  if (planMatch) {
+    return makeTarget("plan-universal");
   }
 
   return null;
