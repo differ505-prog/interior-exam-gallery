@@ -204,6 +204,7 @@ function resolveDefaultCategory(
     return defaultSlug;
   }
   if (relatedCode) {
+    const cleanCode = relatedCode.replace("-", "");
     if (relatedCode.endsWith("客天")) {
       const match = categories.find((c) => c.slug === "living-ceiling");
       if (match) return match.slug;
@@ -228,17 +229,9 @@ function resolveDefaultCategory(
       const match = categories.find((c) => c.slug === "bedroom-elevation");
       if (match) return match.slug;
     }
-    if (relatedCode.endsWith("甲")) {
-      if (relatedCode === "208甲") {
-        const d = categories.find((c) => c.slug === "208甲-detailed");
-        if (d) return d.slug;
-      }
-      const match = categories.find((c) => c.slug === "1vp-perspective");
-      if (match) return match.slug;
-    }
-    if (relatedCode.endsWith("乙") || relatedCode.endsWith("丙")) {
-      const match = categories.find((c) => c.slug === "2vp-perspective");
-      if (match) return match.slug;
+    if (cleanCode === "208甲") {
+      const d = categories.find((c) => c.slug === "208甲-detailed");
+      if (d) return d.slug;
     }
   }
   return categories[0]?.slug ?? "";
@@ -249,34 +242,48 @@ export function ExamNotesPanel({
   relatedCode,
   defaultCategorySlug,
 }: ExamNotesPanelProps) {
+  // 過濾出與當前試卷真正相關的類別（若某類別所有筆記都有 relatedCodes 且都不符合當前試卷，則不呈現空 Tab）
+  const cleanCode = relatedCode ? relatedCode.replace("-", "") : undefined;
+  const relevantCategories = categories.filter((cat) => {
+    if (!cleanCode) return true;
+    return cat.notes.some(
+      (n) =>
+        !n.relatedCodes ||
+        n.relatedCodes.length === 0 ||
+        n.relatedCodes.includes(cleanCode) ||
+        (relatedCode && n.relatedCodes.includes(relatedCode))
+    );
+  });
+
   const [activeCategory, setActiveCategory] = useState<string>(() =>
-    resolveDefaultCategory(categories, relatedCode, defaultCategorySlug)
+    resolveDefaultCategory(relevantCategories, relatedCode, defaultCategorySlug)
   );
 
   useEffect(() => {
     setActiveCategory(
-      resolveDefaultCategory(categories, relatedCode, defaultCategorySlug)
+      resolveDefaultCategory(relevantCategories, relatedCode, defaultCategorySlug)
     );
-  }, [categories, relatedCode, defaultCategorySlug]);
+  }, [relevantCategories, relatedCode, defaultCategorySlug]);
 
-  const current = categories.find((c) => c.slug === activeCategory);
+  const current = relevantCategories.find((c) => c.slug === activeCategory);
 
   // 過濾只顯示與 relatedCode 相關的筆記
   const filteredNotes = current?.notes.filter(
     (n) =>
-      !relatedCode ||
+      !cleanCode ||
       !n.relatedCodes ||
       n.relatedCodes.length === 0 ||
-      n.relatedCodes.includes(relatedCode)
+      n.relatedCodes.includes(cleanCode) ||
+      (relatedCode && n.relatedCodes.includes(relatedCode))
   );
 
-  if (categories.length === 0) return null;
+  if (relevantCategories.length === 0) return null;
 
   return (
     <div className="exam-notes-panel">
       {/* 類別切換 Tab */}
       <div className="exam-notes-panel__tabs" role="tablist">
-        {categories.map((cat) => (
+        {relevantCategories.map((cat) => (
           <button
             key={cat.slug}
             role="tab"

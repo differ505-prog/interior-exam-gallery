@@ -87,6 +87,21 @@ export function ArchiveDetailModal({ item, uploads, allUploads = [], sectionSlug
     [item.code, item.view]
   );
 
+  // 尺規工具或備考知識：依試卷 code 動態過濾，無適用內容時自動折疊，杜絕空面板雜訊
+  const relevantExamNotes = useMemo(() => {
+    if (!examNotes || examNotes.length === 0) return [];
+    const cleanCode = item.code.replace("-", "");
+    return examNotes.filter((cat) =>
+      cat.notes.some(
+        (n) =>
+          !n.relatedCodes ||
+          n.relatedCodes.length === 0 ||
+          n.relatedCodes.includes(cleanCode) ||
+          n.relatedCodes.includes(item.code)
+      )
+    );
+  }, [examNotes, item.code]);
+
   // ─── 刪除確認對話框 ────────────────────────────────────────
   const [deleteTarget, setDeleteTarget] = useState<UploadEntry | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -662,12 +677,14 @@ export function ArchiveDetailModal({ item, uploads, allUploads = [], sectionSlug
             </div>
           </section>
 
-          {/* 備考知識面板 */}
-          {examNotes && examNotes.length > 0 && (
+          {/* 尺規工具或備考知識面板（零空面板雜訊） */}
+          {relevantExamNotes.length > 0 && (
             <section className="modal-section modal-section--notes">
-              <h3 className="section-title">備考知識</h3>
+              <h3 className="section-title">
+                {sectionSlug === "perspective" ? "尺規與換算工具" : "備考知識"}
+              </h3>
               <ExamNotesPanel
-                categories={examNotes}
+                categories={relevantExamNotes}
                 relatedCode={item.code}
               />
             </section>

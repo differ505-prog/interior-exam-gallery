@@ -130,13 +130,18 @@ describe("view-note 單一事實來源", () => {
     });
   });
 
-  describe("examNotes 備考知識庫完整性", () => {
-    it("examNotes 中應完整包含 8 大工法專用知識類別", () => {
-      for (const type of VIEW_NOTE_TYPES) {
-        const cat = examNotes.find((c) => c.slug === type);
-        expect(cat, `缺少知識類別：${type}`).toBeDefined();
-        expect(cat!.notes.length).toBeGreaterThanOrEqual(3);
-      }
+  describe("examNotes 備考知識庫結構與純淨度", () => {
+    it("透視圖不應包含未經考證的 AI 自創要領（1vp 與 2vp 已自知識庫移除，保留主權筆記）", () => {
+      const vp1 = examNotes.find((c) => c.slug === "1vp-perspective");
+      const vp2 = examNotes.find((c) => c.slug === "2vp-perspective");
+      expect(vp1).toBeUndefined();
+      expect(vp2).toBeUndefined();
+    });
+
+    it("比例尺實戰工具 scale-tactics 應完整保留以供尺規換算", () => {
+      const scaleTool = examNotes.find((c) => c.slug === "scale-tactics");
+      expect(scaleTool).toBeDefined();
+      expect(scaleTool!.notes.length).toBeGreaterThanOrEqual(2);
     });
   });
 });

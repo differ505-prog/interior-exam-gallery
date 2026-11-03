@@ -54,7 +54,7 @@ export const VIEW_NOTE_METAS: Record<ViewNoteType, ViewNoteMeta> = {
     sectionSlug: "perspective",
     description: "單一消失點（VP）空間透視、EL 眼平線定位與進深分割比例",
     placeholder:
-      "記錄一消點透視共通要領：EL 眼平線定位、VP 消失點位置、MP 量點測深法、地坪磁磚進深衰減、層板厚度與陰影線 45° 規範。寫一次，207~212 甲向 6 張試卷全部同步。",
+      "在此記錄您個人的一消點透視作圖步驟、老師叮嚀或心得。在此輸入將自動同步至 207~212 甲向共 6 張試卷。",
     affectedCount: 6,
   },
   "2vp-perspective": {
@@ -64,7 +64,7 @@ export const VIEW_NOTE_METAS: Record<ViewNoteType, ViewNoteMeta> = {
     sectionSlug: "perspective",
     description: "雙消失點（VPL / VPR）成角透視、真高線高度定位與景深層次",
     placeholder:
-      "記錄二消點透視共通要領：轉角真高線定位、左右雙消失點水平對齊、雙量點測量進深、成角夾角變形控制、麥克筆由近至遠層次鋪色。寫一次，207~212 乙/丙向 12 張試卷全部同步。",
+      "在此記錄您個人的二消點透視作圖步驟、老師叮嚀或心得。在此輸入將自動同步至 207~212 乙/丙向共 12 張試卷。",
     affectedCount: 12,
   },
   "dining-ceiling": {
