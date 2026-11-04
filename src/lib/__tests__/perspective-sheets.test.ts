@@ -21,9 +21,24 @@ describe("perspective-sheets", () => {
     );
   });
 
-  it("未建檔題號仍回傳 null（207、209、212）", () => {
+  it("209 回傳正反面各一張（正面＝209-平面、背面＝209-立面）", () => {
+    const pair = resolvePerspectiveSheets("209甲");
+    expect(pair).not.toBeNull();
+    expect(pair?.front).toBe("/images/209/209-平面.JPG");
+    expect(pair?.back).toBe("/images/209/209-立面.JPG");
+  });
+
+  it("209 甲乙丙三向共用同一組題目卷", () => {
+    expect(resolvePerspectiveSheets("209乙")).toEqual(
+      resolvePerspectiveSheets("209甲"),
+    );
+    expect(resolvePerspectiveSheets("209丙")).toEqual(
+      resolvePerspectiveSheets("209甲"),
+    );
+  });
+
+  it("未建檔題號仍回傳 null（207、212）", () => {
     expect(resolvePerspectiveSheets("207甲")).toBeNull();
-    expect(resolvePerspectiveSheets("209乙")).toBeNull();
     expect(resolvePerspectiveSheets("212丙")).toBeNull();
     expect(hasPerspectiveSheets({ code: "212甲" } as never)).toBe(false);
   });
