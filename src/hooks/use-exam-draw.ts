@@ -443,6 +443,12 @@ export function drawExamGroup(
         return diff;
       });
       targetDirection = activeDirections[0];
+    } else {
+      // 各向完全平手（如開局或甲、乙、丙張數均等）：依教學序強制優先由甲起步
+      const uncompleted = (["甲", "乙", "丙"] as PerspectiveDirection[]).filter(
+        (d) => !completedDirections.includes(d)
+      );
+      targetDirection = uncompleted.length > 0 ? uncompleted[0] : "甲";
     }
 
     // ── Layer 2：在目標方向內，優先過濾出生疏題號（空間格局平衡） ──────
@@ -469,12 +475,12 @@ export function drawExamGroup(
         ? ` · 優先補強生疏題號 ${pickedBase}（全向已練 ${pickedBaseCount} 次）`
         : "";
 
-      let reason = `各向均衡${baseInfo}`;
+      let reason = `🎯 各向均衡 · 優先由甲向起步${baseInfo}`;
       if (focusMode === "1vp") {
         reason = `🎯 一消特訓：鎖定甲向（1VP 基礎功，已練 ${directionCounts.甲} 張）${baseInfo}`;
       } else if (focusMode === "2vp" && targetDirection) {
         reason = `🎯 二消特訓：鎖定 ${targetDirection}向（2VP 考場 67% 重點，已練 ${directionCounts[targetDirection]} 張）${baseInfo}`;
-      } else if (targetDirection) {
+      } else if (activeDirections.length > 0 && targetDirection) {
         const isOneVp = targetDirection === "甲";
         const count = directionCounts[targetDirection];
         const targetCount = Math.round(totalPerspectiveCount / 3);

@@ -134,4 +134,25 @@ describe("Perspective Matrix 整合抽題驗證", () => {
       expect(perspResult!.directionReason).toContain("優先補強生疏題號");
     }
   });
+
+  it("各向完全平手時（如甲=2、乙=2、丙=2），系統必強制優先抽取甲向", () => {
+    // 模擬使用者的實際情境：甲2、乙2、丙2 完全平手
+    const practiceMap: Record<string, number> = {
+      "208甲": 2,
+      "208乙": 2,
+      "208丙": 2,
+    };
+
+    for (let i = 0; i < 20; i++) {
+      const results = drawExamGroup("perspective-detail", practiceMap);
+      const perspResult = results.find((r) =>
+        r.item.code.startsWith("2") && r.item.code.match(/[甲乙丙]$/)
+      );
+      expect(perspResult).toBeDefined();
+      // 在平手時，必然抽甲向（不會抽到乙或丙）
+      expect(perspResult!.item.code.endsWith("甲")).toBe(true);
+      expect(perspResult!.directionReason).toContain("優先由甲向起步");
+    }
+  });
 });
+
