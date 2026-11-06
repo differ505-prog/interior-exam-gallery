@@ -2255,6 +2255,31 @@ main {
   flex-shrink: 0;
 }
 
+.img-zoomed-1000 {
+  width: 1000px;
+  max-width: none;
+  height: auto;
+  display: block;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 24px 72px rgba(0, 0, 0, 0.62);
+  cursor: zoom-in;
+  margin: var(--space-8) auto;
+  flex-shrink: 0;
+}
+
+.img-zoomed-1200 {
+  width: 1200px;
+  max-width: none;
+  height: auto;
+  display: block;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 24px 72px rgba(0, 0, 0, 0.65);
+  cursor: zoom-in;
+  margin: var(--space-10) auto;
+  flex-shrink: 0;
+}
+
+.img-zoomed-1400,
 .img-zoomed-medium {
   width: 1400px;
   max-width: none;
@@ -2267,6 +2292,19 @@ main {
   flex-shrink: 0;
 }
 
+.img-zoomed-1800 {
+  width: 1800px;
+  max-width: none;
+  height: auto;
+  display: block;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 24px 72px rgba(0, 0, 0, 0.68);
+  cursor: zoom-in;
+  margin: var(--space-12) auto;
+  flex-shrink: 0;
+}
+
+.img-zoomed-2200,
 .img-zoomed-large {
   width: 2200px;
   max-width: none;
@@ -2302,7 +2340,158 @@ main {
   opacity: 1;
 }
 
-/* 三段式縮放控制列 */
+/* =========================================================================
+   Unified Zoom Control — 9+ 分級圖面縮放控制器
+   ========================================================================= */
+.zoom-control {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  user-select: none;
+}
+
+.zoom-control__segments {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--radius-pill);
+}
+
+.zoom-control__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  padding: 5px 11px;
+  white-space: nowrap;
+  transition: background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.zoom-control__step-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  background: var(--bg-deep);
+  color: var(--muted);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    opacity var(--duration-fast) var(--ease-out);
+}
+
+.zoom-control__step-btn:hover:not(:disabled) {
+  background: var(--surface);
+  color: var(--accent);
+  border-color: var(--line-strong, var(--accent));
+}
+
+.zoom-control__step-btn:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+
+/* ── Variant: Reader ── */
+.zoom-control--reader .zoom-control__segments {
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+}
+
+.zoom-control--reader .zoom-control__btn {
+  color: var(--muted);
+}
+
+.zoom-control--reader .zoom-control__btn:hover {
+  background: rgba(255, 255, 255, 0.65);
+  color: var(--text-strong);
+}
+
+.zoom-control--reader .zoom-control__btn--active {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(135, 111, 73, 0.25);
+}
+
+.zoom-control--reader .zoom-control__btn--active:hover {
+  background: var(--accent-strong);
+  color: var(--on-accent);
+}
+
+/* ── Variant: Lightbox ── */
+.zoom-control--lightbox {
+  position: fixed;
+  bottom: var(--space-6);
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: rgba(18, 18, 18, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-pill);
+  padding: 4px;
+  z-index: 2020;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+.zoom-control--lightbox .zoom-control__segments {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.zoom-control--lightbox .zoom-control__btn {
+  color: rgba(255, 255, 255, 0.68);
+  padding: 6px 13px;
+}
+
+.zoom-control--lightbox .zoom-control__btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.zoom-control--lightbox .zoom-control__btn--active {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.zoom-control--lightbox .zoom-control__btn--active:hover {
+  background: var(--accent-strong);
+  color: var(--on-accent);
+}
+
+.zoom-control--lightbox .zoom-control__step-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.zoom-control--lightbox .zoom-control__step-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* 相容舊式縮放控制列 */
 .lightbox-zoom-controls {
   position: fixed;
   bottom: var(--space-6);
@@ -5991,7 +6180,29 @@ main {
   margin: 0 auto;
 }
 
+.sheet-reader__main .safe-image img.sheet-reader__img--1000,
+.sheet-reader__img--1000 {
+  width: 1000px !important;
+  max-width: none !important;
+  height: auto !important;
+  object-fit: contain !important;
+  margin: 0 auto;
+  display: block;
+}
+
+.sheet-reader__main .safe-image img.sheet-reader__img--1200,
+.sheet-reader__img--1200 {
+  width: 1200px !important;
+  max-width: none !important;
+  height: auto !important;
+  object-fit: contain !important;
+  margin: 0 auto;
+  display: block;
+}
+
+.sheet-reader__main .safe-image img.sheet-reader__img--1400,
 .sheet-reader__main .safe-image img.sheet-reader__img--medium,
+.sheet-reader__img--1400,
 .sheet-reader__img--medium {
   width: 1400px !important;
   max-width: none !important;
@@ -6001,7 +6212,19 @@ main {
   display: block;
 }
 
+.sheet-reader__main .safe-image img.sheet-reader__img--1800,
+.sheet-reader__img--1800 {
+  width: 1800px !important;
+  max-width: none !important;
+  height: auto !important;
+  object-fit: contain !important;
+  margin: 0 auto;
+  display: block;
+}
+
+.sheet-reader__main .safe-image img.sheet-reader__img--2200,
 .sheet-reader__main .safe-image img.sheet-reader__img--large,
+.sheet-reader__img--2200,
 .sheet-reader__img--large {
   width: 2200px !important;
   max-width: none !important;

@@ -5,8 +5,9 @@ import { ZoomIn, Maximize2 } from "lucide-react";
 import { SheetDoc } from "@/types/sheet";
 import { getPerspectiveMarkers } from "@/data/perspective-markers";
 import { SafeImage } from "@/components/ui/safe-image";
+import { ZoomControl } from "@/components/zoom-control";
+import { ZoomLevel } from "@/lib/zoom-scale";
 
-type ZoomLevel = "fit" | "medium" | "large";
 type ViewMode = "reader" | "compare";
 
 type SheetReaderProps = {
@@ -224,28 +225,14 @@ export function SheetReader({
         )}
       </div>
 
-      {/* 控制列（保留 Zoom 與檢視模式，移除冗餘左右箭頭） */}
+      {/* 控制列（9+ 分級縮放控制器 + 檢視模式切換） */}
       <div className="sheet-reader__controls">
-        {/* Zoom 控制 */}
-        <div
-          className="sheet-reader__zoom-btns"
-          role="group"
-          aria-label="縮放控制"
-        >
-          {(["fit", "medium", "large"] as ZoomLevel[]).map((z) => (
-            <button
-              key={z}
-              className={`sheet-reader__zoom-btn${
-                zoom === z ? " sheet-reader__zoom-btn--active" : ""
-              }`}
-              onClick={() => setZoom(z)}
-              type="button"
-              aria-pressed={zoom === z}
-            >
-              {z === "fit" ? "符合" : z === "medium" ? "1400" : "2200"}
-            </button>
-          ))}
-        </div>
+        {/* Zoom 控制（6 階切換 + 微步進） */}
+        <ZoomControl
+          zoom={zoom}
+          onZoomChange={setZoom}
+          variant="reader"
+        />
 
         {/* 檢視模式切換 */}
         <button

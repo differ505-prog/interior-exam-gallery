@@ -24,6 +24,14 @@ import {
   isSharedRequirement,
 } from "@/lib/requirement-resolver";
 import { SheetReader } from "@/components/sheet-reader";
+import { ZoomControl } from "@/components/zoom-control";
+import {
+  ZoomLevel,
+  cycleZoomLevel,
+  getNextZoomActionTitle,
+  getNextZoomLevel,
+  getPrevZoomLevel,
+} from "@/lib/zoom-scale";
 import { buildSheetDoc, getSectionCoverage } from "@/lib/sheet-reader";
 import { useSheetRegistry } from "@/hooks/use-sheet-registry";
 
@@ -67,7 +75,7 @@ type ArchiveDetailModalProps = {
 
 export function ArchiveDetailModal({ item, uploads, allUploads = [], sectionSlug, examNotes, onClose, onDelete }: ArchiveDetailModalProps) {
   const [activeImage, setActiveImage] = useState<string | null>(null);
-  const [zoomLevel, setZoomLevel] = useState<"fit" | "medium" | "large">("fit");
+  const [zoomLevel, setZoomLevel] = useState<ZoomLevel>("fit");
   // Modal 使用 createPortal 渲染到 document.body；SSR 階段 document 尚未存在，
   // 因此需要在 hydration 完成後才掛載 portal，避免「點卡片卻沒有任何反應」。
   const [mounted, setMounted] = useState(false);
@@ -436,20 +444,31 @@ export function ArchiveDetailModal({ item, uploads, allUploads = [], sectionSlug
         } else {
           onClose();
         }
-      } else if (activeImage && zoomableImages.length > 1) {
-        if (e.key === "ArrowRight" || e.key === "Right") {
-          const currentIndex = zoomableImages.indexOf(activeImage);
-          if (currentIndex !== -1) {
-            const nextIndex = (currentIndex + 1) % zoomableImages.length;
-            setActiveImage(zoomableImages[nextIndex]);
-            setZoomLevel("fit");
-          }
-        } else if (e.key === "ArrowLeft" || e.key === "Left") {
-          const currentIndex = zoomableImages.indexOf(activeImage);
-          if (currentIndex !== -1) {
-            const prevIndex = (currentIndex - 1 + zoomableImages.length) % zoomableImages.length;
-            setActiveImage(zoomableImages[prevIndex]);
-            setZoomLevel("fit");
+      } else if (activeImage) {
+        if (e.key === "+" || e.key === "=") {
+          e.preventDefault();
+          setZoomLevel((prev) => getNextZoomLevel(prev));
+        } else if (e.key === "-" || e.key === "_") {
+          e.preventDefault();
+          setZoomLevel((prev) => getPrevZoomLevel(prev));
+        } else if (e.key === "0") {
+          e.preventDefault();
+          setZoomLevel("fit");
+        } else if (zoomableImages.length > 1) {
+          if (e.key === "ArrowRight" || e.key === "Right") {
+            const currentIndex = zoomableImages.indexOf(activeImage);
+            if (currentIndex !== -1) {
+              const nextIndex = (currentIndex + 1) % zoomableImages.length;
+              setActiveImage(zoomableImages[nextIndex]);
+              setZoomLevel("fit");
+            }
+          } else if (e.key === "ArrowLeft" || e.key === "Left") {
+            const currentIndex = zoomableImages.indexOf(activeImage);
+            if (currentIndex !== -1) {
+              const prevIndex = (currentIndex - 1 + zoomableImages.length) % zoomableImages.length;
+              setActiveImage(zoomableImages[prevIndex]);
+              setZoomLevel("fit");
+            }
           }
         }
       }
@@ -743,33 +762,12 @@ export function ArchiveDetailModal({ item, uploads, allUploads = [], sectionSlug
             <X size={24} />
           </button>
 
-          {/* 三段式縮放控制 */}
-          <div className="lightbox-zoom-controls" onClick={(e) => e.stopPropagation()}>
-            <button
-              className={`lightbox-zoom-btn${zoomLevel === "fit" ? " lightbox-zoom-btn--active" : ""}`}
-              onClick={() => setZoomLevel("fit")}
-              aria-label="符合視窗"
-              title="符合視窗"
-            >
-              <span className="lightbox-zoom-btn__label">現況</span>
-            </button>
-            <button
-              className={`lightbox-zoom-btn${zoomLevel === "medium" ? " lightbox-zoom-btn--active" : ""}`}
-              onClick={() => setZoomLevel("medium")}
-              aria-label="放大至 1400px"
-              title="放大至 1400px"
-            >
-              <span className="lightbox-zoom-btn__label">1400</span>
-            </button>
-            <button
-              className={`lightbox-zoom-btn${zoomLevel === "large" ? " lightbox-zoom-btn--active" : ""}`}
-              onClick={() => setZoomLevel("large")}
-              aria-label="放大至 2200px"
-              title="放大至 2200px"
-            >
-              <span className="lightbox-zoom-btn__label">超大</span>
-            </button>
-          </div>
+          {/* 9+ 分級縮放控制列（全螢幕燈箱模式） */}
+          <ZoomControl
+            zoom={zoomLevel}
+            onZoomChange={setZoomLevel}
+            variant="lightbox"
+          />
 
           {zoomableImages.length > 1 && (
             <>
@@ -805,12 +803,12 @@ export function ArchiveDetailModal({ item, uploads, allUploads = [], sectionSlug
           <img
             src={activeImage}
             alt="放大圖面"
-            className={`img-zoomed-${zoomLevel === "fit" ? "fit" : zoomLevel === "medium" ? "medium" : "large"}`}
+            className={`img-zoomed-${zoomLevel}`}
             onClick={(e) => {
               e.stopPropagation();
-              setZoomLevel((prev) => (prev === "fit" ? "medium" : prev === "medium" ? "large" : "fit"));
+              setZoomLevel((prev) => cycleZoomLevel(prev));
             }}
-            title={zoomLevel === "fit" ? "點擊放大至 1400px" : zoomLevel === "medium" ? "點擊放大至 2200px" : "點擊恢復符合視窗"}
+            title={getNextZoomActionTitle(zoomLevel)}
           />
         </div>
       )}
