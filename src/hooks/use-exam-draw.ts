@@ -25,6 +25,11 @@ import {
   calcPlanBaseQuestionCounts,
   selectEligibleBaseQuestions,
 } from "@/lib/plan-variant";
+import {
+  extractPerspectiveBaseQuestion,
+  calcPerspectiveBaseQuestionCounts,
+  selectEligiblePerspectiveBaseQuestions,
+} from "@/lib/perspective-matrix";
 
 /** 試卷組合區塊 slug */
 export type DrawGroup = "plan-ceiling-elevation" | "perspective-detail";
@@ -331,6 +336,29 @@ export function drawExamGroup(
       examSections.find((s) => s.slug === "perspective")?.items ?? [];
     const focusMode = options?.perspectiveFocusMode ?? "auto";
 
+    // ── 空間與消點雙層矩陣抽題（Perspective Matrix Draw）──────
+    // 統計各大題號（207–212 空間格局）全方向總練習張數
+    const baseCounts = calcPerspectiveBaseQuestionCounts(
+      perspectiveItems,
+      practiceCountMap
+    );
+
+    // 取得最近練習過的透視題號（用於同頻平手時避讓）
+    const recentUpload = options?.uploads?.find(
+      (u) =>
+        u.kind === UPLOAD_KINDS.MY_PRACTICE &&
+        (u.sectionSlug === "perspective" || !u.sectionSlug) &&
+        /^(20[7-9]|21[0-2])/.test(u.sheetCode)
+    );
+    const recentBase = recentUpload
+      ? extractPerspectiveBaseQuestion(recentUpload.sheetCode)
+      : null;
+
+    const eligibleBaseQuestions = selectEligiblePerspectiveBaseQuestions(
+      baseCounts,
+      recentBase
+    );
+
     // ── Layer 1：計算各方向 deficit ───────────────
     const directionCounts: Record<PerspectiveDirection, number> = {
       甲: 0,
@@ -417,27 +445,42 @@ export function drawExamGroup(
       targetDirection = activeDirections[0];
     }
 
-    // ── Layer 2：在目標方向內抽最少練習的試卷 ──────
-    const pool = targetDirection
+    // ── Layer 2：在目標方向內，優先過濾出生疏題號（空間格局平衡） ──────
+    const directionPool = targetDirection
       ? perspectiveItems.filter(
           (item) => extractPerspectiveDirection(item.code) === targetDirection
         )
       : perspectiveItems;
 
-    const pResult = drawOneFromItems(pool, practiceCountMap);
+    // 優先挑選落在最生疏題號（eligibleBaseQuestions）內的試卷
+    const spacePrioritizedPool = directionPool.filter((item) => {
+      const base = extractPerspectiveBaseQuestion(item.code);
+      return base ? eligibleBaseQuestions.includes(base) : true;
+    });
+
+    const finalPool =
+      spacePrioritizedPool.length > 0 ? spacePrioritizedPool : directionPool;
+
+    const pResult = drawOneFromItems(finalPool, practiceCountMap);
     if (pResult) {
-      let reason = "各向均衡，隨機抽取";
+      const pickedBase = extractPerspectiveBaseQuestion(pResult.item.code);
+      const pickedBaseCount = pickedBase ? baseCounts[pickedBase] : 0;
+      const baseInfo = pickedBase
+        ? ` · 優先補強生疏題號 ${pickedBase}（全向已練 ${pickedBaseCount} 次）`
+        : "";
+
+      let reason = `各向均衡${baseInfo}`;
       if (focusMode === "1vp") {
-        reason = `🎯 一消特訓：鎖定甲向（1VP 基礎功，已練 ${directionCounts.甲} 張）`;
+        reason = `🎯 一消特訓：鎖定甲向（1VP 基礎功，已練 ${directionCounts.甲} 張）${baseInfo}`;
       } else if (focusMode === "2vp" && targetDirection) {
-        reason = `🎯 二消特訓：鎖定 ${targetDirection}向（2VP 考場 67% 重點，已練 ${directionCounts[targetDirection]} 張）`;
+        reason = `🎯 二消特訓：鎖定 ${targetDirection}向（2VP 考場 67% 重點，已練 ${directionCounts[targetDirection]} 張）${baseInfo}`;
       } else if (targetDirection) {
         const isOneVp = targetDirection === "甲";
         const count = directionCounts[targetDirection];
         const targetCount = Math.round(totalPerspectiveCount / 3);
         reason = isOneVp
-          ? `甲向落後（一消點 1VP：已練 ${count} 張，目標 ${targetCount} 張，考場佔比 33%）`
-          : `${targetDirection}向落後（二消點 2VP：已練 ${count} 張，目標 ${targetCount} 張，二消合佔 67%）`;
+          ? `甲向落後（一消點 1VP：已練 ${count} 張，目標 ${targetCount} 張，考場佔比 33%）${baseInfo}`
+          : `${targetDirection}向落後（二消點 2VP：已練 ${count} 張，目標 ${targetCount} 張，二消合佔 67%）${baseInfo}`;
       }
 
       results.push({
