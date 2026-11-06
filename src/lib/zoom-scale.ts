@@ -121,3 +121,4 @@ export function normalizeZoomLevel(raw: unknown): ZoomLevel {
   }
   return "fit";
 }
+

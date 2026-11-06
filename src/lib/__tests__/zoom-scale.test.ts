@@ -66,3 +66,4 @@ describe("zoom-scale 單一事實來源", () => {
     expect(getNextZoomActionTitle("2200")).toBe("點擊恢復符合視窗");
   });
 });
+
