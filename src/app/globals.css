@@ -3467,6 +3467,69 @@ main {
   }
 }
 
+.ce-groups-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.ce-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: color-mix(in srgb, var(--color-surface) 60%, transparent);
+  border: 1px dashed var(--color-border);
+  border-radius: 12px;
+  min-width: 0;
+}
+
+.ce-group--ceiling {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--color-border));
+}
+
+.ce-group--elevation {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--color-border));
+}
+
+.ce-group__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 var(--space-1);
+}
+
+.ce-group__title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+
+.ce-group__ratio {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.ce-group__cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+@media (max-width: 768px) {
+  .ce-groups-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .ce-group__cards {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ── 平面圖版本平衡儀（A~F 六格）─────────────────────────────── */
 .variant-balance {
   display: flex;

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   extractCEView,
   calcCEViewCounts,
+  getCEViewBalance,
   selectBestCEItem,
   CE_VIEWS,
 } from "@/lib/ce-matrix";
@@ -130,5 +131,104 @@ describe("CE Matrix — 天花/立面視角平衡單一事實來源", () => {
     expect(result).not.toBeNull();
     expect(result!.item.code.endsWith("立")).toBe(true);
     expect(result!.reason).toContain("立面圖落後補強");
+  });
+
+  it("【核心使用者痛點復現 · 立面圖同理】當主臥立面與餐廳立面已練、客立為0時，新題必抽客廳立面", () => {
+    // 模擬使用者痛點同理應用到立面圖：曾練過臥立(1)與餐立(1)，全庫客立為 0
+    const practiceMap: Record<string, number> = {
+      "201A臥立": 1,
+      "202B餐立": 1,
+    };
+
+    // 本次平面圖抽中 203C，候選 6 張 CE 試卷（在當題皆為 0 次）
+    const matching203C = allCeItems.filter((i) => i.code.startsWith("203C"));
+    expect(matching203C).toHaveLength(6);
+
+    // 強制輪到立面圖（targetCategory: "elevation"）
+    const result = selectBestCEItem({
+      matchingCeItems: matching203C,
+      allCeItems,
+      practiceCountMap: practiceMap,
+      targetCategory: "elevation",
+    });
+
+    expect(result).not.toBeNull();
+    // 絕不能抽到已練過的臥立或餐立，必須精準抽出客立！
+    expect(result!.item.code).toBe("203C客立");
+    expect(result!.reason).toContain("客廳立面");
+    expect(result!.reason).toContain("全庫僅練 0 次");
+  });
+
+  it("全庫立面視角皆為 0 平手時，立面依教學序優先抽客立", () => {
+    const practiceMap: Record<string, number> = {};
+    const matching201A = allCeItems.filter((i) => i.code.startsWith("201A"));
+
+    const result = selectBestCEItem({
+      matchingCeItems: matching201A,
+      allCeItems,
+      practiceCountMap: practiceMap,
+      targetCategory: "elevation",
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.item.code).toBe("201A客立");
+    expect(result!.reason).toContain("客廳立面");
+  });
+
+  it("getCEViewBalance 正確彙總天花/立面各視角張數與下一題建議", () => {
+    const practiceMap: Record<string, number> = {
+      "201A臥天": 2,
+      "201A餐天": 1,
+      "202B臥立": 3,
+      "202B餐立": 2,
+    };
+
+    const balance = getCEViewBalance(allCeItems, practiceMap);
+    expect(balance.totalCeiling).toBe(3);
+    expect(balance.totalElevation).toBe(5);
+    expect(balance.viewCounts["客天"]).toBe(0);
+    expect(balance.viewCounts["客立"]).toBe(0);
+    // 天花落後者為客天
+    expect(balance.nextCeilingView).toBe("客天");
+    // 立面落後者為客立
+    expect(balance.nextElevationView).toBe("客立");
+  });
+
+  it("當全庫次數相同但特定試卷已練習過時，優先選擇該試卷未練習的視角", () => {
+    // 全庫客立與餐立各為 1 次
+    const practiceMap: Record<string, number> = {
+      "201A客立": 1, // 201A 客立已練過 1 次
+      "202B餐立": 1, // 202B 餐立已練過 1 次
+    };
+    const matching201A = allCeItems.filter((i) => i.code.startsWith("201A"));
+
+    // 對 201A 抽立面圖
+    const result = selectBestCEItem({
+      matchingCeItems: matching201A,
+      allCeItems,
+      practiceCountMap: practiceMap,
+      targetCategory: "elevation",
+    });
+
+    expect(result).not.toBeNull();
+    // 201A 客立已練過 (sheetCount=1)，臥立全庫為 0 必優先，若排除臥立，餐立 (sheetCount=0) 優於客立
+    expect(result!.item.code).toBe("201A臥立");
+  });
+
+  it("立面圖最近視角避讓：當全庫平手時，避開 recentView", () => {
+    const practiceMap: Record<string, number> = {};
+    const matching201A = allCeItems.filter((i) => i.code.startsWith("201A"));
+
+    const result = selectBestCEItem({
+      matchingCeItems: matching201A,
+      allCeItems,
+      practiceCountMap: practiceMap,
+      targetCategory: "elevation",
+      recentView: "客立", // 上次剛練過客立
+    });
+
+    expect(result).not.toBeNull();
+    // 避讓客立後，平手破平依餐立 > 臥立，抽出餐立
+    expect(result!.item.code).toBe("201A餐立");
   });
 });

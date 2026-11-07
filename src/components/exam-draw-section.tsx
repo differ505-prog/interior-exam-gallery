@@ -21,6 +21,12 @@ import {
   PlanVariantBalance,
   PLAN_VARIANTS,
 } from "@/lib/plan-variant";
+import {
+  getCEViewBalance,
+  CEViewBalance,
+  CEView,
+  CE_VIEW_LABELS,
+} from "@/lib/ce-matrix";
 import { countPracticePerItem } from "@/lib/practice-stats";
 import { ArchiveItem, UploadEntry } from "@/types/exam";
 
@@ -46,6 +52,13 @@ export function ExamDrawSection() {
     elevationCount: 0,
     diff: 0,
     lean: "balanced",
+  });
+  const [ceViewBalance, setCeViewBalance] = useState<CEViewBalance>({
+    viewCounts: { 客天: 0, 餐天: 0, 臥天: 0, 客立: 0, 餐立: 0, 臥立: 0 },
+    totalCeiling: 0,
+    totalElevation: 0,
+    nextCeilingView: "客天",
+    nextElevationView: "客立",
   });
   const [perspBalance, setPerspBalance] = useState<PerspectiveBalance>({
     directionCounts: { 甲: 0, 乙: 0, 丙: 0 },
@@ -101,12 +114,9 @@ export function ExamDrawSection() {
         for (const section of examSections) {
           allItems.push(...section.items);
         }
-        setVariantBalance(
-          calcVariantBalance(
-            planItems,
-            countPracticePerItem(allItems, entries)
-          )
-        );
+        const practiceMap = countPracticePerItem(allItems, entries);
+        setVariantBalance(calcVariantBalance(planItems, practiceMap));
+        setCeViewBalance(getCEViewBalance(allCeItems, practiceMap));
       })
       .catch(() => {
         // fetch 失敗：降級為空陣列，不中斷抽題
@@ -116,6 +126,13 @@ export function ExamDrawSection() {
           elevationCount: 0,
           diff: 0,
           lean: "balanced",
+        });
+        setCeViewBalance({
+          viewCounts: { 客天: 0, 餐天: 0, 臥天: 0, 客立: 0, 餐立: 0, 臥立: 0 },
+          totalCeiling: 0,
+          totalElevation: 0,
+          nextCeilingView: "客天",
+          nextElevationView: "客立",
         });
         setPerspBalance({
           directionCounts: { 甲: 0, 乙: 0, 丙: 0 },
@@ -173,12 +190,13 @@ export function ExamDrawSection() {
         examSections.find((s) => s.slug === "perspective")?.items ?? [];
       setPerspBalance(calcPerspectiveBalance(perspItems, uploads));
 
-      // 同步更新平面圖版本平衡（A~F）
+      // 同步更新平面圖版本平衡（A~F）與 CE 視角平衡
       const planItems =
         examSections.find((s) => s.slug === "plan")?.items ?? [];
       setVariantBalance(
-        calcVariantBalance(planItems, countPracticePerItem(allItems, uploads))
+        calcVariantBalance(planItems, practiceCountMap)
       );
+      setCeViewBalance(getCEViewBalance(allCeItems, practiceCountMap));
 
       if (process.env.NODE_ENV === "development") {
         // eslint-disable-next-line no-console
@@ -358,6 +376,106 @@ export function ExamDrawSection() {
     );
   };
 
+  const renderCEViewCard = (view: CEView, isCeilingGroup: boolean) => {
+    const count = ceViewBalance.viewCounts[view] ?? 0;
+    const isNext = isCeilingGroup
+      ? ceViewBalance.nextCeilingView === view
+      : ceViewBalance.nextElevationView === view;
+    const label = CE_VIEW_LABELS[view] ?? view;
+
+    return (
+      <div
+        key={view}
+        style={{
+          padding: "var(--space-3) var(--space-4)",
+          borderRadius: "12px",
+          background: isNext
+            ? "color-mix(in srgb, var(--color-accent) 12%, transparent)"
+            : "var(--color-surface)",
+          border: isNext
+            ? "1px solid var(--color-accent)"
+            : "1px solid var(--color-border)",
+          transition: "all 200ms ease-out",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "var(--space-2)",
+          }}
+        >
+          <span
+            style={{
+              fontSize: "0.95rem",
+              fontWeight: 700,
+              color: "var(--color-accent)",
+            }}
+          >
+            {label}
+          </span>
+          <span
+            style={{
+              fontSize: "0.65rem",
+              padding: "2px 6px",
+              borderRadius: "999px",
+              background:
+                "color-mix(in srgb, var(--color-accent) 10%, transparent)",
+              color: "var(--color-accent)",
+              fontWeight: 500,
+            }}
+          >
+            {view}
+          </span>
+        </div>
+        <p
+          style={{
+            fontSize: "1.35rem",
+            fontWeight: 800,
+            margin: "0 0 2px 0",
+            color: "var(--color-text)",
+            lineHeight: 1,
+          }}
+        >
+          {count}
+          <span
+            style={{
+              fontSize: "0.75rem",
+              fontWeight: 400,
+              color: "var(--color-text-muted)",
+              marginLeft: "4px",
+            }}
+          >
+            張
+          </span>
+        </p>
+        {isNext ? (
+          <p
+            style={{
+              fontSize: "0.7rem",
+              color: "var(--color-accent)",
+              margin: 0,
+              fontWeight: 600,
+            }}
+          >
+            → 下一題
+          </p>
+        ) : (
+          <p
+            style={{
+              fontSize: "0.7rem",
+              color: "var(--color-text-muted)",
+              margin: 0,
+            }}
+          >
+            視角覆蓋
+          </p>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
       <SurfacePanel ariaLabel="抽題練習" className="exam-draw-panel" id="exam-draw">
@@ -409,6 +527,37 @@ export function ExamDrawSection() {
               {ceBalance.lean === "ceiling" ? "立面圖" : "天花板圖"}
             </p>
           )}
+
+          {/* CE 視角平衡網格（天花板池 vs 立面圖池） */}
+          <div className="ce-groups-grid">
+            <div className="ce-group ce-group--ceiling">
+              <div className="ce-group__header">
+                <span className="ce-group__title">天花板視角</span>
+                <span className="ce-group__ratio">
+                  天花池 · 108 題（已練 {ceViewBalance.totalCeiling} 張）
+                </span>
+              </div>
+              <div className="ce-group__cards">
+                {renderCEViewCard("客天", true)}
+                {renderCEViewCard("餐天", true)}
+                {renderCEViewCard("臥天", true)}
+              </div>
+            </div>
+
+            <div className="ce-group ce-group--elevation">
+              <div className="ce-group__header">
+                <span className="ce-group__title">立面圖視角</span>
+                <span className="ce-group__ratio">
+                  立面池 · 108 題（已練 {ceViewBalance.totalElevation} 張）
+                </span>
+              </div>
+              <div className="ce-group__cards">
+                {renderCEViewCard("客立", false)}
+                {renderCEViewCard("餐立", false)}
+                {renderCEViewCard("臥立", false)}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* 透視圖消點平衡儀（1VP vs 2VP 雙段考場對比，v3 升級） */}

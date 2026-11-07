@@ -30,7 +30,7 @@ import {
   calcPerspectiveBaseQuestionCounts,
   selectEligiblePerspectiveBaseQuestions,
 } from "@/lib/perspective-matrix";
-import { selectBestCEItem } from "@/lib/ce-matrix";
+import { selectBestCEItem, extractCEView } from "@/lib/ce-matrix";
 
 /** 試卷組合區塊 slug */
 export type DrawGroup = "plan-ceiling-elevation" | "perspective-detail";
@@ -598,11 +598,23 @@ export function drawExamGroup(
         targetCategory = "ceiling"; // 天花落後，補強天花
       }
 
+      // 取得最近練習過的 CE 視角（用於同頻平手時避讓）
+      const recentCeUpload = options?.uploads?.find(
+        (u) =>
+          u.kind === UPLOAD_KINDS.MY_PRACTICE &&
+          (u.sectionSlug === "ceiling-elevation" || !u.sectionSlug) &&
+          (u.sheetCode.endsWith("天") || u.sheetCode.endsWith("立"))
+      );
+      const recentView = recentCeUpload
+        ? extractCEView(recentCeUpload.sheetCode)
+        : null;
+
       const ceResult = selectBestCEItem({
         matchingCeItems,
         allCeItems,
         practiceCountMap,
         targetCategory,
+        recentView,
       });
 
       if (ceResult) {

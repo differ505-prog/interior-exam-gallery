@@ -95,6 +95,46 @@ export function calcCEViewCounts(
   return counts;
 }
 
+export interface CEViewBalance {
+  viewCounts: Record<CEView, number>;
+  totalCeiling: number;
+  totalElevation: number;
+  nextCeilingView: CEView;
+  nextElevationView: CEView;
+}
+
+/**
+ * 計算全題庫天花板與立面圖各視角的練習張數與下一題建議視角
+ */
+export function getCEViewBalance(
+  allCeItems: ArchiveItem[],
+  practiceCountMap: Record<string, number>
+): CEViewBalance {
+  const viewCounts = calcCEViewCounts(allCeItems, practiceCountMap);
+  const totalCeiling = viewCounts.客天 + viewCounts.餐天 + viewCounts.臥天;
+  const totalElevation = viewCounts.客立 + viewCounts.餐立 + viewCounts.臥立;
+
+  // 天花板最少練習視角（平手時依客天 > 餐天 > 臥天）
+  const ceilingSorted = [...CE_CEILING_VIEWS].sort((a, b) => {
+    if (viewCounts[a] !== viewCounts[b]) return viewCounts[a] - viewCounts[b];
+    return CE_VIEW_ORDER[a] - CE_VIEW_ORDER[b];
+  });
+
+  // 立面圖最少練習視角（平手時依客立 > 餐立 > 臥立）
+  const elevationSorted = [...CE_ELEVATION_VIEWS].sort((a, b) => {
+    if (viewCounts[a] !== viewCounts[b]) return viewCounts[a] - viewCounts[b];
+    return CE_VIEW_ORDER[a] - CE_VIEW_ORDER[b];
+  });
+
+  return {
+    viewCounts,
+    totalCeiling,
+    totalElevation,
+    nextCeilingView: ceilingSorted[0],
+    nextElevationView: elevationSorted[0],
+  };
+}
+
 export interface SelectBestCEItemParams {
   matchingCeItems: ArchiveItem[];
   allCeItems: ArchiveItem[];
@@ -168,12 +208,15 @@ export function selectBestCEItem({
     if (cooled.length > 0) topCandidates = cooled;
   }
 
-  // 6. 若仍平手，以教學序排序（客 > 餐 > 臥）
+  // 6. 優先挑選當前試卷本體未練習過者（sheetCount 越少越優先）
+  //    若 sheetCount 相同，以教學序排序（客 > 餐 > 臥）
   topCandidates.sort((a, b) => {
+    if (a.sheetCount !== b.sheetCount) {
+      return a.sheetCount - b.sheetCount;
+    }
     const orderA = a.view ? CE_VIEW_ORDER[a.view] ?? 99 : 99;
     const orderB = b.view ? CE_VIEW_ORDER[b.view] ?? 99 : 99;
-    if (orderA !== orderB) return orderA - orderB;
-    return a.sheetCount - b.sheetCount;
+    return orderA - orderB;
   });
 
   const picked = topCandidates[0];
