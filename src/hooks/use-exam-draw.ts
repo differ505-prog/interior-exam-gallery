@@ -30,6 +30,7 @@ import {
   calcPerspectiveBaseQuestionCounts,
   selectEligiblePerspectiveBaseQuestions,
 } from "@/lib/perspective-matrix";
+import { selectBestCEItem } from "@/lib/ce-matrix";
 
 /** 試卷組合區塊 slug */
 export type DrawGroup = "plan-ceiling-elevation" | "perspective-detail";
@@ -576,19 +577,41 @@ export function drawExamGroup(
         item.code.startsWith(baseCode)
       );
 
-      // ── Step 3：以 view 欄位分類天花板池 vs 立面池 ──
-      const ceilingPool = matchingCeItems.filter(
+      // ── Step 3：取得池級平衡（天花板池 vs 立面池） ─────────
+      const ceilingPool = allCeItems.filter(
         (item) => getCEDrawingType(item) === "ceiling"
       );
-      const elevationPool = matchingCeItems.filter(
+      const elevationPool = allCeItems.filter(
         (item) => getCEDrawingType(item) === "elevation"
       );
+      const ceBalance = calcCECategoryBalance(
+        options?.uploads ?? [],
+        ceilingPool,
+        elevationPool
+      );
 
-      // ── Step 4：建構加權池（池級平衡）───────────────
-      const balancedPool = [...ceilingPool, ...elevationPool];
-      const ceResult = drawOneFromItems(balancedPool, practiceCountMap);
+      // ── Step 4：以 CE 視角矩陣抽出一張（池級平衡 + 空間視角累積赤字）───
+      let targetCategory: "ceiling" | "elevation" | "auto" = "auto";
+      if (ceBalance.lean === "ceiling") {
+        targetCategory = "elevation"; // 立面落後，補強立面
+      } else if (ceBalance.lean === "elevation") {
+        targetCategory = "ceiling"; // 天花落後，補強天花
+      }
 
-      if (ceResult) results.push(ceResult);
+      const ceResult = selectBestCEItem({
+        matchingCeItems,
+        allCeItems,
+        practiceCountMap,
+        targetCategory,
+      });
+
+      if (ceResult) {
+        results.push({
+          item: ceResult.item,
+          practiceCount: ceResult.practiceCount,
+          directionReason: ceResult.reason,
+        });
+      }
     }
   }
 

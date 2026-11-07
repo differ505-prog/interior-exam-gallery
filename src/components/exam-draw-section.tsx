@@ -10,7 +10,6 @@ import {
   calcCECategoryBalance,
   getCEDrawingType,
   CECategoryBalance,
-  buildWeightedCEPool,
   calcPerspectiveBalance,
   PerspectiveBalance,
   ExtendedDrawResult,
@@ -141,61 +140,7 @@ export function ExamDrawSection() {
       let results: ExtendedDrawResult[] = [];
 
       if (group === "plan-ceiling-elevation") {
-        // ── 自訂 CE 平衡抽題邏輯 ──────────────────────
-        const planResult = drawExamGroup(
-          "plan-ceiling-elevation",
-          practiceCountMap,
-          { uploads }
-        )[0];
-        if (!planResult) {
-          results = [];
-        } else {
-          const baseCode = planResult.item.code;
-          const allCeItems =
-            examSections.find((s) => s.slug === "ceiling-elevation")?.items ??
-            [];
-          const matchingCeItems = allCeItems.filter((item) =>
-            item.code.startsWith(baseCode)
-          );
-
-          const ceilingPool = matchingCeItems.filter(
-            (item) => getCEDrawingType(item) === "ceiling"
-          );
-          const elevationPool = matchingCeItems.filter(
-            (item) => getCEDrawingType(item) === "elevation"
-          );
-
-          // 根據總量平衡，取加權池
-          const weightedPool = buildWeightedCEPool(
-            ceilingPool,
-            elevationPool,
-            ceBalance.lean
-          );
-
-          // 從加權池中抽一張（最少練習優先）
-          const EXCLUDED_THRESHOLD = 5;
-          const ceResult = (() => {
-            const eligible = weightedPool.filter(
-              (item) =>
-                (practiceCountMap[item.code] ?? 0) < EXCLUDED_THRESHOLD
-            );
-            if (eligible.length === 0) return null;
-            const minCount = Math.min(
-              ...eligible.map((item) => practiceCountMap[item.code] ?? 0)
-            );
-            const least = eligible.filter(
-              (item) => (practiceCountMap[item.code] ?? 0) === minCount
-            );
-            return {
-              item: least[Math.floor(Math.random() * least.length)],
-              practiceCount: minCount,
-            } as ExtendedDrawResult;
-          })();
-
-          results = ceResult
-            ? [planResult as ExtendedDrawResult, ceResult]
-            : [planResult as ExtendedDrawResult];
-        }
+        results = drawExamGroup(group, practiceCountMap, { uploads });
       } else {
         results = drawExamGroup(group, practiceCountMap, {
           perspectiveFocusMode: perspFocusMode,
