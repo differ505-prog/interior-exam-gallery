@@ -34,7 +34,7 @@ const PERSP_PAGE_COPY: Record<"front" | "back", { label: string; alt: string }> 
  *
  * 優先順序：
  * 0. registry：建檔中心已「核准生效」的 URL（最高優先，前台只讀 url 欄位）
- * 1. 透視圖：使用 resolvePerspectiveSheets（僅 208 / 211 有圖）
+ * 1. 透視圖：使用 resolvePerspectiveSheets（僅 207–211 有圖）
  * 2. 大樣圖：題目圖 + 官方答案圖
  * 3. 平面圖 / 天花板與立面圖：題目圖
  *
