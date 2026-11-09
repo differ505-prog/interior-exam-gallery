@@ -24,6 +24,7 @@ export interface SprintTask {
   category: SprintCategory;
   sheetCode?: string; // 關聯試卷代號，例如 "203D臥立", "221", "212乙"
   description: string;
+  dimensionRule: string; // 尺寸標註規範：要不要標尺寸、標到何種程度
   stopBoundary: string; // 止步邊界提醒：哪些項目不用做到底，防過度細化
   defaultCompleted?: boolean;
 }

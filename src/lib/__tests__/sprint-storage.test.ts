@@ -60,5 +60,12 @@ describe("Sprint Storage — 考前 72 小時衝刺清單邏輯", () => {
       expect(task.stopBoundary.trim().length).toBeGreaterThan(10);
     });
   });
+
+  it("每個任務皆明確具備「要不要標尺寸（dimensionRule）」規範", () => {
+    SPRINT_TASKS.forEach((task) => {
+      expect(task.dimensionRule).toBeDefined();
+      expect(task.dimensionRule.trim().length).toBeGreaterThan(2);
+    });
+  });
 });
 

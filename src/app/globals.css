@@ -7310,6 +7310,39 @@ main {
   line-height: 1.4;
 }
 
+.sprint-task-dimension {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 5px;
+  padding: 4px 9px;
+  background: color-mix(in srgb, var(--color-text) 5%, var(--color-surface));
+  border-left: 2.5px solid color-mix(in srgb, var(--color-accent) 60%, var(--color-border));
+  border-radius: 4px;
+  font-size: 0.74rem;
+  line-height: 1.42;
+  transition: opacity 150ms ease-out;
+}
+
+.sprint-task-dimension__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 700;
+  color: var(--color-accent);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.sprint-task-dimension__text {
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.sprint-task-card--completed .sprint-task-dimension {
+  opacity: 0.55;
+}
+
 .sprint-task-boundary {
   display: flex;
   align-items: baseline;

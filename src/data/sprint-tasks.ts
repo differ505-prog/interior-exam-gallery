@@ -35,6 +35,7 @@ export const SPRINT_TASKS: SprintTask[] = [
     category: "大樣圖",
     sheetCode: "221",
     description: "門框節點構造線稿已於 12:41 上傳（輪廓放樣通關；三道尺寸鏈與材料引線納入速掃鞏固）。",
+    dimensionRule: "【免標尺寸鏈】構造線稿已完工，三道尺寸鏈留待速掃與心算，今日不補筆。",
     stopBoundary: "不用補畫三道尺寸鏈、不用拉材料引線文字！節點構造線條放樣正確即通關。",
     defaultCompleted: true,
   },
@@ -47,6 +48,7 @@ export const SPRINT_TASKS: SprintTask[] = [
     category: "立面圖",
     sheetCode: "203D臥立",
     description: "樓高 300cm、床頭板 90cm、衣櫃 240cm，建立三道完整尺寸鏈外框。",
+    dimensionRule: "【必標外框 3 道主尺寸】只標層高 300cm、床頭 90cm、衣櫃 240cm 與總長，細部格抽尺寸免標。",
     stopBoundary: "不用畫內部任何細部與把手！只抓總寬度、高度與三道主尺寸對齊即可停筆。",
   },
   {
@@ -58,6 +60,7 @@ export const SPRINT_TASKS: SprintTask[] = [
     category: "立面圖",
     sheetCode: "203D臥立",
     description: "吊衣桿、抽屜分區、化妝鏡櫃 EL 標記與文字引線（主臥立面死穴清零！）。",
+    dimensionRule: "【只標 3 處關鍵標高】化妝桌 EL+75、吊衣桿 EL+190、踢腳板 EL+10，其餘櫃格免標細部尺寸。",
     stopBoundary: "絕對不上色、不畫衣物皺褶！標出吊桿、鏡櫃、EL 標高與 3 條引線即刻收工。",
   },
   {
@@ -69,6 +72,7 @@ export const SPRINT_TASKS: SprintTask[] = [
     category: "大樣圖",
     sheetCode: "214",
     description: "每題看 12 分鐘：看清剖面剖切方向、角材規格（3×3.6cm）與矽酸鈣板（6mm）。",
+    dimensionRule: "【免動筆標註】目視心算角材 3×3.6cm 與 6mm 板厚，不動筆拉引線或寫數字。",
     stopBoundary: "千萬別動筆手繪！用眼睛看＋手指心算角材規格與板厚，12 分鐘鐘響立刻換題。",
   },
   {
@@ -80,6 +84,7 @@ export const SPRINT_TASKS: SprintTask[] = [
     category: "大樣圖",
     sheetCode: "217",
     description: "每題看 12 分鐘：輕鋼架 C 型立柱固定、人造石檯面假厚（36/51mm）。",
+    dimensionRule: "【免動筆標註】目視速記輕鋼架立柱間距 30cm 與檯面假厚 36/51mm，不動筆寫尺寸。",
     stopBoundary: "千萬別抄長篇工法筆記！只看立柱固定與檯面假厚數字，25 分鐘鐘響立刻合上。",
   },
   {
@@ -90,6 +95,7 @@ export const SPRINT_TASKS: SprintTask[] = [
     duration: "60m",
     category: "文具/拜文昌",
     description: "出門補齊代針筆（0.1/0.3/0.5/0.8）、紙膠帶、消字板、常用灰階麥克筆，當晚立刻試畫磨合。",
+    dimensionRule: "【無】外出採購代針筆與文具備品。",
     stopBoundary: "絕對不逛文具店其他文具！依清單買齊代針筆、消字板立刻結帳回程，絕不耽誤下半場。",
   },
   {
@@ -101,6 +107,7 @@ export const SPRINT_TASKS: SprintTask[] = [
     category: "透視圖",
     sheetCode: "212乙",
     description: "眼高 150cm、定左右雙 VP、拉出地坪格網骨架。",
+    dimensionRule: "【免標任何尺寸】透視圖考場不用標尺寸！只定眼高 150cm 輔助線，不寫任何尺寸數字。",
     stopBoundary: "不用畫任何家具細節！只抓視平線 150cm、左右雙消點與地坪九宮格網即停。",
   },
   {
@@ -112,6 +119,7 @@ export const SPRINT_TASKS: SprintTask[] = [
     category: "透視圖",
     sheetCode: "212乙",
     description: "立起沙發、電視牆與落地大窗立方體框線，確認比例無誤即停筆（212 盲區清零！）。",
+    dimensionRule: "【免標任何尺寸】純立幾何方盒外框，完全不標尺寸。",
     stopBoundary: "絕對不上色！沙發與電視牆只要幾何立方框線，不畫抱枕摺痕、不畫電視螢幕。",
   },
   {
@@ -123,6 +131,7 @@ export const SPRINT_TASKS: SprintTask[] = [
     category: "透視圖",
     sheetCode: "208乙",
     description: "攻克 2VP 客廳主視角，快速建立沙發、電視牆與走道進深感。",
+    dimensionRule: "【免標任何尺寸】純練 2VP 雙消點進深速度，完全不標尺寸。",
     stopBoundary: "絕對不上色！專注抓客廳 2VP 雙消點進深感與主牆透視線，25 分鐘鐘響立刻停筆。",
   },
   {
@@ -134,6 +143,7 @@ export const SPRINT_TASKS: SprintTask[] = [
     category: "大樣圖",
     sheetCode: "223",
     description: "221 門框已手繪通關！專注看 223 抽屜五金 12m ＋ 未練 5 題剖切點串聯盲測 13m（大樣圖 12 題 100% 全覆蓋！）。",
+    dimensionRule: "【免動筆標註】只用眼睛核對 223 抽屜底板軌道與其餘 5 題剖切尺寸，不動筆寫字。",
     stopBoundary: "不用手繪全圖！只看 223 抽屜底板軌道與其餘 5 題剖切定位，絕不加班超時。",
   },
 
@@ -147,6 +157,7 @@ export const SPRINT_TASKS: SprintTask[] = [
     category: "大樣圖",
     sheetCode: "217",
     description: "輕鋼架 C 型立柱、矽酸鈣板雙面固定剖面結構放樣。",
+    dimensionRule: "【此磚免標尺寸】此磚專注代針筆剖面骨架放樣，尺寸留待第 2 磚集中標註。",
     stopBoundary: "不用上色與材質彩繪！純以鉛筆/代針筆放樣 C 型鋼骨架與矽酸鈣板厚度即算完成。",
   },
   {
@@ -158,6 +169,7 @@ export const SPRINT_TASKS: SprintTask[] = [
     category: "大樣圖",
     sheetCode: "217",
     description: "木材 45° 剖面線、自攻螺絲間距 30cm、引線文字規範寫滿（下午場 40 分標準格式內化！）。",
+    dimensionRule: "【必標完整三道尺寸鏈】外框總厚、立柱間距 30cm、矽酸鈣板 9mm 完整標註，文字引線寫滿。",
     stopBoundary: "不用推敲文法！直接套用 45° 剖面線與自攻螺絲 30cm 格式化引線，寫完即收。",
   },
   {
@@ -169,6 +181,7 @@ export const SPRINT_TASKS: SprintTask[] = [
     category: "透視圖",
     sheetCode: "207甲",
     description: "拿出 207甲 或 211乙 舊稿，用灰階＋木紋色 20 分鐘快鋪找回筆觸流暢度，絕不重畫線稿。",
+    dimensionRule: "【免標任何尺寸】拿舊圖直接鋪灰階與木紋底色，完全不碰尺寸與代針筆。",
     stopBoundary: "絕對不重畫線稿！直接在舊圖上以冷暖灰＋淡木紋 20 分鐘快速壓底色，抓手感即止。",
   },
   {
@@ -180,6 +193,7 @@ export const SPRINT_TASKS: SprintTask[] = [
     category: "透視圖",
     sheetCode: "209乙",
     description: "25 分鐘快速立起餐廳二消吧台與高腳椅框線。",
+    dimensionRule: "【免標任何尺寸】透視圖考場不用標尺寸，純拉吧台與高腳椅 2VP 線框。",
     stopBoundary: "絕對不上色！吧台與高腳椅只要線條外框，不畫酒杯裝飾與大理石紋理。",
   },
   {
@@ -190,6 +204,7 @@ export const SPRINT_TASKS: SprintTask[] = [
     duration: "90m",
     category: "文具/拜文昌",
     description: "帶准考證影本、2B 鉛筆到文昌廟拜拜過香爐，曬太陽散步換腦釋壓，確立必勝心態。",
+    dimensionRule: "【無】外出文昌廟參拜祈福。",
     stopBoundary: "不用跑遠程大廟！就近參拜文昌廟，過香爐後曬太陽散步換腦，不可沉迷滑手機。",
   },
   {
@@ -201,6 +216,7 @@ export const SPRINT_TASKS: SprintTask[] = [
     category: "透視圖",
     sheetCode: "210丙",
     description: "臥室落地窗與天花板窗簾盒 2VP 深度立體框線。",
+    dimensionRule: "【免標任何尺寸】透視圖不用標尺寸，只拉天花板窗簾盒與落地窗進深線。",
     stopBoundary: "絕對不上色！只拉天花板窗簾盒與落地窗進深線條，不畫窗簾布紋細摺。",
   },
   {
@@ -211,6 +227,7 @@ export const SPRINT_TASKS: SprintTask[] = [
     duration: "25m",
     category: "立面圖",
     description: "對照 201~206 客天/餐天/臥天 3 大照明迴路標註與冷氣出風口尺寸。",
+    dimensionRule: "【口頭比對尺寸】對照天花板下降高度數字（如 -20cm）、出風口尺寸與迴路開關（a/b/c），免重畫。",
     stopBoundary: "千萬不用重繪天花圖！只比對客天/餐天/臥天 3 大照明迴路標註文字與出風口尺寸。",
   },
   {
@@ -221,6 +238,7 @@ export const SPRINT_TASKS: SprintTask[] = [
     duration: "25m",
     category: "平面圖",
     description: "檢核走道 ≥ 90cm、門扇淨寬 80/90cm、廚衛三角動線與指北針標註。",
+    dimensionRule: "【實量尺寸不重畫】拿三稜比例尺實量走道 ≥90cm、門淨寬 80/90cm，免動筆標註。",
     stopBoundary: "千萬不用重畫平面圖！只拿比例尺量走道 ≥ 90cm 與門淨寬，口頭自檢完即停。",
   },
   {
@@ -231,6 +249,7 @@ export const SPRINT_TASKS: SprintTask[] = [
     duration: "25m",
     category: "考前整備",
     description: "將今日成果拍照上傳系統，對照小鶴老師參考圖進行快速自評複盤。",
+    dimensionRule: "【免標尺寸】拍照上傳成果並記錄 2 點關鍵修正。",
     stopBoundary: "不用長篇大論檢討！只條列 2 點明日不可再犯錯誤，5 分鐘拍完上傳即完成。",
   },
 
@@ -243,6 +262,7 @@ export const SPRINT_TASKS: SprintTask[] = [
     duration: "25m",
     category: "平面圖",
     description: "草稿紙徒手抓結構牆厚、主動線與大門位置，不塗黑，確認 15 分鐘起步手感。",
+    dimensionRule: "【免標尺寸鏈】草稿紙徒手抓結構牆厚、主動線，完全不拉尺寸鏈。",
     stopBoundary: "不用畫任何家具與尺寸標註！只在草稿紙畫出雙線結構牆厚與主要大門動線。",
   },
   {
@@ -253,6 +273,7 @@ export const SPRINT_TASKS: SprintTask[] = [
     duration: "25m",
     category: "考前整備",
     description: "默背關鍵天條：208甲 展櫃頂留 39cm 缺口、天花板出風口不直吹床頭、尺寸鏈總和等。",
+    dimensionRule: "【默背死穴數字】動眼不動筆！默記展示櫃 39cm 缺口、層板 8cm、走道 ≥90cm、門寬等關鍵數字。",
     stopBoundary: "不用寫字！用眼睛快速默背 10 大天條（如 208甲 39cm 缺口、冷氣不吹床頭），心領神會即止。",
   },
   {
@@ -263,6 +284,7 @@ export const SPRINT_TASKS: SprintTask[] = [
     duration: "25m",
     category: "大樣圖",
     description: "翻任一題，5 秒內答出剖切方向、角材尺寸與固定五金名稱，強化直覺反應。",
+    dimensionRule: "【口答關鍵數字】翻題 5 秒內口答角材 3×3.6cm、矽酸鈣板 6/9mm、檯面 36/51mm，動口不動筆。",
     stopBoundary: "絕對不動筆！翻開題目 5 秒內口頭講出剖切方向與主要材料，反應不過來才看答案。",
   },
   {
@@ -273,6 +295,7 @@ export const SPRINT_TASKS: SprintTask[] = [
     duration: "25m",
     category: "透視圖",
     description: "閉眼默想 207~212 各空間雙消點在紙外的延伸坐標，消除臨場生疏感。",
+    dimensionRule: "【免標任何尺寸】閉眼冥想雙消點坐標與空間感，不拿筆。",
     stopBoundary: "閉眼心智預演！不拿筆紙，在腦海重播 2VP 雙消點與地坪進深視覺畫面。",
   },
   {
@@ -283,6 +306,7 @@ export const SPRINT_TASKS: SprintTask[] = [
     duration: "25m",
     category: "文具/拜文昌",
     description: "逐支在試紙上劃線測試出水，確認常用冷暖灰與木紋麥克筆墨水充裕。",
+    dimensionRule: "【無】劃線測試出水流暢度。",
     stopBoundary: "不要試畫作品！只在廢紙上畫 3 條線確認出水順暢，水足即收筆裝盒。",
   },
   {
@@ -293,6 +317,7 @@ export const SPRINT_TASKS: SprintTask[] = [
     duration: "25m",
     category: "文具/拜文昌",
     description: "身分證正本、准考證、三稜比例尺、大號三角板組裝入透明考試袋。",
+    dimensionRule: "【無】核對身分證、准考證、三稜比例尺等必備工具裝袋。",
     stopBoundary: "不要帶整座工作室！嚴格依照必備清單裝入透明袋，不帶任何多餘雜物。",
   },
   {
@@ -303,6 +328,7 @@ export const SPRINT_TASKS: SprintTask[] = [
     duration: "25m",
     category: "考前整備",
     description: "心智演練上午場（平面 90m ＋ 天花/立面 75m ＋ 檢查 15m）與下午場（大樣 45m ＋ 透視 120m ＋ 檢查 15m）時間控制點。",
+    dimensionRule: "【默記時間節點】心智演練上午場與下午場各 180 分鐘的 15 分鐘防呆檢查節點。",
     stopBoundary: "不看書做題！只在腦海走一次上下午交卷節奏與防呆檢查 15 分鐘停筆節點。",
   },
   {
@@ -313,6 +339,7 @@ export const SPRINT_TASKS: SprintTask[] = [
     duration: "25m",
     category: "考前整備",
     description: "放下所有筆紙，泡熱水澡、深呼吸、放鬆肌肉，晚上 10:00 準時就寢，蓄滿體能迎接明日勝仗！",
+    dimensionRule: "【無】熄燈躺平，蓄滿體能。",
     stopBoundary: "絕對不准熬夜、不准看手機！22:00 前熄燈躺平，睡眠才是明天考場的勝負手。",
   },
 ];
