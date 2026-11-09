@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { List } from "lucide-react";
 
 const chapters = [
+  { href: "#sprint-playbook", label: "🎯 衝刺看板" },
   { href: "#plan", label: "平面圖" },
   { href: "#ceiling-elevation", label: "天花與立面" },
   { href: "#perspective", label: "透視圖" },

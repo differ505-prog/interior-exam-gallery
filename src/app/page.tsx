@@ -5,6 +5,7 @@ import { ExamDrawSection } from "@/components/exam-draw-section";
 import { UploadStudio } from "@/components/upload-studio";
 import { AsyncUploadsSection } from "@/components/recent-uploads-section";
 import { PracticePlanSection } from "@/components/practice-plan-section";
+import { SprintChecklistSection } from "@/components/sprint-checklist-section";
 import { FloatingTOC } from "@/components/floating-toc";
 import { ProgressTracker } from "@/components/progress-tracker";
 import { EmptyState, SkeletonGrid, SurfacePanel } from "@/components/ui/primitives";
@@ -75,6 +76,8 @@ export default function HomePage() {
           </div>
         </dl>
       </SurfacePanel>
+
+      <SprintChecklistSection />
 
       <PracticePlanSection />
 
