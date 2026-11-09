@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Check, CheckCircle2, Circle, Clock, Flame, Sparkles, RotateCcw } from "lucide-react";
+import { Check, CheckCircle2, Circle, Clock, Flame, Sparkles, RotateCcw, Ban } from "lucide-react";
 import { SurfacePanel } from "@/components/ui/primitives";
 import { SPRINT_DAYS_META, SPRINT_TASKS } from "@/data/sprint-tasks";
 import { SprintDay, SprintCategory } from "@/types/sprint";
@@ -332,6 +332,17 @@ export function SprintChecklistSection() {
 
                 <h4 className="sprint-task-title">{task.title}</h4>
                 <p className="sprint-task-desc">{task.description}</p>
+                {task.stopBoundary && (
+                  <div className="sprint-task-boundary">
+                    <span className="sprint-task-boundary__label">
+                      <Ban size={11} className="sprint-task-boundary__icon" />
+                      不用做到底：
+                    </span>
+                    <span className="sprint-task-boundary__text">
+                      {task.stopBoundary}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* 右側狀態小字 */}

@@ -24,6 +24,7 @@ export interface SprintTask {
   category: SprintCategory;
   sheetCode?: string; // 關聯試卷代號，例如 "203D臥立", "221", "212乙"
   description: string;
+  stopBoundary: string; // 止步邊界提醒：哪些項目不用做到底，防過度細化
   defaultCompleted?: boolean;
 }
 
@@ -34,3 +35,4 @@ export interface DaySprintMeta {
   focus: string;
   badge: string;
 }
+

@@ -53,4 +53,12 @@ describe("Sprint Storage — 考前 72 小時衝刺清單邏輯", () => {
     expect(overall.totalBricks).toBe(24); // 8 bricks * 3 days
     expect(overall.completedTasks).toBe(1);
   });
+
+  it("每個任務皆明確具備「止步邊界（不用做到底）」提醒，防止考前過度細化", () => {
+    SPRINT_TASKS.forEach((task) => {
+      expect(task.stopBoundary).toBeDefined();
+      expect(task.stopBoundary.trim().length).toBeGreaterThan(10);
+    });
+  });
 });
+
