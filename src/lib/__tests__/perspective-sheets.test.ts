@@ -53,9 +53,24 @@ describe("perspective-sheets", () => {
     );
   });
 
-  it("未建檔題號仍回傳 null（212）", () => {
-    expect(resolvePerspectiveSheets("212甲")).toBeNull();
-    expect(resolvePerspectiveSheets("212丙")).toBeNull();
-    expect(hasPerspectiveSheets({ code: "212甲" } as never)).toBe(false);
+  it("212 回傳正反面各一張（正面＝212-平面、背面＝212-立面）", () => {
+    const pair = resolvePerspectiveSheets("212甲");
+    expect(pair).not.toBeNull();
+    expect(pair?.front).toBe("/images/212/212-平面.JPG");
+    expect(pair?.back).toBe("/images/212/212-立面.JPG");
+  });
+
+  it("212 甲乙丙三向共用同一組題目卷", () => {
+    expect(resolvePerspectiveSheets("212乙")).toEqual(
+      resolvePerspectiveSheets("212甲"),
+    );
+    expect(resolvePerspectiveSheets("212丙")).toEqual(
+      resolvePerspectiveSheets("212甲"),
+    );
+  });
+
+  it("非透視題號仍回傳 null（213 大樣圖）", () => {
+    expect(resolvePerspectiveSheets("213")).toBeNull();
+    expect(hasPerspectiveSheets({ code: "213" } as never)).toBe(false);
   });
 });
