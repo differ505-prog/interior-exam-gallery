@@ -3,7 +3,7 @@
  * 考前 72 小時衝刺清單型別定義
  */
 
-export type SprintDay = "11/09" | "11/10" | "11/11";
+export type SprintDay = "11/09" | "11/10" | "11/11" | "11/12";
 
 export type SprintCategory =
   | "立面圖"
