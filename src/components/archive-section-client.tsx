@@ -58,6 +58,7 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
   const [selectedPlanQuestion, setSelectedPlanQuestion] = useState<string>("201");
   const [selectedQuestion, setSelectedQuestion] = useState<string>("201");
   const [selectedType, setSelectedType] = useState<string>("全部");
+  const [uploadStatusFilter, setUploadStatusFilter] = useState<"all" | "uploaded" | "unpracticed">("all");
   
   // For perspective, default to 208, options are all 207-212 questions
   const [selectedPerspective, setSelectedPerspective] = useState<string>("208");
@@ -91,7 +92,7 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
   const completionRate = totalItems > 0 ? Math.round((completedCount / totalItems) * 100) : 0;
 
   // Filter logic (單一事實來源於 src/lib/ce-filter.ts)
-  const filteredItems = isPlan
+  const baseFilteredItems = isPlan
     ? section.items.filter((item) => item.code.startsWith(selectedPlanQuestion))
     : isCeilingElevation
       ? filterCeilingElevationItems(section.items, selectedQuestion, selectedType)
@@ -99,12 +100,26 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
         ? section.items.filter((item) => item.code.startsWith(selectedPerspective))
         : section.items;
 
+  const hasSectionItemUpload = (itemCode: string) =>
+    uploads.some((u) => isMatch(u.sheetCode, itemCode) && belongsToThisSection(u));
+
+  const baseUploadedCount = baseFilteredItems.filter((item) =>
+    hasSectionItemUpload(item.code)
+  ).length;
+
   // 目前篩選範圍內已上傳練習圖的題數統計
   const filteredUploadedCount = isCeilingElevation
-    ? filteredItems.filter((item) =>
+    ? baseFilteredItems.filter((item) =>
         myUploads.some((u) => isMatch(u.sheetCode, item.code))
       ).length
     : 0;
+
+  const filteredItems =
+    uploadStatusFilter === "uploaded"
+      ? baseFilteredItems.filter((item) => hasSectionItemUpload(item.code))
+      : uploadStatusFilter === "unpracticed"
+        ? baseFilteredItems.filter((item) => !hasSectionItemUpload(item.code))
+        : baseFilteredItems;
 
   return (
     <section className="archive-block" id={section.slug}>
@@ -333,6 +348,53 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
           </div>
         )}
 
+        {isExpanded && (
+          <div
+            className="status-filter-bar"
+            role="group"
+            aria-label="作品上傳狀態快速篩選"
+          >
+            <span className="status-filter-bar__label">練習進度：</span>
+            <div className="status-filter-bar__pills">
+              <button
+                type="button"
+                className={`status-filter-pill ${
+                  uploadStatusFilter === "all" ? "status-filter-pill--active" : ""
+                }`}
+                onClick={() => setUploadStatusFilter("all")}
+                aria-pressed={uploadStatusFilter === "all"}
+              >
+                全部 ({baseFilteredItems.length})
+              </button>
+              <button
+                type="button"
+                className={`status-filter-pill status-filter-pill--uploaded ${
+                  uploadStatusFilter === "uploaded"
+                    ? "status-filter-pill--uploaded-active"
+                    : ""
+                }`}
+                onClick={() => setUploadStatusFilter("uploaded")}
+                aria-pressed={uploadStatusFilter === "uploaded"}
+              >
+                <span className="status-filter-pill__dot" aria-hidden="true" />
+                已上傳作品 ({baseUploadedCount})
+              </button>
+              <button
+                type="button"
+                className={`status-filter-pill ${
+                  uploadStatusFilter === "unpracticed"
+                    ? "status-filter-pill--active"
+                    : ""
+                }`}
+                onClick={() => setUploadStatusFilter("unpracticed")}
+                aria-pressed={uploadStatusFilter === "unpracticed"}
+              >
+                尚未上傳 ({baseFilteredItems.length - baseUploadedCount})
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="archive-grid">
           {filteredItems.map((item) => {
             const matchedUploads = uploads.filter(
@@ -356,7 +418,24 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
 
         {filteredItems.length === 0 && (
           <div className="archive-empty">
-            <p>此類別目前尚無練習或圖面資料。</p>
+            {uploadStatusFilter !== "all" && baseFilteredItems.length > 0 ? (
+              <>
+                <p>
+                  {uploadStatusFilter === "uploaded"
+                    ? "目前篩選範圍內尚未上傳練習或參考圖。"
+                    : "太棒了，目前篩選範圍內的題目皆已上傳作品！"}
+                </p>
+                <button
+                  type="button"
+                  className="status-filter-reset-btn"
+                  onClick={() => setUploadStatusFilter("all")}
+                >
+                  檢視全部題目 ({baseFilteredItems.length})
+                </button>
+              </>
+            ) : (
+              <p>此類別目前尚無練習或圖面資料。</p>
+            )}
           </div>
         )}
       </div>

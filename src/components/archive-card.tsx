@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Check, FileText } from "lucide-react";
+import { CheckCircle2, FileText, Image as ImageIcon } from "lucide-react";
 import { ArchiveItem, UploadEntry } from "@/types/exam";
 import { ExamNoteCategory } from "@/types/exam-note";
 import { ArchiveDetailModal } from "@/components/archive-detail-modal";
 import { getLocalNote } from "@/lib/user-data";
+import { summarizeCardUploads } from "@/lib/upload-summary";
 
 type ArchiveCardProps = {
   item: ArchiveItem;
@@ -24,8 +25,8 @@ type ArchiveCardProps = {
 export function ArchiveCard({ item, sectionSlug, uploads = [], allUploads = [], examNotes, onDeleteEntry }: ArchiveCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [noteSnippet, setNoteSnippet] = useState<string>("");
-  const hasUpload = uploads.length > 0;
-  const uploadCount = uploads.length;
+  const [thumbFailed, setThumbFailed] = useState(false);
+  const uploadSummary = summarizeCardUploads(uploads);
   const hasNote = noteSnippet.trim().length > 0;
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -67,7 +68,13 @@ export function ArchiveCard({ item, sectionSlug, uploads = [], allUploads = [], 
   return (
     <>
       <article
-        className={`archive-card clickable-card${hasUpload ? " archive-card--uploaded" : ""}${hasNote ? " archive-card--has-note" : ""}`}
+        className={`archive-card clickable-card${
+          uploadSummary.hasMyPractice
+            ? " archive-card--uploaded"
+            : uploadSummary.hasUpload
+              ? " archive-card--has-ref"
+              : ""
+        }${hasNote ? " archive-card--has-note" : ""}`}
         key={`${sectionSlug}-${item.code}`}
         onClick={() => setIsOpen(true)}
         onKeyDown={handleKeyDown}
@@ -75,7 +82,13 @@ export function ArchiveCard({ item, sectionSlug, uploads = [], allUploads = [], 
         tabIndex={0}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
-        aria-label={`${item.code} ${hasNote ? "含速記要點 " : ""}${hasUpload ? `已上傳 ${uploadCount} 張練習圖` : "尚未上傳練習圖"}`}
+        aria-label={`${item.code} ${hasNote ? "含速記要點 " : ""}${
+          uploadSummary.hasMyPractice
+            ? `已上傳 ${uploadSummary.myImageCount} 張我的練習圖`
+            : uploadSummary.hasUpload
+              ? `含 ${uploadSummary.refImageCount} 張參考圖`
+              : "尚未上傳練習圖"
+        }`}
         style={{ cursor: "pointer" }}
       >
         <div className="archive-card-top">
@@ -117,10 +130,22 @@ export function ArchiveCard({ item, sectionSlug, uploads = [], allUploads = [], 
                 </span>
               </span>
             )}
-            {hasUpload && (
-              <span className="archive-card__upload-badge" aria-hidden="true">
-                <Check size={10} strokeWidth={2.5} />
-                {uploadCount}
+            {uploadSummary.hasMyPractice && (
+              <span
+                className="archive-card__upload-badge archive-card__upload-badge--mine"
+                aria-label={`已練 ${uploadSummary.myImageCount} 張`}
+              >
+                <CheckCircle2 size={11} strokeWidth={2.6} />
+                <span>已練 {uploadSummary.myImageCount} 張</span>
+              </span>
+            )}
+            {uploadSummary.refImageCount > 0 && (
+              <span
+                className="archive-card__upload-badge archive-card__upload-badge--ref"
+                aria-label={`含 ${uploadSummary.refImageCount} 張參考圖`}
+              >
+                <ImageIcon size={10} strokeWidth={2.3} />
+                <span>參考 {uploadSummary.refImageCount}</span>
               </span>
             )}
             <span className="archive-card__variants">{item.variants.join(" / ")}</span>
@@ -140,6 +165,43 @@ export function ArchiveCard({ item, sectionSlug, uploads = [], allUploads = [], 
           >
             {item.view}
           </span>
+        )}
+        {uploadSummary.hasUpload && (
+          <div
+            className={`archive-card__upload-strip ${
+              uploadSummary.hasMyPractice
+                ? "archive-card__upload-strip--mine"
+                : "archive-card__upload-strip--ref"
+            }`}
+          >
+            {uploadSummary.previewImageUrl && !thumbFailed ? (
+              <img
+                src={uploadSummary.previewImageUrl}
+                alt={`${item.code} 已上傳作品縮圖`}
+                className="archive-card__upload-thumb"
+                width={36}
+                height={27}
+                loading="lazy"
+                onError={() => setThumbFailed(true)}
+              />
+            ) : (
+              <span className="archive-card__upload-thumb-fallback" aria-hidden="true">
+                <ImageIcon size={14} strokeWidth={2} />
+              </span>
+            )}
+            <div className="archive-card__upload-strip-text">
+              <span className="archive-card__upload-strip-status">
+                {uploadSummary.hasMyPractice
+                  ? `已上傳練習（${uploadSummary.myImageCount} 張）`
+                  : `參考／標記圖（${uploadSummary.refImageCount} 張）`}
+              </span>
+              {uploadSummary.latestTitle && (
+                <span className="archive-card__upload-strip-title">
+                  {uploadSummary.latestTitle}
+                </span>
+              )}
+            </div>
+          </div>
         )}
       </article>
 

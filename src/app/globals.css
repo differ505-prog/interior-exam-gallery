@@ -30,6 +30,20 @@
   --badge-note-text: #b45309;
   --badge-note-border: rgba(180, 83, 9, 0.28);
 
+  /* Upload Highlight tokens — 已上傳作品（翠綠）與參考圖（靜藍） */
+  --badge-uploaded-bg: rgba(16, 185, 129, 0.14);
+  --badge-uploaded-text: #047857;
+  --badge-uploaded-solid: #059669;
+  --badge-uploaded-on-solid: #ffffff;
+  --badge-uploaded-border: rgba(16, 185, 129, 0.44);
+  --badge-uploaded-hover-border: #059669;
+  --card-uploaded-bg: rgba(16, 185, 129, 0.05);
+  --card-uploaded-shadow: rgba(16, 185, 129, 0.14);
+  --badge-ref-bg: rgba(37, 99, 235, 0.1);
+  --badge-ref-text: #1d4ed8;
+  --badge-ref-border: rgba(37, 99, 235, 0.28);
+  --card-ref-bg: rgba(37, 99, 235, 0.03);
+
   /* Overlay（半透明遮罩，深色 = 文字/UI 元素的浮動層） */
   --overlay-deep: rgba(20, 18, 14, 0.68);
   --surface-frosted: rgba(255, 255, 255, 0.92);
@@ -796,27 +810,40 @@ main {
   line-height: 1.2;
 }
 
-.archive-card__variants,
-.archive-card-top span {
+.archive-card__variants {
   font-size: 0.82rem;
   color: var(--muted);
 }
 
-/* 已上傳練習圖：左上角徽章 */
+/* 已上傳練習圖：頂部狀態徽章 */
 .archive-card__upload-badge {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  padding: 2px 7px;
+  gap: 4px;
+  padding: 2px 9px;
   border-radius: var(--radius-pill);
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--badge-uploaded-bg);
+  color: var(--badge-uploaded-text);
+  border: 1px solid var(--badge-uploaded-border);
   font-size: 0.72rem;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.4;
   letter-spacing: 0.01em;
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.archive-card__upload-badge--mine {
+  background: var(--badge-uploaded-solid);
+  color: var(--badge-uploaded-on-solid);
+  border-color: var(--badge-uploaded-solid);
+  box-shadow: 0 2px 6px var(--card-uploaded-shadow);
+}
+
+.archive-card__upload-badge--ref {
+  background: var(--badge-ref-bg);
+  color: var(--badge-ref-text);
+  border-color: var(--badge-ref-border);
 }
 
 .archive-card-top-right {
@@ -900,18 +927,115 @@ main {
   transform: translateY(0);
 }
 
-/* 有速記筆記的卡片：左邊框帶淡琥珀色微標記，提供清單速掃錨點 */
-.archive-card--has-note {
-  border-left: 3px solid var(--badge-note-border) !important;
-}
-
-/* 已上傳卡片：邊框微調為 accent-soft，hover 維持原有上浮動畫 */
+/* 已上傳自己練習圖卡片：翠綠邊框 + 柔和底暈，掃描即識別 */
 .archive-card--uploaded {
-  border-color: var(--accent-soft) !important;
+  border: 1.5px solid var(--badge-uploaded-border);
+  background: linear-gradient(180deg, var(--card-uploaded-bg) 0%, var(--panel) 58%);
+  box-shadow: 0 4px 14px var(--card-uploaded-shadow);
 }
 
 .archive-card--uploaded:hover {
-  border-color: var(--accent) !important;
+  border-color: var(--badge-uploaded-hover-border);
+}
+
+/* 僅含他人作品參考 / 標記試卷卡片：靜藍邊框與底暈區隔 */
+.archive-card--has-ref {
+  border: 1.5px solid var(--badge-ref-border);
+  background: linear-gradient(180deg, var(--card-ref-bg) 0%, var(--panel) 58%);
+}
+
+.archive-card--has-ref:hover {
+  border-color: var(--badge-ref-text);
+}
+
+/* 有速記筆記的卡片：左邊框帶琥珀色標記，並與已上傳狀態相容 */
+.archive-card--has-note,
+.archive-card--has-note.archive-card--uploaded,
+.archive-card--has-note.archive-card--has-ref {
+  border-left: 3px solid var(--badge-note-border);
+}
+
+.archive-card--has-note.archive-card--uploaded:hover,
+.archive-card--has-note.archive-card--has-ref:hover {
+  border-left-color: var(--badge-note-border);
+}
+
+/* 卡片底部作品預覽條（縮圖 + 狀態 + 最新標題） */
+.archive-card__upload-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+  padding: 7px 9px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--panel-soft);
+  min-width: 0;
+}
+
+.archive-card__upload-strip--mine {
+  border-color: var(--badge-uploaded-border);
+  background: var(--badge-uploaded-bg);
+}
+
+.archive-card__upload-strip--ref {
+  border-color: var(--badge-ref-border);
+  background: var(--badge-ref-bg);
+}
+
+.archive-card__upload-thumb {
+  width: 36px;
+  height: 27px;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  background: var(--bg-deep);
+  flex-shrink: 0;
+}
+
+.archive-card__upload-thumb-fallback {
+  width: 36px;
+  height: 27px;
+  aspect-ratio: 4 / 3;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  background: var(--bg-deep);
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.archive-card__upload-strip-text {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.archive-card__upload-strip-status {
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--badge-uploaded-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.archive-card__upload-strip--ref .archive-card__upload-strip-status {
+  color: var(--badge-ref-text);
+}
+
+.archive-card__upload-strip-title {
+  font-size: 0.76rem;
+  line-height: 1.3;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .archive-card__title {
@@ -2990,6 +3114,106 @@ main {
   border-radius: var(--radius-md);
   color: var(--muted);
   font-size: var(--text-base);
+}
+
+/* 練習進度快速篩選列（全部 / 已上傳作品 / 尚未上傳） */
+.status-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-4);
+  padding: 10px var(--space-4);
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+
+.status-filter-bar__label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.status-filter-bar__pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.status-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line-strong);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.status-filter-pill:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.status-filter-pill--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--badge-uploaded-on-solid);
+}
+
+.status-filter-pill--active:hover {
+  color: var(--badge-uploaded-on-solid);
+}
+
+.status-filter-pill--uploaded .status-filter-pill__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--badge-uploaded-solid);
+  flex-shrink: 0;
+}
+
+.status-filter-pill--uploaded-active {
+  background: var(--badge-uploaded-solid);
+  border-color: var(--badge-uploaded-solid);
+  color: var(--badge-uploaded-on-solid);
+  box-shadow: 0 2px 8px var(--card-uploaded-shadow);
+}
+
+.status-filter-pill--uploaded-active:hover {
+  border-color: var(--badge-uploaded-hover-border);
+  color: var(--badge-uploaded-on-solid);
+}
+
+.status-filter-pill--uploaded-active .status-filter-pill__dot {
+  background: var(--badge-uploaded-on-solid);
+}
+
+.status-filter-reset-btn {
+  margin-top: var(--space-3);
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line-strong);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.status-filter-reset-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .section-stats {
