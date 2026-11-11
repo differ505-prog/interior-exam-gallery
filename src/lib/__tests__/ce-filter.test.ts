@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { examSections } from "@/data/exam-content";
+import {
+  CE_QUICK_ZONE_PRESETS,
+  filterCeilingElevationItems,
+} from "@/lib/ce-filter";
 
 describe("Ceiling & Elevation space filter logic", () => {
   const ceSection = examSections.find((s) => s.slug === "ceiling-elevation")!;
@@ -21,34 +25,53 @@ describe("Ceiling & Elevation space filter logic", () => {
     expect(codes).toContain("201A臥立");
   });
 
-  it("filters correctly by 客廳天花", () => {
-    const items = ceSection.items.filter(
-      (item) => item.code.startsWith("201") && (item.view === "客天" || item.code.endsWith("客天"))
-    );
-    expect(items.length).toBe(6); // 201A ~ 201F 客天
-    expect(items.every((i) => i.code.endsWith("客天"))).toBe(true);
+  it("單題篩選（201）：客廳天花/餐廳天花/主臥天花各 6 張、全部天花 18 張", () => {
+    expect(filterCeilingElevationItems(ceSection.items, "201", "客廳天花")).toHaveLength(6);
+    expect(filterCeilingElevationItems(ceSection.items, "201", "餐廳天花")).toHaveLength(6);
+    expect(filterCeilingElevationItems(ceSection.items, "201", "主臥天花")).toHaveLength(6);
+    expect(filterCeilingElevationItems(ceSection.items, "201", "全部天花")).toHaveLength(18);
   });
 
-  it("filters correctly by 餐廳天花", () => {
-    const items = ceSection.items.filter(
-      (item) => item.code.startsWith("201") && (item.view === "餐天" || item.code.endsWith("餐天"))
-    );
-    expect(items.length).toBe(6);
-    expect(items.every((i) => i.code.endsWith("餐天"))).toBe(true);
+  it("跨題全庫篩選（全部題號）：各特定區域天花板或立面皆剛好 36 張", () => {
+    const livingCeiling = filterCeilingElevationItems(ceSection.items, "全部", "客廳天花");
+    expect(livingCeiling).toHaveLength(36);
+    expect(livingCeiling.every((i) => i.view === "客天")).toBe(true);
+
+    const diningCeiling = filterCeilingElevationItems(ceSection.items, "全部", "餐廳天花");
+    expect(diningCeiling).toHaveLength(36);
+    expect(diningCeiling.every((i) => i.view === "餐天")).toBe(true);
+
+    const bedroomCeiling = filterCeilingElevationItems(ceSection.items, "全部", "主臥天花");
+    expect(bedroomCeiling).toHaveLength(36);
+    expect(bedroomCeiling.every((i) => i.view === "臥天")).toBe(true);
+
+    const livingElevation = filterCeilingElevationItems(ceSection.items, "全部", "客廳立面");
+    expect(livingElevation).toHaveLength(36);
+    expect(livingElevation.every((i) => i.view === "客立")).toBe(true);
+
+    const diningElevation = filterCeilingElevationItems(ceSection.items, "全部", "餐廳立面");
+    expect(diningElevation).toHaveLength(36);
+    expect(diningElevation.every((i) => i.view === "餐立")).toBe(true);
+
+    const bedroomElevation = filterCeilingElevationItems(ceSection.items, "全部", "主臥立面");
+    expect(bedroomElevation).toHaveLength(36);
+    expect(bedroomElevation.every((i) => i.view === "臥立")).toBe(true);
   });
 
-  it("filters correctly by 主臥天花", () => {
-    const items = ceSection.items.filter(
-      (item) => item.code.startsWith("201") && (item.view === "臥天" || item.code.endsWith("臥天"))
-    );
-    expect(items.length).toBe(6);
-    expect(items.every((i) => i.code.endsWith("臥天"))).toBe(true);
+  it("跨題全庫篩選（全部題號）：全庫所有天花與所有立面各 108 張、全覽 216 張", () => {
+    expect(filterCeilingElevationItems(ceSection.items, "全部", "全部天花")).toHaveLength(108);
+    expect(filterCeilingElevationItems(ceSection.items, "全部", "全部立面")).toHaveLength(108);
+    expect(filterCeilingElevationItems(ceSection.items, "全部", "全部")).toHaveLength(216);
   });
 
-  it("filters correctly by 全部天花", () => {
-    const items = ceSection.items.filter(
-      (item) => item.code.startsWith("201") && (item.view?.endsWith("天") || item.code.endsWith("客天") || item.code.endsWith("餐天") || item.code.endsWith("臥天"))
-    );
-    expect(items.length).toBe(18); // 6 variants * 3 ceiling views
+  it("CE_QUICK_ZONE_PRESETS 每一組預設捷徑與實際篩選筆數完全吻合", () => {
+    for (const preset of CE_QUICK_ZONE_PRESETS) {
+      const matched = filterCeilingElevationItems(
+        ceSection.items,
+        preset.question,
+        preset.type
+      );
+      expect(matched).toHaveLength(preset.expectedCount);
+    }
   });
 });

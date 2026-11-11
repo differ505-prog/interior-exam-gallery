@@ -2,11 +2,18 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Layers } from "lucide-react";
 import { ArchiveSection, UploadEntry } from "@/types/exam";
 import { ExamNoteCategory } from "@/types/exam-note";
 import { ArchiveCard } from "@/components/archive-card";
 import { QuestionNoteOverview } from "@/components/question-note-overview";
+import {
+  CE_QUESTION_OPTIONS,
+  CE_CEILING_TYPES,
+  CE_ELEVATION_TYPES,
+  CE_QUICK_ZONE_PRESETS,
+  filterCeilingElevationItems,
+} from "@/lib/ce-filter";
 
 type ArchiveSectionClientProps = {
   section: ArchiveSection;
@@ -57,8 +64,6 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
 
   const questions = ["201", "202", "203", "204", "205", "206"];
   const perspectiveQuestions = ["207", "208", "209", "210", "211", "212"];
-  const ceilingTypes = ["客廳天花", "餐廳天花", "主臥天花", "全部天花"];
-  const elevationTypes = ["客廳立面", "餐廳立面", "主臥立面", "全部立面"];
 
   // Calculate section stats
   const totalItems = section.items.length;
@@ -85,65 +90,21 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
   const completedCount = completedKeys.size;
   const completionRate = totalItems > 0 ? Math.round((completedCount / totalItems) * 100) : 0;
 
-  // Filter logic
-  const filteredItems = section.items.filter((item) => {
-    if (isPlan) {
-      return item.code.startsWith(selectedPlanQuestion);
-    }
+  // Filter logic (單一事實來源於 src/lib/ce-filter.ts)
+  const filteredItems = isPlan
+    ? section.items.filter((item) => item.code.startsWith(selectedPlanQuestion))
+    : isCeilingElevation
+      ? filterCeilingElevationItems(section.items, selectedQuestion, selectedType)
+      : isPerspective
+        ? section.items.filter((item) => item.code.startsWith(selectedPerspective))
+        : section.items;
 
-    if (isCeilingElevation) {
-      const matchesQuestion = item.code.startsWith(selectedQuestion);
-      let matchesType = true;
-      if (selectedType === "全部") {
-        matchesType = true;
-      } else if (selectedType === "全部天花" || selectedType === "天花板配置圖") {
-        matchesType =
-          item.view?.endsWith("天") ||
-          item.code.endsWith("客天") ||
-          item.code.endsWith("餐天") ||
-          item.code.endsWith("臥天") ||
-          item.code.endsWith("天花");
-      } else if (selectedType === "客廳天花") {
-        matchesType =
-          item.view === "客天" ||
-          item.code.endsWith("客天") ||
-          item.code.endsWith("天花");
-      } else if (selectedType === "餐廳天花") {
-        matchesType =
-          item.view === "餐天" ||
-          item.code.endsWith("餐天");
-      } else if (selectedType === "主臥天花") {
-        matchesType =
-          item.view === "臥天" ||
-          item.code.endsWith("臥天");
-      } else if (selectedType === "全部立面") {
-        matchesType =
-          item.view?.endsWith("立") ||
-          item.code.endsWith("客立") ||
-          item.code.endsWith("餐立") ||
-          item.code.endsWith("臥立");
-      } else if (selectedType === "客廳立面" || selectedType === "客廳立面圖") {
-        matchesType =
-          item.view === "客立" ||
-          item.code.endsWith("客立");
-      } else if (selectedType === "餐廳立面" || selectedType === "餐廳立面圖") {
-        matchesType =
-          item.view === "餐立" ||
-          item.code.endsWith("餐立");
-      } else if (selectedType === "主臥立面" || selectedType === "主臥立面圖") {
-        matchesType =
-          item.view === "臥立" ||
-          item.code.endsWith("臥立");
-      }
-      return matchesQuestion && matchesType;
-    }
-    
-    if (isPerspective) {
-      return item.code.startsWith(selectedPerspective);
-    }
-
-    return true;
-  });
+  // 目前篩選範圍內已上傳練習圖的題數統計
+  const filteredUploadedCount = isCeilingElevation
+    ? filteredItems.filter((item) =>
+        myUploads.some((u) => isMatch(u.sheetCode, item.code))
+      ).length
+    : 0;
 
   return (
     <section className="archive-block" id={section.slug}>
@@ -226,17 +187,49 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
         {/* Foldable/Collapsible Filters for Ceiling & Elevation */}
         {isCeilingElevation && isExpanded && (
           <div className="archive-filters" aria-label="天花與立面篩選面板">
+            {/* 一鍵跨題區域專攻捷徑列 */}
+            <div className="filter-group ce-quick-zone-group">
+              <span className="filter-label ce-quick-zone-label">
+                <Layers size={14} aria-hidden="true" />
+                跨題專攻：
+              </span>
+              <div className="filter-options" role="group" aria-label="跨全庫特定區域一鍵篩選">
+                {CE_QUICK_ZONE_PRESETS.map((preset) => {
+                  const isActive =
+                    selectedQuestion === preset.question &&
+                    selectedType === preset.type;
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      className={`filter-btn ce-quick-btn ce-quick-btn--${preset.pool}${
+                        isActive ? " filter-btn--active" : ""
+                      }`}
+                      onClick={() => {
+                        setSelectedQuestion(preset.question);
+                        setSelectedType(preset.type);
+                      }}
+                      aria-pressed={isActive}
+                    >
+                      <span>{preset.label}</span>
+                      <span className="ce-quick-btn__count">{preset.expectedCount}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="filter-group">
               <span className="filter-label">選擇題號：</span>
               <div className="filter-options">
-                {questions.map((q) => (
+                {CE_QUESTION_OPTIONS.map((q) => (
                   <button
                     key={q}
                     className={`filter-btn ${selectedQuestion === q ? "filter-btn--active" : ""}`}
                     onClick={() => setSelectedQuestion(q)}
                     type="button"
                   >
-                    {q} 題
+                    {q === "全部" ? "全部題號" : `${q} 題`}
                   </button>
                 ))}
                 <span className="filter-divider" aria-hidden="true" />
@@ -253,7 +246,7 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
             <div className="filter-group">
               <span className="filter-label">天花板圖：</span>
               <div className="filter-options">
-                {ceilingTypes.map((t) => (
+                {CE_CEILING_TYPES.map((t) => (
                   <button
                     key={t}
                     className={`filter-btn ${selectedType === t ? "filter-btn--active" : ""}`}
@@ -269,7 +262,7 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
             <div className="filter-group">
               <span className="filter-label">空間立面：</span>
               <div className="filter-options">
-                {elevationTypes.map((t) => (
+                {CE_ELEVATION_TYPES.map((t) => (
                   <button
                     key={t}
                     className={`filter-btn ${selectedType === t ? "filter-btn--active" : ""}`}
@@ -279,6 +272,36 @@ export function ArchiveSectionClient({ section, uploads, examNotes }: ArchiveSec
                     {t}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* 即時篩選狀態摘要列 */}
+            <div className="ce-filter-summary" role="status" aria-live="polite">
+              <span className="ce-filter-summary__scope">
+                篩選範圍：
+                <strong>
+                  {selectedQuestion === "全部" ? "全題庫 (201–206)" : `${selectedQuestion} 題`}
+                </strong>
+                {" · "}
+                <strong>{selectedType === "全部" ? "全部圖面" : selectedType}</strong>
+              </span>
+              <div className="ce-filter-summary__meta">
+                <span className="ce-filter-summary__pill">
+                  顯示 <strong>{filteredItems.length}</strong> 張 · 已練{" "}
+                  <strong>{filteredUploadedCount}</strong> 張
+                </span>
+                {(selectedQuestion !== "全部" || selectedType !== "全部") && (
+                  <button
+                    type="button"
+                    className="ce-filter-reset-btn"
+                    onClick={() => {
+                      setSelectedQuestion("全部");
+                      setSelectedType("全部");
+                    }}
+                  >
+                    展開全庫 (216)
+                  </button>
+                )}
               </div>
             </div>
 
