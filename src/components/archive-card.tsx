@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Check } from "lucide-react";
+import { Check, FileText } from "lucide-react";
 import { ArchiveItem, UploadEntry } from "@/types/exam";
 import { ExamNoteCategory } from "@/types/exam-note";
 import { ArchiveDetailModal } from "@/components/archive-detail-modal";
+import { getLocalNote } from "@/lib/user-data";
 
 type ArchiveCardProps = {
   item: ArchiveItem;
@@ -22,8 +23,10 @@ type ArchiveCardProps = {
  */
 export function ArchiveCard({ item, sectionSlug, uploads = [], allUploads = [], examNotes, onDeleteEntry }: ArchiveCardProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [noteSnippet, setNoteSnippet] = useState<string>("");
   const hasUpload = uploads.length > 0;
   const uploadCount = uploads.length;
+  const hasNote = noteSnippet.trim().length > 0;
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -31,6 +34,28 @@ export function ArchiveCard({ item, sectionSlug, uploads = [], allUploads = [], 
       setIsOpen(true);
     }
   };
+
+  // 監聽速記本更新，即時反應在卡片徽章上
+  useEffect(() => {
+    const updateNote = () => {
+      const note = getLocalNote(item.code);
+      setNoteSnippet(note);
+    };
+    updateNote();
+
+    const handler = (e: Event) => {
+      const customEvent = e as CustomEvent<{ sheetCode?: string; note?: string }>;
+      if (!customEvent.detail || customEvent.detail.sheetCode === item.code) {
+        updateNote();
+      }
+    };
+    window.addEventListener("scratch-note-updated", handler);
+    window.addEventListener("storage", updateNote);
+    return () => {
+      window.removeEventListener("scratch-note-updated", handler);
+      window.removeEventListener("storage", updateNote);
+    };
+  }, [item.code]);
 
   // Listen for dismiss-modal events from ArchiveDetailModal and close the modal
   useEffect(() => {
@@ -42,7 +67,7 @@ export function ArchiveCard({ item, sectionSlug, uploads = [], allUploads = [], 
   return (
     <>
       <article
-        className={`archive-card clickable-card${hasUpload ? " archive-card--uploaded" : ""}`}
+        className={`archive-card clickable-card${hasUpload ? " archive-card--uploaded" : ""}${hasNote ? " archive-card--has-note" : ""}`}
         key={`${sectionSlug}-${item.code}`}
         onClick={() => setIsOpen(true)}
         onKeyDown={handleKeyDown}
@@ -50,7 +75,7 @@ export function ArchiveCard({ item, sectionSlug, uploads = [], allUploads = [], 
         tabIndex={0}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
-        aria-label={`${item.code} ${hasUpload ? `已上傳 ${uploadCount} 張練習圖` : "尚未上傳練習圖"}`}
+        aria-label={`${item.code} ${hasNote ? "含速記要點 " : ""}${hasUpload ? `已上傳 ${uploadCount} 張練習圖` : "尚未上傳練習圖"}`}
         style={{ cursor: "pointer" }}
       >
         <div className="archive-card-top">
@@ -73,6 +98,25 @@ export function ArchiveCard({ item, sectionSlug, uploads = [], allUploads = [], 
             )}
           </div>
           <div className="archive-card-top-right">
+            {hasNote && (
+              <span
+                className="archive-card__note-badge"
+                title={`速記要點：${noteSnippet.slice(0, 100)}`}
+                aria-label={`此小題有速記要點：${noteSnippet.slice(0, 40)}`}
+              >
+                <FileText size={10} strokeWidth={2.5} />
+                <span>要點</span>
+                <span className="archive-card__note-tooltip" role="tooltip">
+                  <span className="archive-card__note-tooltip-header">
+                    <FileText size={10} strokeWidth={2.5} />
+                    <span>速記要點</span>
+                  </span>
+                  <span className="archive-card__note-tooltip-body">
+                    {noteSnippet.slice(0, 80)}{noteSnippet.length > 80 ? "…" : ""}
+                  </span>
+                </span>
+              </span>
+            )}
             {hasUpload && (
               <span className="archive-card__upload-badge" aria-hidden="true">
                 <Check size={10} strokeWidth={2.5} />

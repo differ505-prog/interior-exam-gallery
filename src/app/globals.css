@@ -25,6 +25,11 @@
   --danger: #b94545;
   --danger-soft: rgba(185, 69, 69, 0.12);
 
+  /* Note Badge tokens — 方案 A+ 速記要點徽章（琥珀金） */
+  --badge-note-bg: rgba(180, 83, 9, 0.12);
+  --badge-note-text: #b45309;
+  --badge-note-border: rgba(180, 83, 9, 0.28);
+
   /* Overlay（半透明遮罩，深色 = 文字/UI 元素的浮動層） */
   --overlay-deep: rgba(20, 18, 14, 0.68);
   --surface-frosted: rgba(255, 255, 255, 0.92);
@@ -818,6 +823,86 @@ main {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+}
+
+/* 速記要點徽章（方案 A+：琥珀金微膠囊） */
+.archive-card__note-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--badge-note-bg);
+  color: var(--badge-note-text);
+  border: 1px solid var(--badge-note-border);
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  flex-shrink: 0;
+  position: relative;
+  transition: transform 180ms ease-out, background 180ms ease-out, border-color 180ms ease-out;
+}
+
+.archive-card:hover .archive-card__note-badge {
+  transform: translateY(-1px);
+}
+
+/* 速記要點懸浮預覽浮層（Tooltip） */
+.archive-card__note-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  min-width: 150px;
+  max-width: 240px;
+  padding: 8px 10px;
+  background: var(--surface-frosted);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--text);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 24px rgba(29, 25, 20, 0.12);
+  font-size: 0.7rem;
+  line-height: 1.45;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out);
+  z-index: 30;
+  white-space: normal;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.archive-card__note-tooltip-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  color: var(--badge-note-text);
+  font-size: 0.68rem;
+  border-bottom: 1px dashed var(--line);
+  padding-bottom: 3px;
+}
+
+.archive-card__note-tooltip-body {
+  color: var(--text);
+  font-weight: 400;
+  word-break: break-all;
+}
+
+.archive-card__note-badge:hover .archive-card__note-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 有速記筆記的卡片：左邊框帶淡琥珀色微標記，提供清單速掃錨點 */
+.archive-card--has-note {
+  border-left: 3px solid var(--badge-note-border) !important;
 }
 
 /* 已上傳卡片：邊框微調為 accent-soft，hover 維持原有上浮動畫 */

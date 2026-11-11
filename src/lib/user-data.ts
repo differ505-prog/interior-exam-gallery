@@ -82,6 +82,71 @@ export function getLocalSheetData(sheetCode: string): UserSheetData | null {
 }
 
 /**
+ * 讀取指定試卷的本地速記內容（相容新版 cache 與 legacy scratch key）
+ */
+export function getLocalNote(sheetCode: string): string {
+  if (typeof window === "undefined") return "";
+  const cache = safeGet<SheetDataMap>(CACHE_KEY, {});
+  if (cache[sheetCode]?.scratchNote && cache[sheetCode].scratchNote.trim().length > 0) {
+    return cache[sheetCode].scratchNote.trim();
+  }
+  try {
+    const legacy = localStorage.getItem(LEGACY_SCRATCH_KEY(sheetCode));
+    if (legacy) {
+      let parsed = "";
+      try {
+        parsed = typeof JSON.parse(legacy) === "string" ? JSON.parse(legacy) : legacy;
+      } catch {
+        parsed = legacy;
+      }
+      if (parsed && parsed.trim().length > 0) return parsed.trim();
+    }
+  } catch {
+    // 忽略 localStorage 錯誤
+  }
+  return "";
+}
+
+/**
+ * 取得所有已有速記內容的試卷代碼及其筆記摘要
+ */
+export function getAllLocalNotes(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const cache = safeGet<SheetDataMap>(CACHE_KEY, {});
+  const result: Record<string, string> = {};
+  for (const [code, data] of Object.entries(cache)) {
+    if (data?.scratchNote && data.scratchNote.trim().length > 0) {
+      result[code] = data.scratchNote.trim();
+    }
+  }
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("scratch:")) {
+        const code = key.replace("scratch:", "");
+        if (!result[code]) {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            let note = "";
+            try {
+              note = typeof JSON.parse(raw) === "string" ? JSON.parse(raw) : raw;
+            } catch {
+              note = raw;
+            }
+            if (note && note.trim().length > 0) {
+              result[code] = note.trim();
+            }
+          }
+        }
+      }
+    }
+  } catch {
+    // 忽略 localStorage 錯誤
+  }
+  return result;
+}
+
+/**
  * 寫入單一試卷資料至新版 cache，並同時維護舊版 legacy 鍵
  */
 export function setLocalSheetData(data: UserSheetData) {
@@ -206,6 +271,14 @@ export async function saveScratchNote(
 
   // 寫入 localStorage（同步，確保即時 UI 更新）
   setLocalSheetData({ sheetCode, scratchNote: note, teachingLinks });
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent("scratch-note-updated", {
+        detail: { sheetCode, note },
+      })
+    );
+  }
 
   // 若遠端寫入成功，立刻同步 teachingLinks（避免覆蓋）
   if (remoteOk) {
